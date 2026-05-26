@@ -1,0 +1,365 @@
+/* ==========================================================================
+   AeroMusic - Premium macOS Glassmorphism Design System
+   ========================================================================== */
+
+:root {
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  
+  /* Color Palette - Premium Dark Mode */
+  --bg-color-solid: #0d0e12;
+  --bg-glass-heavy: rgba(18, 20, 26, 0.85);
+  --bg-glass-medium: rgba(26, 29, 38, 0.6);
+  --bg-glass-light: rgba(255, 255, 255, 0.06);
+  --bg-glass-active: rgba(255, 255, 255, 0.12);
+  
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glass-bright: rgba(255, 255, 255, 0.15);
+  
+  --primary-color: #ff3b30; /* Apple Red */
+  --primary-gradient: linear-gradient(135deg, #ff2d55, #ff3b30, #ff9500);
+  --primary-glow: rgba(255, 59, 48, 0.4);
+  
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --text-muted: #6e6e73;
+  
+  --accent-blue: #007aff;
+  --accent-green: #34c759;
+  --accent-purple: #af52de;
+  --accent-pink: #ff2d55;
+  
+  /* Layout Dimensions */
+  --sidebar-width: 260px;
+  --playback-bar-height: 88px;
+  --titlebar-height: 48px;
+  
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  
+  /* Shadow */
+  --shadow-window: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(255, 59, 48, 0.25);
+  
+  /* Web Audio Visuals */
+  --visualizer-height: 280px;
+}
+
+/* Base Setup */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-color-solid);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+button, input {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ==========================================================================
+   Interactive Background Layout (Dynamic Ambient Lighting)
+   ========================================================================== */
+.ambient-bg-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #0d0e12;
+}
+
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  opacity: 0.45;
+  transition: all 4s ease-in-out;
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #ff2d55 0%, rgba(255, 45, 85, 0) 70%);
+  top: -10%;
+  right: -5%;
+  animation: floatBlob1 25s infinite alternate ease-in-out;
+}
+
+.blob-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #007aff 0%, rgba(0, 122, 255, 0) 70%);
+  bottom: -10%;
+  left: -5%;
+  animation: floatBlob2 20s infinite alternate ease-in-out;
+}
+
+.blob-3 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, #af52de 0%, rgba(175, 82, 222, 0) 70%);
+  top: 40%;
+  left: 30%;
+  animation: floatBlob3 30s infinite alternate ease-in-out;
+}
+
+@keyframes floatBlob1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-80px, 120px) scale(1.1); }
+  100% { transform: translate(100px, -60px) scale(0.9); }
+}
+
+@keyframes floatBlob2 {
+  0% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(120px, -100px) scale(0.95); }
+  100% { transform: translate(-60px, 80px) scale(1.05); }
+}
+
+@keyframes floatBlob3 {
+  0% { transform: translate(0, 0) scale(0.9); opacity: 0.35; }
+  50% { transform: translate(-100px, -80px) scale(1.15); opacity: 0.5; }
+  100% { transform: translate(80px, 100px) scale(0.95); opacity: 0.35; }
+}
+
+/* ==========================================================================
+   Main Windows Frame (macOS Simulation)
+   ========================================================================== */
+.mac-app-frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(13, 14, 18, 0.4);
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+}
+
+.app-container {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - var(--playback-bar-height));
+  overflow: hidden;
+}
+
+/* macOS Red/Yellow/Green Window Dots */
+.mac-window-controls {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0; /* Extend to full width for drag region! */
+  z-index: 100;
+  -webkit-app-region: drag; /* Enables window dragging and double-click to maximize! */
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  -webkit-app-region: no-drag; /* Allow clicking buttons! */
+}
+
+.dot-red { background-color: #ff5f56; }
+.dot-yellow { background-color: #ffbd2e; }
+.dot-green { background-color: #27c93f; }
+
+.mac-window-controls:hover .dot::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Glassmorphism Helper Classes */
+.glass-effect {
+  background: var(--bg-glass-medium);
+  backdrop-filter: blur(35px) saturate(210%);
+  -webkit-backdrop-filter: blur(35px) saturate(210%);
+  border: 1px solid var(--border-glass);
+}
+
+.glass-card {
+  background: var(--bg-glass-light);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-card:hover {
+  background: var(--bg-glass-active);
+  border-color: var(--border-glass-bright);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
+}
+
+/* Audio Visualizer Layout Overlay */
+.visualizer-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.visualizer-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* EQ Preset Badges */
+.eq-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--primary-gradient);
+  color: #fff;
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+/* Input sliders for premium look */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  height: 4px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+input[type="range"]:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+  background: var(--primary-color);
+}
+
+/* Custom Text Animations for Marquee/Scrolling Track Title */
+.marquee-text-container {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
+}
+
+.marquee-text {
+  display: inline-block;
+  animation: marquee 10s linear infinite;
+  padding-left: 10px;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  50% { transform: translateX(-15%); }
+  100% { transform: translateX(0%); }
+}
+
+/* Loading animations */
+.glow-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.13) 50%,
+    transparent
+  );
+  animation: loadingGlow 1.8s infinite;
+}
+
+@keyframes loadingGlow {
+  0% { left: -150%; }
+  100% { left: 150%; }
+}
+
+/* Floating Video Window Resizability */
+.floating-video-window {
+  width: 380px;
+  height: 240px;
+  resize: both;
+  overflow: hidden;
+  min-width: 200px;
+  min-height: 150px;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.floating-video-window::-webkit-resizer {
+  background: transparent;
+}

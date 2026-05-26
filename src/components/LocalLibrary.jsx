@@ -1,0 +1,812 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical } from 'lucide-react';
+import { useAudio } from '../context/AudioContext';
+
+const LocalLibrary = () => {
+  const { playlist, currentTrackIndex, isPlaying, selectTrack, importLocalFiles, importLocalFilesByPaths, loadingState, setLoadingState } = useAudio();
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, track }
+  const fileInputRef = useRef(null);
+  const dirInputRef = useRef(null);
+
+  // Filter only local files
+  const localTracks = playlist
+    .map((track, originalIndex) => ({ ...track, originalIndex }))
+    .filter(track => track.id.startsWith('local-'));
+
+  // Interactive library sorting state
+  const [sortKey, setSortKey] = useState('default'); // 'default' | 'title' | 'artist' | 'album'
+  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedTracks = [...localTracks].sort((a, b) => {
+    if (sortKey === 'default') {
+      return sortDirection === 'asc' 
+        ? a.originalIndex - b.originalIndex 
+        : b.originalIndex - a.originalIndex;
+    }
+    
+    let valA = a[sortKey]?.toLowerCase() || '';
+    let valB = b[sortKey]?.toLowerCase() || '';
+    
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Close context menu on window click
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setContextMenu(null);
+    };
+    window.addEventListener('click', handleWindowClick);
+    return () => window.removeEventListener('click', handleWindowClick);
+  }, []);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  // Helper for recursive folder scanning - optimized to prevent freezes by skipping hidden files, non-audio files, and node_modules
+  const scanFileEntry = async (entry, filesToImport) => {
+    // Ignore hidden files/folders (starting with .) or node_modules
+    if (entry.name.startsWith('.') || entry.name === 'node_modules') {
+      return;
+    }
+
+    if (entry.isFile) {
+      // Fast extension check before generating browser file descriptor (huge speedup!)
+      const dotIdx = entry.name.lastIndexOf('.');
+      if (dotIdx !== -1) {
+        const ext = entry.name.substring(dotIdx).toLowerCase();
+        const supportedExts = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4'];
+        if (supportedExts.includes(ext)) {
+          const file = await new Promise((resolve) => entry.file(resolve));
+          filesToImport.push(file);
+        }
+      }
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      const readAllEntries = async () => {
+        // Resolve empty array on read errors to prevent infinite loops
+        const entries = await new Promise((resolve) => {
+          dirReader.readEntries(resolve, (err) => {
+            console.error('Directory read error:', err);
+            resolve([]);
+          });
+        });
+
+        if (entries && entries.length > 0) {
+          const subPromises = [];
+          for (const subEntry of entries) {
+            subPromises.push(scanFileEntry(subEntry, filesToImport));
+          }
+          await Promise.all(subPromises);
+          await readAllEntries(); // recurse to read remaining pages
+        }
+      };
+      await readAllEntries();
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    // ⚠️ CRITICAL: Must synchronously extract ALL dataTransfer data BEFORE any await!
+    // After any await, the DataTransfer object is cleared by the browser.
+    const extractedItems = [];
+
+    // Use e.dataTransfer.files (FileList) - more reliable for folders in Electron
+    // item.getAsFile() can return null for folders, but FileList always includes them
+    const fileList = e.dataTransfer.files;
+    const itemList = e.dataTransfer.items;
+
+    if (fileList && fileList.length > 0) {
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        if (!file) continue;
+        // Correlate with items to get directory info via webkitGetAsEntry
+        const entry = itemList && itemList[i] ? itemList[i].webkitGetAsEntry() : null;
+        extractedItems.push({
+          path: file.path || '',
+          isDirectory: entry ? entry.isDirectory : (file.size === 0 && file.type === ''),
+          entry: entry,
+          file: file,
+        });
+      }
+    }
+
+    if (extractedItems.length === 0) {
+      return; // Nothing dropped
+    }
+
+    // NOW safe to await - DataTransfer already fully read above
+    setLoadingState({ active: true, current: 0, total: 0, percent: 0, phase: 'scanning' });
+    await new Promise(resolve => setTimeout(resolve, 40));
+
+    // === FAST PATH: Electron IPC + Node.js fs.promises (perfect for NAS!) ===
+    if (window.electronAPI && window.electronAPI.scanFolderForAudio) {
+      const allFilePaths = [];
+      const promises = [];
+
+      for (const info of extractedItems) {
+        if (!info.path) continue;
+        if (info.isDirectory) {
+          promises.push(
+            window.electronAPI.scanFolderForAudio(info.path)
+              .then(paths => allFilePaths.push(...paths))
+              .catch(err => console.warn('IPC scan error:', err))
+          );
+        } else {
+          allFilePaths.push(info.path);
+        }
+      }
+
+      await Promise.all(promises);
+
+      if (allFilePaths.length > 0) {
+        importLocalFilesByPaths(allFilePaths);
+      } else {
+        setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
+      }
+      return;
+    }
+
+    // === FALLBACK: WebKit FileSystem API (non-Electron) ===
+    const filesToImport = [];
+    const scanPromises = extractedItems
+      .filter(info => info.entry)
+      .map(info => scanFileEntry(info.entry, filesToImport));
+
+    await Promise.all(scanPromises);
+
+    if (filesToImport.length > 0) {
+      importLocalFiles(filesToImport);
+    } else {
+      // If no entries but have files (plain file drop without FileSystem API)
+      const plainFiles = extractedItems.map(i => i.file).filter(Boolean);
+      if (plainFiles.length > 0) importLocalFiles(plainFiles);
+      else setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      importLocalFiles(e.target.files);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  // Native Electron multi-folder dialog (supports selecting multiple folders at once!)
+  const handleSelectFolders = async (e) => {
+    e.stopPropagation();
+    if (!window.electronAPI || !window.electronAPI.selectFolders) {
+      // Fallback for non-Electron: use the old webkitdirectory input
+      if (dirInputRef.current) dirInputRef.current.click();
+      return;
+    }
+    const folderPaths = await window.electronAPI.selectFolders();
+    if (!folderPaths || folderPaths.length === 0) return;
+
+    setLoadingState({ active: true, current: 0, total: 0, percent: 0, phase: 'scanning' });
+    await new Promise(resolve => setTimeout(resolve, 40));
+
+    const allFilePaths = [];
+    await Promise.all(
+      folderPaths.map(fp =>
+        window.electronAPI.scanFolderForAudio(fp)
+          .then(paths => allFilePaths.push(...paths))
+          .catch(err => console.warn('Scan error:', err))
+      )
+    );
+
+    if (allFilePaths.length > 0) {
+      importLocalFilesByPaths(allFilePaths);
+    } else {
+      setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
+    }
+  };
+
+  const handleRowContextMenu = (e, track) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      track: track
+    });
+  };
+
+  const handleShowInFinder = (track) => {
+    if (window.electronAPI && track.path) {
+      window.electronAPI.showItemInFolder(track.path);
+    } else {
+      alert(`「在 Finder 中顯示」只支援在原生 Mac App 中執行喔！目前檔案的本機路徑是：\n${track.path || '無本機路徑'}`);
+    }
+  };
+
+  return (
+    <div style={{
+      padding: '40px 30px',
+      height: '100%',
+      overflowY: 'auto',
+      width: '100%',
+      position: 'relative',
+      zIndex: 1
+    }}>
+      {/* Title */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '32px',
+          fontWeight: 800,
+          background: 'linear-gradient(135deg, #fff 0%, #a1a1a6 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          letterSpacing: '-1px'
+        }}>
+          本地音樂庫
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '6px' }}>
+          支援將**整批音訊檔案或整個資料夾**拖放進來播放！支援格式包括 `.mp3`、`.wav`、`.m4a`、`.mp4`（聽取音軌）等。
+        </p>
+      </div>
+
+      {/* DRAG AND DROP ZONE */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{
+          border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed rgba(255, 255, 255, 0.15)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '48px 30px',
+          textAlign: 'center',
+          background: isDragOver ? 'rgba(255, 45, 85, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+          cursor: 'pointer',
+          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+          marginBottom: '36px',
+          boxShadow: isDragOver ? '0 8px 32px rgba(255,45,85,0.15)' : 'none',
+          transform: isDragOver ? 'scale(1.01)' : 'scale(1)'
+        }}
+        id="drop-zone"
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          multiple
+          accept="audio/*,video/mp4,.m4a,.mp4"
+          style={{ display: 'none' }}
+        />
+        <input
+          type="file"
+          ref={dirInputRef}
+          onChange={handleFileSelect}
+          multiple
+          webkitdirectory="true"
+          directory="true"
+          style={{ display: 'none' }}
+        />
+        
+        <div style={{
+          background: isDragOver ? 'var(--primary-gradient)' : 'rgba(255, 255, 255, 0.05)',
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 16px auto',
+          boxShadow: isDragOver ? '0 4px 14px var(--primary-glow)' : 'none',
+          transition: 'all 0.3s'
+        }}>
+          <UploadCloud size={32} color={isDragOver ? '#fff' : 'var(--text-secondary)'} />
+        </div>
+
+        <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
+          {isDragOver ? '放下檔案或整個資料夾即可匯入！' : '將檔案或「整包資料夾」拖曳到此處'}
+        </h3>
+        
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto 16px auto' }}>
+          「喂！主人...你可以直接把整個資料夾扔進來喔！這樣就不必一個一個點了，天才青梅竹馬是不是超級聰明？(｀・ω・´)ゞ」
+        </p>
+
+        {/* Select buttons for Files or Folders */}
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '16px' }}>
+          <button 
+            onClick={(e) => { e.stopPropagation(); triggerFileInput(); }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '20px',
+              border: 'none',
+              background: 'var(--primary-gradient)',
+              color: '#fff',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: '12px',
+              boxShadow: '0 4px 10px var(--primary-glow)',
+              transition: 'transform 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            🎵 選擇單一或多個檔案
+          </button>
+          
+          {/* Native Electron dialog: supports multi-folder selection! */}
+          <button 
+            onClick={handleSelectFolders}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: '12px',
+              transition: 'transform 0.15s, background 0.15s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          >
+            📁 選擇資料夾（可複選）
+          </button>
+        </div>
+      </div>
+
+      {/* LOCAL SONGS LIST */}
+      <div>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: 700,
+          color: '#fff',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Disc size={18} color="var(--accent-blue)" />
+          <span>已匯入的本地歌曲 ({localTracks.length})</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '6px' }}>
+            （💡 對歌曲滑鼠「右鍵」可以展開 Finder 高級選單）
+          </span>
+        </h3>
+
+        {localTracks.length === 0 ? (
+          /* Empty State */
+          <div className="glass-effect" style={{
+            borderRadius: 'var(--radius-md)',
+            padding: '40px',
+            textAlign: 'center',
+            background: 'rgba(255,255,255,0.01)',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <Music size={40} color="var(--text-muted)" style={{ marginBottom: '12px', opacity: 0.5 }} />
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              音樂庫目前空空的耶... (´・ω・`)a
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              主人可以將音樂檔案或資料夾直接拖曳進來，我會自動幫你全部排好喔！
+            </p>
+          </div>
+        ) : (
+          /* Songs Table */
+          <div className="glass-effect" style={{
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
+            border: '1px solid var(--border-glass)',
+            boxShadow: 'var(--shadow-card)'
+          }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              textAlign: 'left'
+            }} id="local-songs-table">
+              <thead>
+                <tr style={{
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.02)'
+                }}>
+                  <th 
+                    onClick={() => handleSort('default')}
+                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'default' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
+                  >
+                    # {sortKey === 'default' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('title')}
+                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'title' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
+                  >
+                    歌名 {sortKey === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('artist')}
+                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'artist' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
+                  >
+                    藝術家 {sortKey === 'artist' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('album')}
+                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'album' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
+                  >
+                    專輯 {sortKey === 'album' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTracks.map((track, index) => {
+                  const isCurrentTrack = track.originalIndex === currentTrackIndex;
+                  const isPlayingThis = isCurrentTrack && isPlaying;
+                  
+                  return (
+                    <tr
+                      key={track.id}
+                      onClick={() => selectTrack(track.originalIndex)}
+                      onContextMenu={(e) => handleRowContextMenu(e, track)}
+                      style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        cursor: 'pointer',
+                        background: isCurrentTrack ? 'rgba(255, 45, 85, 0.06)' : 'transparent',
+                        transition: 'background 0.15s'
+                      }}
+                      className="table-row-hover"
+                    >
+                      {/* # Column */}
+                      <td style={{ padding: '14px 20px', fontSize: '13px', color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-secondary)', width: '50px' }}>
+                        {isPlayingThis ? (
+                          <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '12px' }}>
+                            <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'barBounce 1s ease infinite alternate' }} />
+                            <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'barBounce 0.8s ease infinite alternate 0.2s' }} />
+                            <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'barBounce 1.2s ease infinite alternate 0.1s' }} />
+                          </div>
+                        ) : (
+                          index + 1
+                        )}
+                      </td>
+
+                      {/* Title Column */}
+                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Music size={14} color={isCurrentTrack ? 'var(--primary-color)' : 'var(--text-muted)'} />
+                          <span style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '300px',
+                            display: 'inline-block'
+                          }}>{track.title}</span>
+                        </div>
+                      </td>
+
+                      {/* Artist Column */}
+                      <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {track.artist}
+                      </td>
+
+                      {/* Album Column */}
+                      <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                        {track.album}
+                      </td>
+
+                      {/* More options dots / play */}
+                      <td style={{ padding: '14px 20px', fontSize: '13px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowContextMenu(e, track);
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '4px'
+                            }}
+                            className="more-btn"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                          
+                          <button style={{
+                            border: 'none',
+                            background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            cursor: 'pointer'
+                          }} title="播放這首">
+                            <Play size={12} fill="#fff" style={{ marginLeft: '1px' }} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* FLOAT GLASSMORPHIC CONTEXT MENU */}
+      {contextMenu && (
+        <div
+          className="glass-effect"
+          style={{
+            position: 'fixed',
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            borderRadius: '10px',
+            padding: '6px',
+            width: '180px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            zIndex: 99999,
+            backgroundColor: 'rgba(28, 30, 38, 0.85)',
+            backdropFilter: 'blur(20px)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header Title */}
+          <div style={{
+            padding: '6px 12px',
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            marginBottom: '4px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            {contextMenu.track.title}
+          </div>
+
+          {/* Option: Play */}
+          <button
+            onClick={() => {
+              selectTrack(contextMenu.track.originalIndex);
+              setContextMenu(null);
+            }}
+            className="menu-item"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'transparent',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              transition: 'background 0.1s'
+            }}
+          >
+            <Play size={14} color="var(--primary-color)" />
+            <span>立即播放</span>
+          </button>
+
+          {/* Option: Show in Finder */}
+          <button
+            onClick={() => {
+              handleShowInFinder(contextMenu.track);
+              setContextMenu(null);
+            }}
+            className="menu-item"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'transparent',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              transition: 'background 0.1s'
+            }}
+          >
+            <FolderOpen size={14} color="var(--accent-blue)" />
+            <span>在 Finder 中顯示</span>
+          </button>
+
+          {/* Option: Copy native path */}
+          {contextMenu.track.path && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(contextMenu.track.path);
+                alert('已將本機檔案完整路徑複製到剪貼簿！');
+                setContextMenu(null);
+              }}
+              className="menu-item"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                transition: 'background 0.1s'
+              }}
+            >
+              <Disc size={14} color="var(--accent-purple)" />
+              <span style={{ fontSize: '12px' }}>複製檔案路徑</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* GORGEOUS FROSTED GLASS LOADING PROGRESS OVERLAY */}
+      {loadingState.active && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(13, 14, 18, 0.75)',
+          backdropFilter: 'blur(30px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          transition: 'all 0.3s'
+        }}>
+          <div className="glass-effect glow-loading" style={{
+            padding: '40px',
+            borderRadius: '24px',
+            textAlign: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            maxWidth: '450px',
+            width: '90%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            background: 'rgba(28, 30, 38, 0.8)'
+          }}>
+            {/* Spinning Record Spindle */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: loadingState.phase === 'scanning' ? 'linear-gradient(135deg, #af52de, #5856d6)' : 'var(--primary-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px auto',
+              boxShadow: loadingState.phase === 'scanning' ? '0 4px 20px rgba(175,82,222,0.5)' : '0 4px 20px var(--primary-glow)',
+              animation: 'spin 3s linear infinite'
+            }}>
+              <Disc size={40} color="#fff" />
+            </div>
+            
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', marginBottom: '8px', letterSpacing: '-0.5px' }}>
+              {loadingState.phase === 'scanning'
+                ? '正在掃描資料夾中... 🔍'
+                : '正在導入主人的音樂庫... 🪐'
+              }
+            </h2>
+            
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              {loadingState.phase === 'scanning'
+                ? '正在遞迴讀取資料夾樹狀結構，大型資料夾可能需要一點時間，請稍候... ✨'
+                : '正在解碼並提取音軌 metadata 中，請主人稍等一下下喔！💕'
+              }
+            </p>
+            
+            {/* Progress Bar Container - only show in importing phase */}
+            {loadingState.phase === 'importing' && (
+              <>
+                <div style={{
+                  width: '100%',
+                  height: '6px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: '3px',
+                  overflow: 'hidden',
+                  marginBottom: '12px',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    width: `${loadingState.percent}%`,
+                    height: '100%',
+                    background: 'var(--primary-gradient)',
+                    borderRadius: '3px',
+                    transition: 'width 0.1s ease',
+                    boxShadow: '0 0 10px var(--primary-glow)'
+                  }} />
+                </div>
+
+                {/* Progress Percentage Numbers */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  <span>已處理 {loadingState.current} / {loadingState.total} 首歌曲</span>
+                  <span style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{loadingState.percent}%</span>
+                </div>
+              </>
+            )}
+
+            {/* Scanning phase: show animated dots instead of progress bar */}
+            {loadingState.phase === 'scanning' && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '4px' }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: 'rgba(175, 82, 222, 0.8)',
+                    animation: `scanDot 1.2s ease-in-out ${i * 0.2}s infinite`
+                  }} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .table-row-hover:hover {
+          background: rgba(255, 255, 255, 0.04) !important;
+        }
+        .table-row-hover:hover .more-btn {
+          color: #fff !important;
+        }
+        .menu-item:hover {
+          background: rgba(255, 255, 255, 0.08) !important;
+        }
+        @keyframes barBounce {
+          0% { height: 3px; }
+          100% { height: 14px; }
+        }
+        @keyframes scanDot {
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+      `}} />
+    </div>
+  );
+};
+
+export default LocalLibrary;

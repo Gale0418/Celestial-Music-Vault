@@ -1,0 +1,460 @@
+import React, { useState } from 'react';
+import { 
+  Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
+  Volume2, VolumeX, Sliders, MonitorPlay, ListMusic, Heart,
+  Video, VideoOff
+} from 'lucide-react';
+import { useAudio } from '../context/AudioContext';
+
+const PlaybackBar = ({ activeTab, setActiveTab }) => {
+  const {
+    currentTrack,
+    isPlaying,
+    progress,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    isShuffle,
+    isRepeat,
+    eqPreset,
+    isVisualizerActive,
+    setEqPreset,
+    setIsVisualizerActive,
+    togglePlay,
+    prevTrack,
+    nextTrack,
+    seekTo,
+    setVolume,
+    toggleMute,
+    toggleShuffle,
+    cycleRepeat,
+    showVideo,
+    hasVideoTrack,
+    setShowVideo
+  } = useAudio();
+
+  const [showEqMenu, setShowEqMenu] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Format seconds to mm:ss
+  const formatTime = (secs) => {
+    if (isNaN(secs)) return '0:00';
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  const handleSeekChange = (e) => {
+    seekTo(parseFloat(e.target.value));
+  };
+
+  const handleVolumeSliderChange = (e) => {
+    setVolume(parseFloat(e.target.value));
+  };
+
+  const handleVisualizerToggle = () => {
+    if (isVisualizerActive) {
+      setIsVisualizerActive(false);
+      setActiveTab('listen-now');
+    } else {
+      setIsVisualizerActive(true);
+      setActiveTab('visualizer');
+    }
+  };
+
+  const eqPresets = ['Flat', 'Bass Boost', 'Vocal', 'Electronic'];
+
+  return (
+    <footer className="glass-effect" style={{
+      height: 'var(--playback-bar-height)',
+      width: '100%',
+      borderTop: '1px solid var(--border-glass)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 24px',
+      position: 'relative',
+      zIndex: 100,
+      backgroundColor: 'rgba(18, 20, 26, 0.9)',
+      boxShadow: '0 -10px 30px rgba(0,0,0,0.4)'
+    }} id="playback-bar">
+      
+      {/* LEFT: Current Track Details */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '30%', minWidth: '220px' }}>
+        <div style={{ position: 'relative', width: '52px', height: '52px' }}>
+          <img
+            src={currentTrack?.cover}
+            alt={currentTrack?.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: '2px solid rgba(255, 255, 255, 0.1)',
+              animation: isPlaying ? 'spin 18s linear infinite' : 'none',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              transition: 'transform 0.5s ease'
+            }}
+          />
+          {/* Middle spindle hole to make it look like a vinyl record */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--bg-color-solid)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: '2px', flex: 1 }}>
+          <div className="marquee-text-container">
+            <span className={currentTrack?.title?.length > 18 ? 'marquee-text' : ''} style={{
+              fontWeight: 600,
+              fontSize: '14px',
+              color: '#fff',
+              display: 'inline-block'
+            }}>
+              {currentTrack?.title}
+            </span>
+          </div>
+          <span style={{
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            {currentTrack?.artist}
+          </span>
+        </div>
+
+        <button 
+          onClick={() => setIsFavorite(!isFavorite)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            padding: '4px',
+            color: isFavorite ? 'var(--primary-color)' : 'var(--text-muted)',
+            transition: 'transform 0.2s, color 0.2s',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          id="favorite-btn"
+        >
+          <Heart size={16} fill={isFavorite ? 'var(--primary-color)' : 'none'} />
+        </button>
+      </div>
+
+      {/* MIDDLE: Primary Playback Controls & Progress Slider */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '8px',
+        width: '40%',
+        maxWidth: '600px'
+      }}>
+        {/* Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button
+            onClick={toggleShuffle}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: isShuffle ? 'var(--primary-color)' : 'var(--text-muted)',
+              outline: 'none',
+              transition: 'color 0.2s'
+            }}
+            title="隨機播放"
+            id="shuffle-btn"
+          >
+            <Shuffle size={16} />
+          </button>
+
+          <button
+            onClick={prevTrack}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              transition: 'transform 0.1s'
+            }}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="上一首"
+            id="prev-btn"
+          >
+            <SkipBack size={20} fill="currentColor" />
+          </button>
+
+          {/* Central Play/Pause with Circle Gradient Glow */}
+          <button
+            onClick={togglePlay}
+            style={{
+              border: 'none',
+              background: 'var(--primary-gradient)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px var(--primary-glow)',
+              outline: 'none',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.08)';
+              e.currentTarget.style.boxShadow = '0 6px 18px var(--primary-glow)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 14px var(--primary-glow)';
+            }}
+            title={isPlaying ? '暫停' : '播放'}
+            id="play-pause-btn"
+          >
+            {isPlaying ? (
+              <Pause size={18} fill="#fff" />
+            ) : (
+              <Play size={18} fill="#fff" style={{ marginLeft: '2px' }} />
+            )}
+          </button>
+
+          <button
+            onClick={nextTrack}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              transition: 'transform 0.1s'
+            }}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="下一首"
+            id="next-btn"
+          >
+            <SkipForward size={20} fill="currentColor" />
+          </button>
+
+          <button
+            onClick={cycleRepeat}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: isRepeat ? 'var(--primary-color)' : 'var(--text-muted)',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s'
+            }}
+            title={isRepeat === 'one' ? '單曲循環' : isRepeat ? '全部循環' : '重複播放'}
+            id="repeat-btn"
+          >
+            {isRepeat === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
+          </button>
+        </div>
+
+        {/* Progress Bar & Timers */}
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '32px', textAlign: 'right' }}>
+            {formatTime(currentTime)}
+          </span>
+          
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={progress}
+            onChange={handleSeekChange}
+            style={{ flex: 1 }}
+            title="調整進度"
+            id="seek-slider"
+          />
+
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '32px' }}>
+            {formatTime(duration)}
+          </span>
+        </div>
+      </div>
+
+      {/* RIGHT: Volume, Equalizer (EQ) & Audio Visualizer Toggle */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: '16px',
+        width: '30%',
+        position: 'relative'
+      }}>
+        {/* Equalizer Controller */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowEqMenu(!showEqMenu)}
+            style={{
+              border: 'none',
+              background: showEqMenu ? 'var(--bg-glass-active)' : 'transparent',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: eqPreset !== 'Flat' ? 'var(--primary-color)' : 'var(--text-secondary)',
+              outline: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s'
+            }}
+            title="等化器 (EQ)"
+            id="eq-menu-btn"
+          >
+            <Sliders size={16} />
+            {eqPreset !== 'Flat' && <span className="eq-badge">{eqPreset}</span>}
+          </button>
+
+          {showEqMenu && (
+            <div className="glass-effect" style={{
+              position: 'absolute',
+              bottom: '45px',
+              right: '0',
+              borderRadius: '10px',
+              padding: '8px',
+              width: '130px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              boxShadow: 'var(--shadow-window)'
+            }}>
+              {eqPresets.map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => {
+                    setEqPreset(preset);
+                    setShowEqMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    textAlign: 'left',
+                    background: eqPreset === preset ? 'var(--bg-glass-active)' : 'transparent',
+                    color: eqPreset === preset ? 'var(--primary-color)' : '#fff',
+                    fontSize: '12px',
+                    fontWeight: eqPreset === preset ? 600 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (eqPreset !== preset) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (eqPreset !== preset) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  {preset === 'Flat' ? '標準 (Flat)' : preset}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Visualizer Toggle */}
+        <button
+          onClick={handleVisualizerToggle}
+          style={{
+            border: 'none',
+            background: isVisualizerActive ? 'var(--bg-glass-active)' : 'transparent',
+            padding: '6px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            color: isVisualizerActive ? 'var(--primary-color)' : 'var(--text-secondary)',
+            outline: 'none',
+            transition: 'all 0.2s'
+          }}
+          title="開啟音頻律動頻譜"
+          id="visualizer-toggle-btn"
+        >
+          <MonitorPlay size={17} />
+        </button>
+
+        {/* Video Toggle for MP4 files */}
+        {hasVideoTrack && (
+          <button
+            onClick={() => setShowVideo(!showVideo)}
+            style={{
+              border: 'none',
+              background: showVideo ? 'rgba(255, 45, 85, 0.15)' : 'transparent',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: showVideo ? '#ff2d55' : 'var(--text-secondary)',
+              outline: 'none',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: showVideo ? '1px solid rgba(255, 45, 85, 0.3)' : '1px solid transparent'
+            }}
+            title={showVideo ? "隱藏影片畫面" : "顯示影片畫面"}
+            id="video-toggle-btn"
+          >
+            {showVideo ? <Video size={17} /> : <VideoOff size={17} />}
+          </button>
+        )}
+
+        {/* Volume Slider & Mute Icon */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={toggleMute}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              outline: 'none',
+              padding: '2px',
+              transition: 'color 0.2s'
+            }}
+            id="mute-btn"
+          >
+            {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+          </button>
+          
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={isMuted ? 0 : volume}
+            onChange={handleVolumeSliderChange}
+            style={{ width: '70px' }}
+            title="音量"
+            id="volume-slider"
+          />
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}} />
+    </footer>
+  );
+};
+
+export default PlaybackBar;
