@@ -26,12 +26,17 @@ const Visualizer = () => {
 
     // Resize Canvas to fit its container
     const resizeCanvas = () => {
+      if (!canvas || !canvas.parentElement) return;
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
     };
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    
+    // Use ResizeObserver for more robust resizing, especially during tab switches or animations
+    const observer = new ResizeObserver(() => {
+      resizeCanvas();
+    });
+    observer.observe(canvas.parentElement);
 
     // Color definitions based on current track or standard fallbacks
     const themeColors = currentTrack?.colors || ['#ff2d55', '#af52de', '#007aff'];
@@ -44,6 +49,9 @@ const Visualizer = () => {
 
       const width = canvas.width;
       const height = canvas.height;
+      
+      // Prevent drawing errors if canvas is hidden or sizing isn't ready
+      if (width === 0 || height === 0) return;
       
       // Setup Analyser
       const analyser = analyserRef.current;
@@ -192,7 +200,10 @@ const Visualizer = () => {
 
     return () => {
       cancelAnimationFrame(animationRef.current);
-      window.removeEventListener('resize', resizeCanvas);
+      if (canvas && canvas.parentElement) {
+        observer.unobserve(canvas.parentElement);
+      }
+      observer.disconnect();
     };
   }, [visualMode, currentTrack, isPlaying]);
 
