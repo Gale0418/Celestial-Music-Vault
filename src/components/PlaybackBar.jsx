@@ -167,11 +167,24 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
             onClick={toggleShuffle}
             style={{
               border: 'none',
-              background: 'transparent',
+              background: isShuffle ? 'rgba(255, 45, 85, 0.12)' : 'transparent',
               cursor: 'pointer',
-              color: isShuffle ? 'var(--primary-color)' : 'var(--text-muted)',
+              color: isShuffle ? 'var(--primary-color)' : 'var(--text-secondary)',
               outline: 'none',
-              transition: 'color 0.2s'
+              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isShuffle ? '0 0 12px rgba(255, 45, 85, 0.25)' : 'none',
+              border: isShuffle ? '1px solid rgba(255, 45, 85, 0.25)' : '1px solid transparent'
+            }}
+            onMouseEnter={(e) => {
+              if (!isShuffle) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isShuffle) e.currentTarget.style.background = 'transparent';
             }}
             title="隨機播放"
             id="shuffle-btn"
@@ -255,12 +268,25 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
             onClick={cycleRepeat}
             style={{
               border: 'none',
-              background: 'transparent',
+              background: isRepeat ? 'rgba(255, 45, 85, 0.12)' : 'transparent',
               cursor: 'pointer',
-              color: isRepeat ? 'var(--primary-color)' : 'var(--text-muted)',
+              color: isRepeat ? 'var(--primary-color)' : 'var(--text-secondary)',
               outline: 'none',
               position: 'relative',
-              transition: 'color 0.2s'
+              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isRepeat ? '0 0 12px rgba(255, 45, 85, 0.25)' : 'none',
+              border: isRepeat ? '1px solid rgba(255, 45, 85, 0.25)' : '1px solid transparent'
+            }}
+            onMouseEnter={(e) => {
+              if (!isRepeat) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isRepeat) e.currentTarget.style.background = 'transparent';
             }}
             title={isRepeat === 'one' ? '單曲循環' : isRepeat ? '全部循環' : '重複播放'}
             id="repeat-btn"

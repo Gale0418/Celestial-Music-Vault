@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 
 const AudioContext = createContext();
 
@@ -59,6 +59,14 @@ const DEFAULT_PLAYLIST = [
 export const AudioProvider = ({ children }) => {
   const [playlist, setPlaylist] = useState(DEFAULT_PLAYLIST);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const currentTrackIdRef = useRef(null);
+  
+  useEffect(() => {
+    if (playlist[currentTrackIndex]) {
+      currentTrackIdRef.current = playlist[currentTrackIndex].id;
+    }
+  }, [playlist, currentTrackIndex]);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 100
   const [currentTime, setCurrentTime] = useState(0); // in seconds
@@ -72,6 +80,22 @@ export const AudioProvider = ({ children }) => {
   const [loadingState, setLoadingState] = useState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
   const [showVideo, setShowVideo] = useState(false);
   const [hasVideoTrack, setHasVideoTrack] = useState(false);
+
+  // New features: Persistence collections & views
+  const [favorites, setFavorites] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [library, setLibrary] = useState([]);
+  const [activeView, setActiveView] = useState('all'); // 'all' (lofi), 'library', 'favorites', 'playlist-{id}'
+  const [playbackSource, setPlaybackSource] = useState(null); // Keep track of which view is currently providing the playlist
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
+  
+  const initialPlaybackTimeRef = useRef(0);
+  const activeViewRef = useRef('all');
+  
+  // Keep activeViewRef updated
+  useEffect(() => {
+    activeViewRef.current = activeView;
+  }, [activeView]);
 
   // Global Video Element Ref instead of background Audio
   const videoRef = useRef(null);
@@ -115,6 +139,14 @@ export const AudioProvider = ({ children }) => {
       } else {
         setHasVideoTrack(false);
         setShowVideo(false);
+      }
+
+      // If we have a pending initial playback time to restore, do it once!
+      if (initialPlaybackTimeRef.current > 0) {
+        audio.currentTime = initialPlaybackTimeRef.current;
+        setCurrentTime(initialPlaybackTimeRef.current);
+        setProgress((initialPlaybackTimeRef.current / audio.duration) * 100);
+        initialPlaybackTimeRef.current = 0; // reset
       }
     };
 
@@ -218,6 +250,175 @@ export const AudioProvider = ({ children }) => {
     applyEqPreset(eqPreset);
   }, [eqPreset]);
 
+  // --- DATA PERSISTENCE SYSTEM ---
+  
+  // Helper to save all user data including playlists, favorites, library and current playback state
+  const saveAllData = (updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView) => {
+    if (!window.electronAPI) return;
+    
+    const audio = videoRef.current;
+    const playbackState = {
+      currentTrackPath: currentTrack ? (currentTrack.path || '') : '',
+      currentTrackId: currentTrack ? currentTrack.id : '',
+      currentTime: audio ? audio.currentTime : 0,
+      volume,
+      isMuted,
+      activeView: currentView
+    };
+
+    window.electronAPI.saveUserData({
+      library: updatedLibrary,
+      favorites: updatedFavorites,
+      playlists: updatedPlaylists,
+      playbackState
+    });
+  };
+
+  // 1. Initial Load on Mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!window.electronAPI) return;
+      try {
+        const data = await window.electronAPI.loadUserData();
+        if (data) {
+          const loadedLibrary = data.library || [];
+          const loadedFavorites = data.favorites || [];
+          const loadedPlaylists = data.playlists || [];
+          
+          setLibrary(loadedLibrary);
+          setFavorites(loadedFavorites);
+          setPlaylists(loadedPlaylists);
+
+          const pb = data.playbackState;
+          if (pb) {
+            if (pb.volume !== undefined) {
+              setVolume(pb.volume);
+              if (audioRef.current) audioRef.current.volume = pb.volume;
+            }
+            if (pb.isMuted !== undefined) {
+              setIsMuted(pb.isMuted);
+              if (audioRef.current) audioRef.current.muted = pb.isMuted;
+            }
+            if (pb.activeView) {
+              setActiveView(pb.activeView);
+            }
+
+            // Determine active playlist based on saved activeView
+            let targetPlaylist = DEFAULT_PLAYLIST;
+            if (pb.activeView === 'library' && loadedLibrary.length > 0) {
+              targetPlaylist = loadedLibrary;
+            } else if (pb.activeView === 'favorites' && loadedFavorites.length > 0) {
+              targetPlaylist = loadedFavorites;
+            } else if (pb.activeView && pb.activeView.startsWith('playlist-')) {
+              const playlistId = pb.activeView.replace('playlist-', '');
+              const foundPlaylist = loadedPlaylists.find(p => p.id === playlistId);
+              if (foundPlaylist && foundPlaylist.tracks.length > 0) {
+                targetPlaylist = foundPlaylist.tracks;
+              }
+            }
+
+            setPlaylist(targetPlaylist);
+
+            // Find index of the last played track
+            let trackIndex = 0;
+            if (pb.currentTrackPath) {
+              const foundIdx = targetPlaylist.findIndex(t => t.path === pb.currentTrackPath);
+              if (foundIdx !== -1) trackIndex = foundIdx;
+            } else if (pb.currentTrackId) {
+              const foundIdx = targetPlaylist.findIndex(t => t.id === pb.currentTrackId);
+              if (foundIdx !== -1) trackIndex = foundIdx;
+            }
+            
+            setCurrentTrackIndex(trackIndex);
+
+            if (pb.currentTime) {
+              initialPlaybackTimeRef.current = pb.currentTime;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to restore playback state:", err);
+      } finally {
+        setHasLoadedInitialData(true);
+      }
+    };
+    loadData();
+  }, []);
+
+  // 2. Autosave collections when they change
+  useEffect(() => {
+    if (!hasLoadedInitialData) return;
+    saveAllData(library, favorites, playlists, activeView);
+  }, [library, favorites, playlists, activeView]);
+
+  // 3. Autosave state periodically (every 10 seconds) during playback to keep it lightweight
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      saveAllData(library, favorites, playlists, activeView);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isPlaying, library, favorites, playlists, currentTrackIndex, activeView, volume, isMuted]);
+
+  // 4. Save state when window beforeunload triggers
+  useEffect(() => {
+    const handleUnload = () => {
+      saveAllData(library, favorites, playlists, activeView);
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [library, favorites, playlists, currentTrackIndex, activeView, volume, isMuted]);
+
+  // --- PLAYLISTS & FAVORITES HELPER FUNCTIONS ---
+  
+  const toggleFavorite = (track) => {
+    setFavorites(prev => {
+      const exists = prev.some(t => t.path === track.path || t.id === track.id);
+      if (exists) {
+        return prev.filter(t => t.path !== track.path && t.id !== track.id);
+      } else {
+        return [...prev, track];
+      }
+    });
+  };
+
+  const createPlaylist = (name) => {
+    const newPlaylist = {
+      id: `playlist-${Date.now()}`,
+      name,
+      tracks: []
+    };
+    setPlaylists(prev => [...prev, newPlaylist]);
+    return newPlaylist;
+  };
+
+  const deletePlaylist = (playlistId) => {
+    setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+    if (activeView === `playlist-${playlistId}`) {
+      setActiveView('all');
+    }
+  };
+
+  const addTrackToPlaylist = (playlistId, track) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        const exists = p.tracks.some(t => t.path === track.path || t.id === track.id);
+        if (exists) return p;
+        return { ...p, tracks: [...p.tracks, track] };
+      }
+      return p;
+    }));
+  };
+
+  const removeTrackFromPlaylist = (playlistId, trackId) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, tracks: p.tracks.filter(t => t.id !== trackId) };
+      }
+      return p;
+    }));
+  };
+
   // Track switching effect
   useEffect(() => {
     if (!audioRef.current) return;
@@ -290,7 +491,20 @@ export const AudioProvider = ({ children }) => {
     if (prevIndex < 0) {
       prevIndex = playlist.length - 1;
     }
-    setCurrentTrackIndex(prevIndex);
+    
+    const track = playlist[prevIndex];
+    if (track) {
+      setCurrentTrackIndex(prevIndex);
+      try {
+        audioRef.current.src = track.url;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
+      } catch (err) {
+        console.warn("Direct navigation error:", err);
+      }
+    }
   };
 
   // Next Track
@@ -304,22 +518,34 @@ export const AudioProvider = ({ children }) => {
       return;
     }
 
+    let nextIndex = currentTrackIndex;
     if (isShuffle) {
-      const randomIndex = Math.floor(Math.random() * playlist.length);
-      setCurrentTrackIndex(randomIndex);
-      return;
-    }
-
-    let nextIndex = currentTrackIndex + 1;
-    if (nextIndex >= playlist.length) {
-      if (isRepeat || !autoEnded) {
-        nextIndex = 0; // loop back to first song
-      } else {
-        setIsPlaying(false);
-        return;
+      nextIndex = Math.floor(Math.random() * playlist.length);
+    } else {
+      nextIndex = currentTrackIndex + 1;
+      if (nextIndex >= playlist.length) {
+        if (isRepeat || !autoEnded) {
+          nextIndex = 0; // loop back to first song
+        } else {
+          setIsPlaying(false);
+          return;
+        }
       }
     }
-    setCurrentTrackIndex(nextIndex);
+    
+    const track = playlist[nextIndex];
+    if (track) {
+      setCurrentTrackIndex(nextIndex);
+      try {
+        audioRef.current.src = track.url;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
+      } catch (err) {
+        console.warn("Direct navigation error:", err);
+      }
+    }
   };
   // Keep ref always pointing to the latest version (fixes stale closure in onEnded listener!)
   handleNextTrackRef.current = handleNextTrack;
@@ -414,9 +640,20 @@ export const AudioProvider = ({ children }) => {
     }
 
     if (newTracks.length > 0) {
-      setPlaylist(prev => [...prev, ...newTracks]);
-      const targetIndex = playlist.length;
-      setCurrentTrackIndex(targetIndex);
+      setLibrary(prev => {
+        const existingPaths = new Set(prev.map(t => t.path).filter(Boolean));
+        const filteredNew = newTracks.filter(t => !t.path || !existingPaths.has(t.path));
+        const updatedLib = [...prev, ...filteredNew];
+        
+        setPlaylist(updatedLib);
+        setActiveView('library');
+        
+        const targetIndex = prev.length;
+        setCurrentTrackIndex(targetIndex);
+        
+        return updatedLib;
+      });
+
       setIsPlaying(true);
       setTimeout(() => {
         if (audioRef.current) {
@@ -488,9 +725,20 @@ export const AudioProvider = ({ children }) => {
     }
 
     if (newTracks.length > 0) {
-      setPlaylist(prev => [...prev, ...newTracks]);
-      const targetIndex = playlist.length;
-      setCurrentTrackIndex(targetIndex);
+      setLibrary(prev => {
+        const existingPaths = new Set(prev.map(t => t.path));
+        const filteredNew = newTracks.filter(t => !existingPaths.has(t.path));
+        const updatedLib = [...prev, ...filteredNew];
+        
+        setPlaylist(updatedLib);
+        setActiveView('library');
+        
+        const targetIndex = prev.length;
+        setCurrentTrackIndex(targetIndex);
+        
+        return updatedLib;
+      });
+      
       setTimeout(() => {
         if (audioRef.current) {
           audioRef.current.play()
@@ -505,13 +753,88 @@ export const AudioProvider = ({ children }) => {
 
   // Cycle repeat modes (off -> all -> one -> off)
   const cycleRepeat = () => {
-    if (isRepeat === false) {
-      setIsRepeat(true);
-    } else if (isRepeat === true) {
-      setIsRepeat('one');
-    } else {
-      setIsRepeat(false);
+    setIsRepeat(prev => {
+      if (prev === false) return true;
+      if (prev === true) return 'one';
+      return false;
+    });
+  };
+
+  // Dynamic atomic play function to avoid React batched updates race-conditions
+  const playTrackInList = (targetPlaylist, index, sourceView = null) => {
+    initWebAudio();
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
     }
+    
+    // Atomically sync the playlist queue and current index
+    setPlaylist(targetPlaylist);
+    setCurrentTrackIndex(index);
+    if (sourceView) {
+      setPlaybackSource(sourceView);
+    }
+    
+    // Directly inject the track source into HTML5 Audio to bypass React update latency!
+    const track = targetPlaylist[index];
+    if (track && audioRef.current) {
+      try {
+        audioRef.current.src = track.url;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
+      } catch (err) {
+        console.warn("Direct playTrackInList error:", err);
+      }
+    }
+  };
+
+  const syncPlaylist = useCallback((newPlaylist) => {
+    if (!newPlaylist || newPlaylist.length === 0) return;
+    
+    setPlaylist(prev => {
+      // Avoid unnecessary updates if the list is identical (prevents infinite loops)
+      if (prev.length === newPlaylist.length && prev.every((t, i) => t.id === newPlaylist[i].id)) {
+        return prev;
+      }
+      
+      // If we have a current track, maintain its playback by updating the index
+      if (currentTrackIdRef.current) {
+        const newIdx = newPlaylist.findIndex(t => t.id === currentTrackIdRef.current);
+        if (newIdx !== -1) {
+          setCurrentTrackIndex(newIdx);
+        }
+      }
+      return newPlaylist;
+    });
+  }, []);
+
+  const removeTrackFromLibrary = (trackId) => {
+    setLibrary(prev => {
+      const updated = prev.filter(t => t.id !== trackId);
+      if (activeView === 'library') {
+        setPlaylist(updated);
+      }
+      return updated;
+    });
+  };
+
+  const playNext = (track) => {
+    setPlaylist(prev => {
+      const currentIndex = currentTrackIndex;
+      const filtered = prev.filter((t, i) => t.id !== track.id || i === currentIndex);
+      
+      let activeIndex = currentIndex;
+      if (track.id !== currentTrack.id) {
+        activeIndex = filtered.findIndex(t => t.id === currentTrack.id);
+        if (activeIndex === -1) activeIndex = currentIndex;
+        setCurrentTrackIndex(activeIndex);
+      }
+      
+      const updated = [...filtered];
+      updated.splice(activeIndex + 1, 0, track);
+      return updated;
+    });
   };
 
   const [videoPosition, setVideoPosition] = useState({ x: window.innerWidth - 410, y: 80 });
@@ -558,8 +881,10 @@ export const AudioProvider = ({ children }) => {
     <AudioContext.Provider
       value={{
         playlist,
+        setPlaylist,
         currentTrack,
         currentTrackIndex,
+        setCurrentTrackIndex,
         isPlaying,
         progress,
         currentTime,
@@ -580,7 +905,7 @@ export const AudioProvider = ({ children }) => {
         seekTo,
         setVolume: handleVolumeChange,
         toggleMute,
-        toggleShuffle: () => setIsShuffle(!isShuffle),
+        toggleShuffle: () => setIsShuffle(prev => !prev),
         cycleRepeat,
         importLocalFiles,
         importLocalFilesByPaths,
@@ -588,7 +913,24 @@ export const AudioProvider = ({ children }) => {
         setLoadingState,
         showVideo,
         hasVideoTrack,
-        setShowVideo
+        setShowVideo,
+        
+        // New Persistence features
+        favorites,
+        playlists,
+        library,
+        activeView,
+        setActiveView,
+        toggleFavorite,
+        createPlaylist,
+        deletePlaylist,
+        addTrackToPlaylist,
+        removeTrackFromPlaylist,
+        playTrackInList,
+        removeTrackFromLibrary,
+        playNext,
+        playbackSource,
+        syncPlaylist
       }}
     >
       {children}

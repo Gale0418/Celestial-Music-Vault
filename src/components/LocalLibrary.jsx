@@ -1,18 +1,75 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical } from 'lucide-react';
+import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical, Heart, Plus, Trash } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const LocalLibrary = () => {
-  const { playlist, currentTrackIndex, isPlaying, selectTrack, importLocalFiles, importLocalFilesByPaths, loadingState, setLoadingState } = useAudio();
+  const { 
+    playlist, 
+    setPlaylist,
+    currentTrack,
+    currentTrackIndex, 
+    isPlaying, 
+    selectTrack, 
+    importLocalFiles, 
+    importLocalFilesByPaths, 
+    loadingState, 
+    setLoadingState,
+    
+    favorites,
+    playlists,
+    library,
+    activeView,
+    toggleFavorite,
+    addTrackToPlaylist,
+    removeTrackFromPlaylist,
+    playTrackInList,
+    removeTrackFromLibrary,
+    playNext,
+    playbackSource,
+    syncPlaylist
+  } = useAudio();
+  
   const [isDragOver, setIsDragOver] = useState(false);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, track }
   const fileInputRef = useRef(null);
   const dirInputRef = useRef(null);
 
-  // Filter only local files
-  const localTracks = playlist
-    .map((track, originalIndex) => ({ ...track, originalIndex }))
-    .filter(track => track.id.startsWith('local-'));
+  // Determine current tracks, titles, descriptions based on activeView
+  let viewTracks = [];
+  let viewTitle = '本地音樂庫';
+  let viewDesc = '支援將整批音訊檔案或整個資料夾拖放進來播放！';
+  let showDropZone = false;
+
+  if (activeView === 'library') {
+    viewTracks = library;
+    viewTitle = '本地音樂庫';
+    viewDesc = '支援將整批音訊檔案或整個資料夾拖放進來播放！您的永久音樂庫會安全地儲存起來。';
+    showDropZone = true;
+  } else if (activeView === 'favorites') {
+    viewTracks = favorites;
+    viewTitle = '我的最愛';
+    viewDesc = '這裡收藏了所有主人最珍愛的音樂，按下每一首歌旁邊的愛心或點擊右鍵就可以加入囉！💕';
+    showDropZone = false;
+  } else if (activeView.startsWith('playlist-')) {
+    const playlistId = activeView.replace('playlist-', '');
+    const currentPlaylist = playlists.find(p => p.id === playlistId);
+    if (currentPlaylist) {
+      viewTracks = currentPlaylist.tracks;
+      viewTitle = currentPlaylist.name;
+      viewDesc = `這是一個自訂播放清單，共有 ${viewTracks.length} 首歌曲。主人可以在其他清單對歌曲點擊滑鼠「右鍵」來加入這裡喔！`;
+    }
+  } else {
+    viewTracks = playlist;
+    showDropZone = true;
+  }
+
+  // Map each track with its original index in viewTracks
+  const mappedTracks = viewTracks.map((track, originalIndex) => ({ ...track, originalIndex }));
+
+  // 播放「排序後列表」中指定 index 的歌 — 讓 playlist 狀態與 UI 顯示完全一致
+  const handlePlayTrack = (sortedIndex, currentSortedTracks) => {
+    playTrackInList(currentSortedTracks, sortedIndex, activeView);
+  };
 
   // Interactive library sorting state
   const [sortKey, setSortKey] = useState('default'); // 'default' | 'title' | 'artist' | 'album'
@@ -27,7 +84,7 @@ const LocalLibrary = () => {
     }
   };
 
-  const sortedTracks = [...localTracks].sort((a, b) => {
+  const sortedTracks = [...mappedTracks].sort((a, b) => {
     if (sortKey === 'default') {
       return sortDirection === 'asc' 
         ? a.originalIndex - b.originalIndex 
@@ -41,6 +98,13 @@ const LocalLibrary = () => {
     if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
+
+  // 當畫面排序改變時，如果目前正在播放這個畫面，則同步更新播放清單，這樣下一首就會照新排序播
+  useEffect(() => {
+    if (playbackSource === activeView) {
+      syncPlaylist(sortedTracks);
+    }
+  }, [sortedTracks, playbackSource, activeView, syncPlaylist]);
 
   // Close context menu on window click
   useEffect(() => {
@@ -250,7 +314,6 @@ const LocalLibrary = () => {
       position: 'relative',
       zIndex: 1
     }}>
-      {/* Title */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{
           fontFamily: 'var(--font-display)',
@@ -261,32 +324,33 @@ const LocalLibrary = () => {
           WebkitTextFillColor: 'transparent',
           letterSpacing: '-1px'
         }}>
-          本地音樂庫
+          {viewTitle}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '6px' }}>
-          支援將**整批音訊檔案或整個資料夾**拖放進來播放！支援格式包括 `.mp3`、`.wav`、`.m4a`、`.mp4`（聽取音軌）等。
+          {viewDesc}
         </p>
       </div>
 
       {/* DRAG AND DROP ZONE */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        style={{
-          border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed rgba(255, 255, 255, 0.15)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '48px 30px',
-          textAlign: 'center',
-          background: isDragOver ? 'rgba(255, 45, 85, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-          cursor: 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-          marginBottom: '36px',
-          boxShadow: isDragOver ? '0 8px 32px rgba(255,45,85,0.15)' : 'none',
-          transform: isDragOver ? 'scale(1.01)' : 'scale(1)'
-        }}
-        id="drop-zone"
-      >
+      {showDropZone && (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          style={{
+            border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed rgba(255, 255, 255, 0.15)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '48px 30px',
+            textAlign: 'center',
+            background: isDragOver ? 'rgba(255, 45, 85, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+            cursor: 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+            marginBottom: '36px',
+            boxShadow: isDragOver ? '0 8px 32px rgba(255,45,85,0.15)' : 'none',
+            transform: isDragOver ? 'scale(1.01)' : 'scale(1)'
+          }}
+          id="drop-zone"
+        >
         <input
           type="file"
           ref={fileInputRef}
@@ -371,6 +435,7 @@ const LocalLibrary = () => {
           </button>
         </div>
       </div>
+      )}
 
       {/* LOCAL SONGS LIST */}
       <div>
@@ -384,13 +449,13 @@ const LocalLibrary = () => {
           gap: '8px'
         }}>
           <Disc size={18} color="var(--accent-blue)" />
-          <span>已匯入的本地歌曲 ({localTracks.length})</span>
+          <span>{viewTitle} 歌曲 ({viewTracks.length})</span>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '6px' }}>
-            （💡 對歌曲滑鼠「右鍵」可以展開 Finder 高級選單）
+            （💡 對歌曲滑鼠「右鍵」可以展開高級選單，愛心可收藏）
           </span>
         </h3>
 
-        {localTracks.length === 0 ? (
+        {viewTracks.length === 0 ? (
           /* Empty State */
           <div className="glass-effect" style={{
             borderRadius: 'var(--radius-md)',
@@ -454,13 +519,15 @@ const LocalLibrary = () => {
               </thead>
               <tbody>
                 {sortedTracks.map((track, index) => {
-                  const isCurrentTrack = track.originalIndex === currentTrackIndex;
+                  // 用 track.id 對照 currentTrack.id 判斷是否正在播放（不受 index 影響）
+                  const isCurrentTrack = track.id === currentTrack?.id;
                   const isPlayingThis = isCurrentTrack && isPlaying;
+                  const isFav = favorites.some(f => f.path === track.path || f.id === track.id);
                   
                   return (
                     <tr
                       key={track.id}
-                      onClick={() => selectTrack(track.originalIndex)}
+                      onClick={() => handlePlayTrack(index, sortedTracks)}
                       onContextMenu={(e) => handleRowContextMenu(e, track)}
                       style={{
                         borderBottom: '1px solid rgba(255,255,255,0.03)',
@@ -486,6 +553,29 @@ const LocalLibrary = () => {
                       {/* Title Column */}
                       <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : '#fff' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {/* Instant Heart Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(track);
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              padding: '2px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              color: isFav ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)',
+                              transition: 'transform 0.2s, color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            title={isFav ? "取消最愛收藏" : "加入我的最愛"}
+                          >
+                            <Heart size={14} fill={isFav ? "var(--primary-color)" : "transparent"} />
+                          </button>
+
                           <Music size={14} color={isCurrentTrack ? 'var(--primary-color)' : 'var(--text-muted)'} />
                           <span style={{
                             whiteSpace: 'nowrap',
@@ -554,106 +644,52 @@ const LocalLibrary = () => {
       </div>
 
       {/* FLOAT GLASSMORPHIC CONTEXT MENU */}
-      {contextMenu && (
-        <div
-          className="glass-effect"
-          style={{
-            position: 'fixed',
-            top: `${contextMenu.y}px`,
-            left: `${contextMenu.x}px`,
-            borderRadius: '10px',
-            padding: '6px',
-            width: '180px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            zIndex: 99999,
-            backgroundColor: 'rgba(28, 30, 38, 0.85)',
-            backdropFilter: 'blur(20px)'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header Title */}
-          <div style={{
-            padding: '6px 12px',
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-            marginBottom: '4px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}>
-            {contextMenu.track.title}
-          </div>
-
-          {/* Option: Play */}
-          <button
-            onClick={() => {
-              selectTrack(contextMenu.track.originalIndex);
-              setContextMenu(null);
-            }}
-            className="menu-item"
+      {contextMenu && (() => {
+        const isContextMenuFav = favorites.some(f => f.path === contextMenu.track.path || f.id === contextMenu.track.id);
+        return (
+          <div
+            className="glass-effect"
             style={{
+              position: 'fixed',
+              top: `${contextMenu.y}px`,
+              left: `${contextMenu.x}px`,
+              borderRadius: '10px',
+              padding: '6px',
+              width: '200px',
               display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: 'none',
-              background: 'transparent',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              transition: 'background 0.1s'
+              flexDirection: 'column',
+              gap: '2px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              zIndex: 99999,
+              backgroundColor: 'rgba(28, 30, 38, 0.9)',
+              backdropFilter: 'blur(30px)'
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <Play size={14} color="var(--primary-color)" />
-            <span>立即播放</span>
-          </button>
+            {/* Header Title */}
+            <div style={{
+              padding: '6px 12px',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              marginBottom: '4px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {contextMenu.track.title}
+            </div>
 
-          {/* Option: Show in Finder */}
-          <button
-            onClick={() => {
-              handleShowInFinder(contextMenu.track);
-              setContextMenu(null);
-            }}
-            className="menu-item"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: 'none',
-              background: 'transparent',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              transition: 'background 0.1s'
-            }}
-          >
-            <FolderOpen size={14} color="var(--accent-blue)" />
-            <span>在 Finder 中顯示</span>
-          </button>
-
-          {/* Option: Copy native path */}
-          {contextMenu.track.path && (
+            {/* Option: Play */}
             <button
               onClick={() => {
-                navigator.clipboard.writeText(contextMenu.track.path);
-                alert('已將本機檔案完整路徑複製到剪貼簿！');
+                // 找到此 track 在目前 sortedTracks 中的 index，然後用排序後列表播放
+                const sortedIdx = sortedTracks.findIndex(t => t.id === contextMenu.track.id);
+                if (sortedIdx !== -1) handlePlayTrack(sortedIdx, sortedTracks);
                 setContextMenu(null);
               }}
               className="menu-item"
@@ -674,12 +710,240 @@ const LocalLibrary = () => {
                 transition: 'background 0.1s'
               }}
             >
-              <Disc size={14} color="var(--accent-purple)" />
-              <span style={{ fontSize: '12px' }}>複製檔案路徑</span>
+              <Play size={14} color="var(--primary-color)" />
+              <span>立即播放</span>
             </button>
-          )}
-        </div>
-      )}
+
+            {/* Option: Favorites Toggle */}
+            <button
+              onClick={() => {
+                toggleFavorite(contextMenu.track);
+                setContextMenu(null);
+              }}
+              className="menu-item"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                transition: 'background 0.1s'
+              }}
+            >
+              <Heart size={14} color="var(--primary-color)" fill={isContextMenuFav ? "var(--primary-color)" : "transparent"} />
+              <span>{isContextMenuFav ? "取消最愛收藏" : "加入我的最愛"}</span>
+            </button>
+
+            {/* Option: Play Next */}
+            <button
+              onClick={() => {
+                playNext(contextMenu.track);
+                setContextMenu(null);
+              }}
+              className="menu-item"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                transition: 'background 0.1s'
+              }}
+            >
+              <Plus size={14} color="var(--accent-blue)" />
+              <span>設為下一首播放</span>
+            </button>
+
+            {/* Option: Remove from Library */}
+            {activeView === 'library' && (
+              <button
+                onClick={() => {
+                  if (confirm(`「主人...確定要從『我的音樂庫』中移除這首歌嗎？（實體檔案不會被刪除喔！）」`)) {
+                    removeTrackFromLibrary(contextMenu.track.id);
+                  }
+                  setContextMenu(null);
+                }}
+                className="menu-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--primary-color)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background 0.1s'
+                }}
+              >
+                <Trash size={14} color="var(--primary-color)" />
+                <span>從音樂庫中移除</span>
+              </button>
+            )}
+
+            {/* Option: Remove from current playlist */}
+            {activeView.startsWith('playlist-') && (
+              <button
+                onClick={() => {
+                  const playlistId = activeView.replace('playlist-', '');
+                  removeTrackFromPlaylist(playlistId, contextMenu.track.id);
+                  setContextMenu(null);
+                }}
+                className="menu-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--primary-color)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background 0.1s'
+                }}
+              >
+                <Trash size={14} color="var(--primary-color)" />
+                <span>從此播放清單移除</span>
+              </button>
+            )}
+
+            {/* Option: Show in Finder */}
+            <button
+              onClick={() => {
+                handleShowInFinder(contextMenu.track);
+                setContextMenu(null);
+              }}
+              className="menu-item"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                transition: 'background 0.1s'
+              }}
+            >
+              <FolderOpen size={14} color="var(--accent-blue)" />
+              <span>在 Finder 中顯示</span>
+            </button>
+
+            {/* Option: Copy native path */}
+            {contextMenu.track.path && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(contextMenu.track.path);
+                  alert('已將本機檔案完整路徑複製到剪貼簿！');
+                  setContextMenu(null);
+                }}
+                className="menu-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background 0.1s'
+                }}
+              >
+                <Disc size={14} color="var(--accent-purple)" />
+                <span style={{ fontSize: '12px' }}>複製檔案路徑</span>
+              </button>
+            )}
+
+            {/* Sub-menu section: Add to other playlists */}
+            {playlists.length > 0 && !activeView.startsWith('playlist-') && (
+              <>
+                <div style={{
+                  padding: '6px 12px 4px 12px',
+                  fontSize: '10px',
+                  color: 'var(--text-muted)',
+                  fontWeight: 700,
+                  borderTop: '1px solid rgba(255,255,255,0.05)',
+                  marginTop: '4px',
+                  letterSpacing: '0.5px'
+                }}>
+                  加入自訂歌單
+                </div>
+                
+                <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {playlists.map(pl => (
+                    <button
+                      key={pl.id}
+                      onClick={() => {
+                        addTrackToPlaylist(pl.id, contextMenu.track);
+                        alert(`已將歌曲成功加入歌單「${pl.name}」！`);
+                        setContextMenu(null);
+                      }}
+                      className="menu-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        transition: 'background 0.1s'
+                      }}
+                    >
+                      <Plus size={12} color="var(--text-muted)" />
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pl.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* GORGEOUS FROSTED GLASS LOADING PROGRESS OVERLAY */}
       {loadingState.active && (

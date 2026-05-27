@@ -61,6 +61,37 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
   }
 });
 
+// IPC: User Data Persistence (Favorites, Playlists, Library, Playback States)
+const getUserDataPath = () => path.join(app.getPath('userData'), 'user-data.json');
+
+ipcMain.handle('load-user-data', async () => {
+  try {
+    const dataPath = getUserDataPath();
+    if (fs.existsSync(dataPath)) {
+      const data = await fs.promises.readFile(dataPath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Failed to load user data:', e);
+  }
+  return null;
+});
+
+ipcMain.handle('save-user-data', async (event, data) => {
+  try {
+    const dataPath = getUserDataPath();
+    const dir = path.dirname(dataPath);
+    if (!fs.existsSync(dir)) {
+      await fs.promises.mkdir(dir, { recursive: true });
+    }
+    await fs.promises.writeFile(dataPath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Failed to save user data:', e);
+    return false;
+  }
+});
+
 function createWindow() {
   // Create a stunning premium macOS desktop window frame
   const win = new BrowserWindow({
