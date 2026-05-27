@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PlayCircle, HardDrive, Activity, Music2, PlusCircle, Radio, Heart, Trash2 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
   const { 
     isVisualizerActive, 
     setIsVisualizerActive,
@@ -39,11 +41,17 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
   const handleCreatePlaylistClick = (e) => {
     e.stopPropagation();
-    const name = prompt('「主人...請輸入新播放清單的名稱：」', `我的歌單 ${playlists.length + 1}`);
-    if (name && name.trim()) {
-      const pl = createPlaylist(name.trim());
+    setIsCreatingPlaylist(true);
+    setNewPlaylistName(`我的歌單 ${playlists.length + 1}`);
+  };
+
+  const submitNewPlaylist = () => {
+    if (newPlaylistName.trim()) {
+      const pl = createPlaylist(newPlaylistName.trim());
       handleViewClick(`playlist-${pl.id}`);
     }
+    setIsCreatingPlaylist(false);
+    setNewPlaylistName('');
   };
 
   return (
@@ -278,14 +286,41 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           />
         </div>
 
-        {playlists.length === 0 ? (
+        {playlists.length === 0 && !isCreatingPlaylist ? (
           <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
             點擊 + 建立新歌單
           </div>
-        ) : (
-          playlists.map((pl) => {
-            const isPlActive = activeTab === 'local-library' && activeView === `playlist-${pl.id}`;
-            return (
+        ) : null}
+
+        {isCreatingPlaylist && (
+          <div style={{ padding: '8px 12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="text"
+              autoFocus
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitNewPlaylist();
+                if (e.key === 'Escape') setIsCreatingPlaylist(false);
+              }}
+              onBlur={submitNewPlaylist}
+              style={{
+                width: '100%',
+                background: 'rgba(0,0,0,0.2)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '12px',
+                outline: 'none'
+              }}
+            />
+          </div>
+        )}
+
+        {playlists.map((pl) => {
+          const isPlActive = activeTab === 'local-library' && activeView === `playlist-${pl.id}`;
+          return (
               <div
                 key={pl.id}
                 onClick={() => handleViewClick(`playlist-${pl.id}`)}
@@ -309,7 +344,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  flex: 1,
                   paddingRight: '8px'
                 }}>
                   📻 {pl.name}
@@ -318,24 +352,19 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 {/* Delete button (Trash icon) */}
                 <Trash2 
                   size={12} 
+                  color="rgba(255,255,255,0.3)"
+                  className="delete-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`主人...確定要刪除「${pl.name}」歌單嗎？（裡面的歌不會被實體刪除喔！）`)) {
+                    if (window.confirm(`確定要刪除播放清單 "${pl.name}" 嗎？`)) {
                       deletePlaylist(pl.id);
                     }
                   }}
-                  style={{
-                    color: 'rgba(255,255,255,0.3)',
-                    cursor: 'pointer',
-                    transition: 'color 0.2s',
-                    display: 'none'
-                  }}
-                  className="delete-playlist-icon"
+                  style={{ cursor: 'pointer', transition: 'color 0.2s' }}
                 />
               </div>
             );
-          })
-        )}
+          })}
       </div>
 
       {/* Embedded Styles for hover support */}
