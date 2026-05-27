@@ -31,11 +31,13 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
     cycleRepeat,
     showVideo,
     hasVideoTrack,
-    setShowVideo
+    setShowVideo,
+    favorites,
+    toggleFavorite
   } = useAudio();
 
   const [showEqMenu, setShowEqMenu] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const isFavorite = currentTrack ? favorites.some(f => f.id === currentTrack.id) : false;
 
   // Format seconds to mm:ss
   const formatTime = (secs) => {
@@ -134,7 +136,7 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
         </div>
 
         <button 
-          onClick={() => setIsFavorite(!isFavorite)}
+          onClick={() => { if (currentTrack) toggleFavorite(currentTrack); }}
           style={{
             border: 'none',
             background: 'transparent',
