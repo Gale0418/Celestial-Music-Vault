@@ -47,16 +47,17 @@ const Visualizer = () => {
     const draw = () => {
       animationRef.current = requestAnimationFrame(draw);
 
-      const width = canvas.width;
-      const height = canvas.height;
-      
-      // Prevent drawing errors if canvas is hidden or sizing isn't ready
-      if (width === 0 || height === 0) return;
-      
-      // Setup Analyser
-      const analyser = analyserRef.current;
-      let bufferLength = 128;
-      let dataArray = new Uint8Array(bufferLength);
+      try {
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Prevent drawing errors if canvas is hidden or sizing isn't ready
+        if (width <= 10 || height <= 10) return; // Safer bounds check
+        
+        // Setup Analyser
+        const analyser = analyserRef.current;
+        let bufferLength = 128;
+        let dataArray = new Uint8Array(bufferLength);
       
       const activePlaying = isPlaying && analyser;
 
@@ -193,6 +194,9 @@ const Visualizer = () => {
         });
         
         ctx.restore();
+      }
+      } catch (err) {
+        console.error("Canvas draw error:", err);
       }
     };
 
