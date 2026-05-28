@@ -101,7 +101,6 @@ export const AudioProvider = ({ children }) => {
   const audioRef = useRef(null);
   const audioContextRef = useRef(null);
   const sourceRef = useRef(null);
-  const analyserRef = useRef(null);
   const eqLowRef = useRef(null);
   const eqMidRef = useRef(null);
   const eqHighRef = useRef(null);
@@ -183,8 +182,6 @@ export const AudioProvider = ({ children }) => {
 
       // Create nodes
       const source = ctx.createMediaElementSource(audioRef.current);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256; // 128 frequency bins, perfect for visualizations
       
       // EQ Filters (BiquadFilterNodes)
       const lowFilter = ctx.createBiquadFilter();
@@ -200,16 +197,14 @@ export const AudioProvider = ({ children }) => {
       highFilter.type = 'highshelf';
       highFilter.frequency.value = 3200; // high frequencies (treble)
 
-      // Connect nodes: Source -> LowEQ -> MidEQ -> HighEQ -> Analyser -> Destination
+      // Connect nodes: Source -> LowEQ -> MidEQ -> HighEQ -> Destination
       source.connect(lowFilter);
       lowFilter.connect(midFilter);
       midFilter.connect(highFilter);
-      highFilter.connect(analyser);
-      analyser.connect(ctx.destination);
+      highFilter.connect(ctx.destination);
 
       // Save refs
       sourceRef.current = source;
-      analyserRef.current = analyser;
       eqLowRef.current = lowFilter;
       eqMidRef.current = midFilter;
       eqHighRef.current = highFilter;

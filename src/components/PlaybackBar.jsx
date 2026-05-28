@@ -308,7 +308,7 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* RIGHT: Volume, Equalizer (EQ) & Audio Visualizer Toggle */}
+      {/* RIGHT: Volume, Equalizer (EQ) Toggle */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
