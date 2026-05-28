@@ -8,8 +8,8 @@ export class ErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
   componentDidCatch(error, errorInfo) {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('crash-log', `React Crash: ${error}\n${errorInfo.componentStack}`);
+    if (window.electronAPI && window.electronAPI.showErrorBox) {
+      window.electronAPI.showErrorBox('React Crash', `${error}\n${errorInfo.componentStack}`);
     }
   }
   render() {

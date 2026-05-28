@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolders: () => ipcRenderer.invoke('select-folders'),
   loadUserData: () => ipcRenderer.invoke('load-user-data'),
   saveUserData: (data) => ipcRenderer.invoke('save-user-data', data),
+  showErrorBox: (title, content) => ipcRenderer.send('show-error-box', title, content),
 });

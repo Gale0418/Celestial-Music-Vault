@@ -138,6 +138,10 @@ function createWindow() {
       }
     });
 
+    ipcMain.on('show-error-box', (event, title, content) => {
+      dialog.showErrorBox(title, content);
+    });
+
     createWindow();
 
   app.on('activate', () => {
