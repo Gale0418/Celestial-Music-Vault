@@ -126,8 +126,19 @@ function createWindow() {
 }
 
 // macOS standard: keep app running when all windows close unless quit
-app.whenReady().then(() => {
-  createWindow();
+  app.whenReady().then(() => {
+    // Make sure IPC can receive crash logs and write them to a file
+    ipcMain.on('crash-log', (event, errorInfo) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        fs.appendFileSync(path.join(app.getPath('userData'), 'crash-log.txt'), new Date().toISOString() + '\n' + errorInfo + '\n\n');
+      } catch (e) {
+        console.error("Failed to write crash log", e);
+      }
+    });
+
+    createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
