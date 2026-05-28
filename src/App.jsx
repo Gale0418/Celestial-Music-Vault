@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar';
 import PlaybackBar from './components/PlaybackBar';
 import ListenNow from './components/ListenNow';
 import LocalLibrary from './components/LocalLibrary';
-import Visualizer from './components/Visualizer';
 
 // Content component that consumes AudioContext
 const AppContent = () => {
@@ -67,7 +66,6 @@ const AppContent = () => {
             {/* View switching panel */}
             {activeTab === 'listen-now' && <ListenNow />}
             {activeTab === 'local-library' && <LocalLibrary />}
-            {activeTab === 'visualizer' && <Visualizer />}
           </main>
         </div>
 

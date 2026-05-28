@@ -18,9 +18,7 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
     isShuffle,
     isRepeat,
     eqPreset,
-    isVisualizerActive,
     setEqPreset,
-    setIsVisualizerActive,
     togglePlay,
     prevTrack,
     nextTrack,
@@ -53,16 +51,6 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
 
   const handleVolumeSliderChange = (e) => {
     setVolume(parseFloat(e.target.value));
-  };
-
-  const handleVisualizerToggle = () => {
-    if (isVisualizerActive) {
-      setIsVisualizerActive(false);
-      setActiveTab('listen-now');
-    } else {
-      setIsVisualizerActive(true);
-      setActiveTab('visualizer');
-    }
   };
 
   const eqPresets = ['Flat', 'Bass Boost', 'Vocal', 'Electronic'];
@@ -398,25 +386,6 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
             </div>
           )}
         </div>
-
-        {/* Visualizer Toggle */}
-        <button
-          onClick={handleVisualizerToggle}
-          style={{
-            border: 'none',
-            background: isVisualizerActive ? 'var(--bg-glass-active)' : 'transparent',
-            padding: '6px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            color: isVisualizerActive ? 'var(--primary-color)' : 'var(--text-secondary)',
-            outline: 'none',
-            transition: 'all 0.2s'
-          }}
-          title="開啟音頻律動頻譜"
-          id="visualizer-toggle-btn"
-        >
-          <MonitorPlay size={17} />
-        </button>
 
         {/* Video Toggle for MP4 files */}
         {hasVideoTrack && (

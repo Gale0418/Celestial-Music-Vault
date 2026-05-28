@@ -76,7 +76,6 @@ export const AudioProvider = ({ children }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false); // false: no, true: repeat queue, 'one': repeat track
   const [eqPreset, setEqPreset] = useState('Flat'); // Flat, Bass Boost, Vocal, Electronic
-  const [isVisualizerActive, setIsVisualizerActive] = useState(false);
   const [loadingState, setLoadingState] = useState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
   const [showVideo, setShowVideo] = useState(false);
   const [hasVideoTrack, setHasVideoTrack] = useState(false);
@@ -907,10 +906,7 @@ export const AudioProvider = ({ children }) => {
         isShuffle,
         isRepeat,
         eqPreset,
-        isVisualizerActive,
-        analyserRef,
         setEqPreset,
-        setIsVisualizerActive,
         togglePlay,
         selectTrack,
         prevTrack: handlePrevTrack,

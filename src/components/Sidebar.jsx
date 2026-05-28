@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PlayCircle, HardDrive, Activity, Music2, PlusCircle, Radio, Heart, Trash2 } from 'lucide-react';
+import { PlayCircle, HardDrive, Music2, PlusCircle, Radio, Heart, Trash2 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const { 
-    isVisualizerActive, 
-    setIsVisualizerActive,
     playlists,
     activeView,
     setActiveView,
@@ -18,16 +16,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'listen-now', label: '現在收聽', icon: PlayCircle },
     { id: 'local-library', label: '本地音樂庫', icon: HardDrive },
-    { id: 'visualizer', label: '音頻視覺化', icon: Activity },
   ];
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
-    if (tabId === 'visualizer') {
-      setIsVisualizerActive(true);
-    } else {
-      setIsVisualizerActive(false);
-    }
     if (tabId === 'local-library') {
       setActiveView('library');
     }
@@ -36,7 +28,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   const handleViewClick = (viewId) => {
     setActiveTab('local-library');
     setActiveView(viewId);
-    setIsVisualizerActive(false);
   };
 
   const handleCreatePlaylistClick = (e) => {
