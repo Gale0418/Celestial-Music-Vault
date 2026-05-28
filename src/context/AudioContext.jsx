@@ -115,17 +115,11 @@ export const AudioProvider = ({ children }) => {
   useEffect(() => {
     const audio = videoRef.current;
     if (!audio) return;
-    audio.crossOrigin = 'anonymous'; // CRITICAL: enables Web Audio API CORS processing!
     audioRef.current = audio;
 
-    // Helper to safely load audio source and fix CORS issues with blob URLs
+    // Helper to safely load audio source
     const setAudioSource = (track) => {
       if (!audio || !track) return;
-      if (track.url && track.url.startsWith('blob:')) {
-        audio.removeAttribute('crossOrigin');
-      } else {
-        audio.crossOrigin = 'anonymous';
-      }
       audio.src = track.url;
       audio.load();
     };
@@ -440,11 +434,6 @@ export const AudioProvider = ({ children }) => {
     // Use the same helper function we use inside useEffect
     const setAudioSource = (track) => {
       if (!audioRef.current || !track) return;
-      if (track.url && track.url.startsWith('blob:')) {
-        audioRef.current.removeAttribute('crossOrigin');
-      } else {
-        audioRef.current.crossOrigin = 'anonymous';
-      }
       audioRef.current.src = track.url;
       audioRef.current.load();
     };
@@ -520,11 +509,6 @@ export const AudioProvider = ({ children }) => {
     if (track) {
       setCurrentTrackIndex(prevIndex);
       try {
-        if (track.url && track.url.startsWith('blob:')) {
-          audioRef.current.removeAttribute('crossOrigin');
-        } else {
-          audioRef.current.crossOrigin = 'anonymous';
-        }
         audioRef.current.src = track.url;
         audioRef.current.load();
         audioRef.current.play()
@@ -566,11 +550,6 @@ export const AudioProvider = ({ children }) => {
     if (track) {
       setCurrentTrackIndex(nextIndex);
       try {
-        if (track.url && track.url.startsWith('blob:')) {
-          audioRef.current.removeAttribute('crossOrigin');
-        } else {
-          audioRef.current.crossOrigin = 'anonymous';
-        }
         audioRef.current.src = track.url;
         audioRef.current.load();
         audioRef.current.play()
@@ -812,11 +791,6 @@ export const AudioProvider = ({ children }) => {
     const track = targetPlaylist[index];
     if (track && audioRef.current) {
       try {
-        if (track.url && track.url.startsWith('blob:')) {
-          audioRef.current.removeAttribute('crossOrigin');
-        } else {
-          audioRef.current.crossOrigin = 'anonymous';
-        }
         audioRef.current.src = track.url;
         audioRef.current.load();
         audioRef.current.play()
