@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadUserData: () => ipcRenderer.invoke('load-user-data'),
   saveUserData: (data) => ipcRenderer.invoke('save-user-data', data),
   showErrorBox: (title, content) => ipcRenderer.send('show-error-box', title, content),
+  trashItem: (filePath) => ipcRenderer.invoke('trash-item', filePath),
+  showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
 });

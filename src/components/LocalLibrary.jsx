@@ -773,9 +773,38 @@ const LocalLibrary = () => {
             {/* Option: Remove from Library */}
             {activeView === 'library' && (
               <button
-                onClick={() => {
-                  if (confirm(`「主人...確定要從『我的音樂庫』中移除這首歌嗎？（實體檔案不會被刪除喔！）」`)) {
-                    removeTrackFromLibrary(contextMenu.track.id);
+                onClick={async () => {
+                  if (window.electronAPI) {
+                    const response = await window.electronAPI.showMessageBox({
+                      type: 'question',
+                      buttons: ['從音樂庫移除', '一併移至垃圾桶', '取消'],
+                      defaultId: 0,
+                      cancelId: 2,
+                      title: '移除歌曲',
+                      message: `確定要移除「${contextMenu.track.title}」嗎？`,
+                      detail: '你可以選擇僅從音樂庫中移除，或是將實體檔案一併移至系統垃圾桶。'
+                    });
+                    
+                    if (response.response === 0) {
+                      // 僅移除
+                      removeTrackFromLibrary(contextMenu.track.id);
+                    } else if (response.response === 1) {
+                      // 移至垃圾桶
+                      if (contextMenu.track.path) {
+                        const success = await window.electronAPI.trashItem(contextMenu.track.path);
+                        if (success) {
+                          removeTrackFromLibrary(contextMenu.track.id);
+                        } else {
+                          window.electronAPI.showErrorBox('移除失敗', '無法將檔案移至垃圾桶，可能檔案已遺失或權限不足。');
+                        }
+                      } else {
+                        removeTrackFromLibrary(contextMenu.track.id);
+                      }
+                    }
+                  } else {
+                    if (confirm(`確定要從『我的音樂庫』中移除這首歌嗎？`)) {
+                      removeTrackFromLibrary(contextMenu.track.id);
+                    }
                   }
                   setContextMenu(null);
                 }}

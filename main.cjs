@@ -61,6 +61,23 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
   }
 });
 
+// IPC: Move item to trash
+ipcMain.handle('trash-item', async (event, filePath) => {
+  try {
+    await shell.trashItem(filePath);
+    return true;
+  } catch (e) {
+    console.error('Failed to trash item', e);
+    return false;
+  }
+});
+
+// IPC: Show Native Message Box
+ipcMain.handle('show-message-box', async (event, options) => {
+  const result = await dialog.showMessageBox(options);
+  return result;
+});
+
 // IPC: User Data Persistence (Favorites, Playlists, Library, Playback States)
 const getUserDataPath = () => path.join(app.getPath('userData'), 'user-data.json');
 
