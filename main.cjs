@@ -109,6 +109,29 @@ ipcMain.handle('save-user-data', async (event, data) => {
   }
 });
 
+// Window Mode Toggles
+ipcMain.on('toggle-mini-player', (event, isMini) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  if (isMini) {
+    win.setMinimumSize(350, 120);
+    win.setSize(350, 120, true);
+    win.setAlwaysOnTop(true, 'floating');
+    win.setFullScreenable(false);
+  } else {
+    win.setMinimumSize(960, 680);
+    win.setSize(1120, 760, true);
+    win.setAlwaysOnTop(false);
+    win.setFullScreenable(true);
+  }
+});
+
+ipcMain.on('toggle-fullscreen', (event, isFullscreen) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  win.setFullScreen(isFullscreen);
+});
+
 function createWindow() {
   // Create a stunning premium macOS desktop window frame
   const win = new BrowserWindow({

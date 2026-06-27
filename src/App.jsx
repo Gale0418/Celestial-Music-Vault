@@ -4,14 +4,47 @@ import Sidebar from './components/Sidebar';
 import PlaybackBar from './components/PlaybackBar';
 import ListenNow from './components/ListenNow';
 import LocalLibrary from './components/LocalLibrary';
+import MiniPlayer from './components/MiniPlayer';
+import ImmersionView from './components/ImmersionView';
 
 // Content component that consumes AudioContext
 const AppContent = () => {
   const [activeTab, setActiveTab] = useState('listen-now');
+  const [viewMode, setViewMode] = useState('default'); // 'default', 'mini', 'immersion'
   const { currentTrack } = useAudio();
 
   // Dynamic colors matching currently playing track for Ambient Flow Background
   const currentColors = currentTrack?.colors || ['#ff2d55', '#af52de', '#007aff'];
+
+  const handleToggleMini = () => {
+    const newMode = viewMode === 'mini' ? 'default' : 'mini';
+    setViewMode(newMode);
+    if (window.electronAPI?.toggleMiniPlayer) {
+      window.electronAPI.toggleMiniPlayer(newMode === 'mini');
+    }
+  };
+
+  const handleToggleImmersion = () => {
+    const newMode = viewMode === 'immersion' ? 'default' : 'immersion';
+    setViewMode(newMode);
+    if (window.electronAPI?.toggleFullscreen) {
+      window.electronAPI.toggleFullscreen(newMode === 'immersion');
+    }
+  };
+
+  // Render different views based on mode
+  if (viewMode === 'mini') {
+    return <MiniPlayer onExit={handleToggleMini} />;
+  }
+
+  if (viewMode === 'immersion') {
+    return (
+      <>
+        <ImmersionView onExit={handleToggleImmersion} />
+        {/* We keep the ambient background behind just in case, but it's covered */}
+      </>
+    );
+  }
 
   return (
     <div className="ambient-bg-container">
@@ -70,7 +103,12 @@ const AppContent = () => {
         </div>
 
         {/* Playback Control Bar */}
-        <PlaybackBar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <PlaybackBar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          onToggleMini={handleToggleMini}
+          onToggleImmersion={handleToggleImmersion}
+        />
       </div>
     </div>
   );

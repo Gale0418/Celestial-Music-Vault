@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
   Volume2, VolumeX, Sliders, MonitorPlay, ListMusic, Heart,
-  Video, VideoOff
+  Video, VideoOff, Timer, Ban, Maximize, PictureInPicture2, Star
 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
-const PlaybackBar = ({ activeTab, setActiveTab }) => {
+const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion }) => {
   const {
     currentTrack,
     isPlaying,
@@ -31,11 +31,35 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
     hasVideoTrack,
     setShowVideo,
     favorites,
-    toggleFavorite
+    toggleFavorite,
+    sleepTimerEndsAt,
+    setSleepTimerEndsAt,
+    dislikedTracks,
+    toggleDislike,
+    trackRatings,
+    setTrackRating
   } = useAudio();
 
   const [showEqMenu, setShowEqMenu] = useState(false);
+  const [showTimerMenu, setShowTimerMenu] = useState(false);
   const isFavorite = currentTrack ? favorites.some(f => f.id === currentTrack.id) : false;
+  const isDisliked = currentTrack ? dislikedTracks.includes(currentTrack.id) : false;
+  const currentRating = currentTrack ? (trackRatings[currentTrack.id] || 0) : 0;
+
+  const setTimer = (mins) => {
+    if (mins === 0) {
+      setSleepTimerEndsAt(null);
+    } else {
+      setSleepTimerEndsAt(Date.now() + mins * 60 * 1000);
+    }
+    setShowTimerMenu(false);
+  };
+
+  const getTimerText = () => {
+    if (!sleepTimerEndsAt) return null;
+    const diff = Math.max(0, Math.floor((sleepTimerEndsAt - Date.now()) / 1000 / 60));
+    return `${diff}m`;
+  };
 
   // Format seconds to mm:ss
   const formatTime = (secs) => {
@@ -139,6 +163,96 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
           id="favorite-btn"
         >
           <Heart size={16} fill={isFavorite ? 'var(--primary-color)' : 'none'} />
+        </button>
+
+        {/* Star Rating */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
+          {[1, 2, 3, 4, 5].map(star => (
+            <button
+              key={star}
+              onClick={() => {
+                if (currentTrack) {
+                  // Toggle off if clicking the same rating
+                  setTrackRating(currentTrack.id, currentRating === star ? 0 : star);
+                }
+              }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                padding: '2px',
+                color: star <= currentRating ? '#ffcc00' : 'var(--text-muted)',
+                outline: 'none',
+                transition: 'transform 0.1s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              title={`${star} 顆星`}
+            >
+              <Star size={14} fill={star <= currentRating ? '#ffcc00' : 'none'} />
+            </button>
+          ))}
+        </div>
+
+        {/* Window Modes (Mini Player / Immersion) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
+          <button
+            onClick={onToggleMini}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+            title="迷你播放器"
+          >
+            <PictureInPicture2 size={16} />
+          </button>
+          
+          <button
+            onClick={onToggleImmersion}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+            title="沉浸全螢幕模式"
+          >
+            <Maximize size={16} />
+          </button>
+        </div>
+
+        {/* Dislike button */}
+        <button
+          onClick={() => toggleDislike(currentTrack.id)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            color: isDisliked ? '#ff9500' : 'var(--text-secondary)',
+            outline: 'none',
+            transition: 'transform 0.1s'
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          id="dislike-btn"
+          title="隱藏此歌曲"
+        >
+          <Ban size={16} />
         </button>
       </div>
 
@@ -317,6 +431,75 @@ const PlaybackBar = ({ activeTab, setActiveTab }) => {
         width: '30%',
         position: 'relative'
       }}>
+        
+        {/* Sleep Timer */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowTimerMenu(!showTimerMenu)}
+            style={{
+              border: 'none',
+              background: sleepTimerEndsAt ? 'var(--bg-glass-active)' : 'transparent',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: sleepTimerEndsAt ? '#af52de' : 'var(--text-secondary)',
+              outline: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s'
+            }}
+            title="睡眠定時器"
+            id="timer-menu-btn"
+          >
+            <Timer size={16} />
+            {sleepTimerEndsAt && <span className="eq-badge" style={{ background: 'linear-gradient(135deg, #af52de, #5856d6)' }}>{getTimerText()}</span>}
+          </button>
+
+          {showTimerMenu && (
+            <div className="glass-effect" style={{
+              position: 'absolute',
+              bottom: '45px',
+              right: '0',
+              borderRadius: '10px',
+              padding: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              width: '120px',
+              boxShadow: 'var(--shadow-card)',
+              zIndex: 1000
+            }}>
+              {[
+                { label: '關閉定時', value: 0 },
+                { label: '15 分鐘', value: 15 },
+                { label: '30 分鐘', value: 30 },
+                { label: '60 分鐘', value: 60 }
+              ].map(opt => (
+                <button
+                  key={opt.label}
+                  onClick={() => setTimer(opt.value)}
+                  style={{
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    color: '#fff',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Equalizer Controller */}
         <div style={{ position: 'relative' }}>
           <button

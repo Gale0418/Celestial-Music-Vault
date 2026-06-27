@@ -10,4 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showErrorBox: (title, content) => ipcRenderer.send('show-error-box', title, content),
   trashItem: (filePath) => ipcRenderer.invoke('trash-item', filePath),
   showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
+  toggleMiniPlayer: (isMini) => ipcRenderer.send('toggle-mini-player', isMini),
+  toggleFullscreen: (isFullscreen) => ipcRenderer.send('toggle-fullscreen', isFullscreen),
 });

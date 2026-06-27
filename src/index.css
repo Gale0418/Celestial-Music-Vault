@@ -230,6 +230,10 @@ button, input {
 }
 
 .glass-card:hover {
+  background: var(--bg-glass-active);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
 
 /* EQ Preset Badges */
 .eq-badge {

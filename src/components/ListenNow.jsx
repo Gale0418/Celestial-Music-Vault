@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Search, Play, Volume2, Sparkles, Flame, Headphones, Disc } from 'lucide-react';
+import { Search, Play, Volume2, Sparkles, Flame, Headphones, Disc, Trash2, Save } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const ListenNow = () => {
-  const { playlist, currentTrackIndex, isPlaying, selectTrack, togglePlay } = useAudio();
+  const { playlist, currentTrackIndex, isPlaying, selectTrack, togglePlay, clearPlaylist, createPlaylist } = useAudio();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredPlaylist = playlist.filter(track => 
@@ -193,18 +193,77 @@ const ListenNow = () => {
 
       {/* FEATURED TRACKS SECTION */}
       <div style={{ marginBottom: '36px' }}>
-        <h3 style={{
-          fontSize: '20px',
-          fontWeight: 700,
-          color: '#fff',
-          marginBottom: '16px',
+        <div style={{
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '8px'
+          marginBottom: '16px'
         }}>
-          <Flame size={18} color="var(--primary-color)" />
-          <span>精選曲目推薦</span>
-        </h3>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Flame size={18} color="var(--primary-color)" />
+            <span>目前播放佇列 ({playlist.length})</span>
+          </h3>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                const name = prompt('請輸入新播放清單名稱：', '新歌單');
+                if (name) {
+                  const newPl = createPlaylist(name, playlist);
+                  alert(`歌單 "${name}" 已成功儲存！`);
+                }
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: '#fff',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            >
+              <Save size={14} /> 儲存佇列
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('確定要清空目前的播放佇列嗎？')) {
+                  clearPlaylist();
+                }
+              }}
+              style={{
+                background: 'rgba(255, 59, 48, 0.15)',
+                border: '1px solid rgba(255, 59, 48, 0.3)',
+                color: '#ff3b30',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
+            >
+              <Trash2 size={14} /> 清空
+            </button>
+          </div>
+        </div>
 
         <div style={{
           display: 'grid',

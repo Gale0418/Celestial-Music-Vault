@@ -80,6 +80,26 @@ export const AudioProvider = ({ children }) => {
   const [showVideo, setShowVideo] = useState(false);
   const [hasVideoTrack, setHasVideoTrack] = useState(false);
 
+  // New Ultimate Features
+  const [dislikedTracks, setDislikedTracks] = useState([]);
+  const [trackRatings, setTrackRatings] = useState({}); // { trackId: 0~5 }
+  const [sleepTimerEndsAt, setSleepTimerEndsAt] = useState(null);
+  
+  // Sleep Timer effect
+  useEffect(() => {
+    if (!sleepTimerEndsAt) return;
+    const interval = setInterval(() => {
+      if (Date.now() >= sleepTimerEndsAt) {
+        if (audioRef.current && isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+        setSleepTimerEndsAt(null);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sleepTimerEndsAt, isPlaying]);
+
   // New features: Persistence collections & views
   const [favorites, setFavorites] = useState([]);
   const [playlists, setPlaylists] = useState([]);
@@ -253,7 +273,7 @@ export const AudioProvider = ({ children }) => {
   // --- DATA PERSISTENCE SYSTEM ---
   
   // Helper to save all user data including playlists, favorites, library and current playback state
-  const saveAllData = (updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView) => {
+  const saveAllData = (updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView, updatedRatings = trackRatings) => {
     if (!window.electronAPI) return;
     
     const audio = videoRef.current;
@@ -270,6 +290,7 @@ export const AudioProvider = ({ children }) => {
       library: updatedLibrary,
       favorites: updatedFavorites,
       playlists: updatedPlaylists,
+      trackRatings: updatedRatings,
       playbackState
     });
   };
@@ -284,10 +305,12 @@ export const AudioProvider = ({ children }) => {
           const loadedLibrary = data.library || [];
           const loadedFavorites = data.favorites || [];
           const loadedPlaylists = data.playlists || [];
+          const loadedRatings = data.trackRatings || {};
           
           setLibrary(loadedLibrary);
           setFavorites(loadedFavorites);
           setPlaylists(loadedPlaylists);
+          setTrackRatings(loadedRatings);
 
           const pb = data.playbackState;
           if (pb) {
@@ -382,11 +405,11 @@ export const AudioProvider = ({ children }) => {
     });
   };
 
-  const createPlaylist = (name) => {
+  const createPlaylist = (name, initialTracks = []) => {
     const newPlaylist = {
       id: `playlist-${Date.now()}`,
       name,
-      tracks: []
+      tracks: [...initialTracks]
     };
     setPlaylists(prev => [...prev, newPlaylist]);
     return newPlaylist;
@@ -494,10 +517,20 @@ export const AudioProvider = ({ children }) => {
       return;
     }
 
-    let prevIndex = currentTrackIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = playlist.length - 1;
-    }
+    let prevIndex = currentTrackIndex;
+    let attempts = 0;
+    const maxAttempts = playlist.length;
+
+    do {
+      prevIndex = prevIndex - 1;
+      if (prevIndex < 0) {
+        prevIndex = playlist.length - 1;
+      }
+      attempts++;
+    } while (
+      dislikedTracks.includes(playlist[prevIndex]?.id) && 
+      attempts < maxAttempts
+    );
     
     const track = playlist[prevIndex];
     if (track) {
@@ -526,20 +559,29 @@ export const AudioProvider = ({ children }) => {
     }
 
     let nextIndex = currentTrackIndex;
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * playlist.length);
-    } else {
-      nextIndex = currentTrackIndex + 1;
-      if (nextIndex >= playlist.length) {
-        if (isRepeat || !autoEnded) {
-          nextIndex = 0; // loop back to first song
-        } else {
-          setIsPlaying(false);
-          return;
+    let attempts = 0;
+    const maxAttempts = playlist.length;
+    
+    do {
+      if (isShuffle) {
+        nextIndex = Math.floor(Math.random() * playlist.length);
+      } else {
+        nextIndex = nextIndex + 1;
+        if (nextIndex >= playlist.length) {
+          if (isRepeat || !autoEnded) {
+            nextIndex = 0; // loop back to first song
+          } else {
+            setIsPlaying(false);
+            return;
+          }
         }
       }
-    }
-    
+      attempts++;
+    } while (
+      dislikedTracks.includes(playlist[nextIndex]?.id) &&
+      attempts < maxAttempts
+    );
+
     const track = playlist[nextIndex];
     if (track) {
       setCurrentTrackIndex(nextIndex);
@@ -587,6 +629,45 @@ export const AudioProvider = ({ children }) => {
     } else {
       audioRef.current.muted = true;
       setIsMuted(true);
+    }
+  };
+
+  const toggleDislike = (trackId) => {
+    setDislikedTracks(prev => {
+      if (prev.includes(trackId)) {
+        return prev.filter(id => id !== trackId);
+      } else {
+        return [...prev, trackId];
+      }
+    });
+    // If we dislike the currently playing song, skip it immediately
+    if (currentTrack?.id === trackId) {
+      handleNextTrack();
+    }
+  };
+
+  const setTrackRating = (trackId, rating) => {
+    const updatedRatings = { ...trackRatings, [trackId]: rating };
+    setTrackRatings(updatedRatings);
+    // 即時持久化評分
+    saveAllData(library, favorites, playlists, activeView, updatedRatings);
+  };
+
+
+  const clearPlaylist = () => {
+    setPlaylist([]);
+    setCurrentTrackIndex(0);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+  };
+
+  const clearLibrary = () => {
+    setLibrary([]);
+    if (activeView === 'library') {
+      clearPlaylist();
     }
   };
 
@@ -923,6 +1004,7 @@ export const AudioProvider = ({ children }) => {
         favorites,
         playlists,
         library,
+        setLibrary,
         activeView,
         setActiveView,
         toggleFavorite,
@@ -934,7 +1016,15 @@ export const AudioProvider = ({ children }) => {
         removeTrackFromLibrary,
         playNext,
         playbackSource,
-        syncPlaylist
+        syncPlaylist,
+        sleepTimerEndsAt,
+        setSleepTimerEndsAt,
+        dislikedTracks,
+        toggleDislike,
+        trackRatings,
+        setTrackRating,
+        clearPlaylist,
+        clearLibrary
       }}
     >
       {children}

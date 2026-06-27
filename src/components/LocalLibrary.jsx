@@ -1,6 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical, Heart, Plus, Trash } from 'lucide-react';
+import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical, Heart, Plus, Trash, Trash2, CheckSquare, Square, ListPlus, PlayCircle } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+
+const dropdownItemStyle = {
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  padding: '8px 12px',
+  borderRadius: '6px',
+  border: 'none',
+  background: 'transparent',
+  color: '#fff',
+  fontSize: '13px',
+  cursor: 'pointer',
+  transition: 'background 0.1s'
+};
 
 const LocalLibrary = () => {
   const { 
@@ -14,10 +28,10 @@ const LocalLibrary = () => {
     importLocalFilesByPaths, 
     loadingState, 
     setLoadingState,
-    
     favorites,
     playlists,
     library,
+    setLibrary,
     activeView,
     toggleFavorite,
     addTrackToPlaylist,
@@ -26,11 +40,44 @@ const LocalLibrary = () => {
     removeTrackFromLibrary,
     playNext,
     playbackSource,
-    syncPlaylist
+    syncPlaylist,
+    clearLibrary,
+    trackRatings,
+    setTrackRating
   } = useAudio();
   
   const [isDragOver, setIsDragOver] = useState(false);
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, track }
+  const [contextMenu, setContextMenu] = useState(null);
+  const [selectedTrackIds, setSelectedTrackIds] = useState(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+  const [showPlaylistDropdown, setShowPlaylistDropdown] = useState(false);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(
+    () => JSON.parse(localStorage.getItem('aeromusic-columns') || 'null') || 
+    ['index', 'title', 'artist', 'album', 'rating', 'actions']
+  );
+
+  const ALL_COLUMNS = [
+    { id: 'index',   label: '#' },
+    { id: 'title',   label: '歌名' },
+    { id: 'artist',  label: '藝術家' },
+    { id: 'album',   label: '專輯' },
+    { id: 'rating',  label: '星星評分' },
+    { id: 'actions', label: '操作' },
+  ];
+
+  const toggleColumn = (colId) => {
+    // Never allow hiding title
+    if (colId === 'title') return;
+    const next = visibleColumns.includes(colId)
+      ? visibleColumns.filter(c => c !== colId)
+      : [...visibleColumns, colId];
+    setVisibleColumns(next);
+    localStorage.setItem('aeromusic-columns', JSON.stringify(next));
+  };
+
+  const col = (id) => visibleColumns.includes(id);
+
   const fileInputRef = useRef(null);
   const dirInputRef = useRef(null);
 
@@ -69,6 +116,52 @@ const LocalLibrary = () => {
   // 播放「排序後列表」中指定 index 的歌 — 讓 playlist 狀態與 UI 顯示完全一致
   const handlePlayTrack = (sortedIndex, currentSortedTracks) => {
     playTrackInList(currentSortedTracks, sortedIndex, activeView);
+  };
+
+  // 處理多選點擊
+  const handleRowClick = (e, index, track) => {
+    e.stopPropagation();
+
+    if (e.shiftKey && lastSelectedIndex !== null) {
+      // Shift-click: select range
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const newSelection = new Set(selectedTrackIds);
+      for (let i = start; i <= end; i++) {
+        newSelection.add(sortedTracks[i].id);
+      }
+      setSelectedTrackIds(newSelection);
+    } else if (e.metaKey || e.ctrlKey) {
+      // Cmd/Ctrl-click: toggle individual
+      const newSelection = new Set(selectedTrackIds);
+      if (newSelection.has(track.id)) {
+        newSelection.delete(track.id);
+      } else {
+        newSelection.add(track.id);
+      }
+      setSelectedTrackIds(newSelection);
+      setLastSelectedIndex(index);
+    } else {
+      // Normal click: just play the track
+      handlePlayTrack(index, sortedTracks);
+      setLastSelectedIndex(index);
+      // Optional: auto-clear selection on normal play
+      if (selectedTrackIds.size > 0) {
+        setSelectedTrackIds(new Set());
+      }
+    }
+  };
+
+  const handleCheckboxClick = (e, index, track) => {
+    e.stopPropagation();
+    const newSelection = new Set(selectedTrackIds);
+    if (newSelection.has(track.id)) {
+      newSelection.delete(track.id);
+    } else {
+      newSelection.add(track.id);
+    }
+    setSelectedTrackIds(newSelection);
+    setLastSelectedIndex(index);
   };
 
   // Interactive library sorting state
@@ -439,21 +532,145 @@ const LocalLibrary = () => {
 
       {/* LOCAL SONGS LIST */}
       <div>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: 700,
-          color: '#fff',
-          marginBottom: '16px',
+        <div style={{
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '8px'
+          marginBottom: '16px'
         }}>
-          <Disc size={18} color="var(--accent-blue)" />
-          <span>{viewTitle} 歌曲 ({viewTracks.length})</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '6px' }}>
-            （💡 對歌曲滑鼠「右鍵」可以展開高級選單，愛心可收藏）
-          </span>
-        </h3>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Disc size={18} color="var(--accent-blue)" />
+            <span>{viewTitle} 歌曲 ({viewTracks.length})</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '6px' }}>
+              （💡 支援 Cmd/Ctrl 或 Shift 多選，右鍵可展開高級選單）
+            </span>
+          </h3>
+
+          {/* 清空音樂庫按鈕 */}
+          {activeView === 'library' && viewTracks.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm('確定要清空整個本地音樂庫嗎？這將移除所有載入的清單（但不影響實際檔案）。')) {
+                  clearLibrary();
+                  setSelectedTrackIds(new Set());
+                }
+              }}
+              style={{
+                background: 'rgba(255, 59, 48, 0.15)',
+                border: '1px solid rgba(255, 59, 48, 0.3)',
+                color: '#ff3b30',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
+            >
+              <Trash2 size={14} /> 清空庫存
+            </button>
+          )}
+
+          {/* ⚙️ 欄位選擇器 */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowColumnPicker(v => !v)}
+              style={{
+                background: showColumnPicker ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'var(--text-secondary)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.2s'
+              }}
+              title="自訂欄位"
+            >
+              ⚙️ 欄位
+            </button>
+
+            {showColumnPicker && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  background: 'rgba(22, 24, 32, 0.98)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '12px',
+                  padding: '8px',
+                  minWidth: '170px',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                  zIndex: 99999
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '4px 10px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '4px' }}>
+                  顯示欄位
+                </div>
+                {ALL_COLUMNS.map(column => (
+                  <button
+                    key={column.id}
+                    onClick={() => toggleColumn(column.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      padding: '7px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: column.id === 'title' ? 'var(--text-muted)' : '#fff',
+                      fontSize: '13px',
+                      cursor: column.id === 'title' ? 'not-allowed' : 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={e => { if (column.id !== 'title') e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '4px',
+                      border: '1.5px solid',
+                      borderColor: visibleColumns.includes(column.id) ? 'var(--primary-color)' : 'rgba(255,255,255,0.25)',
+                      background: visibleColumns.includes(column.id) ? 'var(--primary-color)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      fontSize: '10px',
+                      color: '#fff'
+                    }}>
+                      {visibleColumns.includes(column.id) && '✓'}
+                    </span>
+                    {column.label}
+                    {column.id === 'title' && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>(必須)</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
 
         {viewTracks.length === 0 ? (
           /* Empty State */
@@ -490,31 +707,33 @@ const LocalLibrary = () => {
                   borderBottom: '1px solid rgba(255,255,255,0.08)',
                   background: 'rgba(255,255,255,0.02)'
                 }}>
-                  <th 
-                    onClick={() => handleSort('default')}
-                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'default' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
-                  >
-                    # {sortKey === 'default' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  <th style={{ padding: '12px 10px 12px 20px', width: '30px' }}>
+                    <button
+                      onClick={() => {
+                        if (selectedTrackIds.size === sortedTracks.length) {
+                          setSelectedTrackIds(new Set());
+                        } else {
+                          setSelectedTrackIds(new Set(sortedTracks.map(t => t.id)));
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: selectedTrackIds.size === sortedTracks.length && sortedTracks.length > 0 ? 'var(--primary-color)' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex'
+                      }}
+                    >
+                      {selectedTrackIds.size === sortedTracks.length && sortedTracks.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
+                    </button>
                   </th>
-                  <th 
-                    onClick={() => handleSort('title')}
-                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'title' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
-                  >
-                    歌名 {sortKey === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
-                  </th>
-                  <th 
-                    onClick={() => handleSort('artist')}
-                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'artist' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
-                  >
-                    藝術家 {sortKey === 'artist' && (sortDirection === 'asc' ? '▲' : '▼')}
-                  </th>
-                  <th 
-                    onClick={() => handleSort('album')}
-                    style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'album' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}
-                  >
-                    專輯 {sortKey === 'album' && (sortDirection === 'asc' ? '▲' : '▼')}
-                  </th>
-                  <th style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>操作</th>
+                  {col('index') && <th onClick={() => handleSort('default')} style={{ padding: '12px 10px', fontSize: '12px', color: sortKey === 'default' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}># {sortKey === 'default' && (sortDirection === 'asc' ? '▲' : '▼')}</th>}
+                  {col('title') && <th onClick={() => handleSort('title')} style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'title' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}>歌名 {sortKey === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}</th>}
+                  {col('artist') && <th onClick={() => handleSort('artist')} style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'artist' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}>藝術家 {sortKey === 'artist' && (sortDirection === 'asc' ? '▲' : '▼')}</th>}
+                  {col('album') && <th onClick={() => handleSort('album')} style={{ padding: '12px 20px', fontSize: '12px', color: sortKey === 'album' ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'color 0.2s' }}>專輯 {sortKey === 'album' && (sortDirection === 'asc' ? '▲' : '▼')}</th>}
+                  {col('rating') && <th style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>評分</th>}
+                  {col('actions') && <th style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>操作</th>}
                 </tr>
               </thead>
               <tbody>
@@ -523,117 +742,122 @@ const LocalLibrary = () => {
                   const isCurrentTrack = track.id === currentTrack?.id;
                   const isPlayingThis = isCurrentTrack && isPlaying;
                   const isFav = favorites.some(f => f.path === track.path || f.id === track.id);
+                  const isSelected = selectedTrackIds.has(track.id);
                   
                   return (
                     <tr
                       key={track.id}
-                      onClick={() => handlePlayTrack(index, sortedTracks)}
+                      onClick={(e) => handleRowClick(e, index, track)}
                       onContextMenu={(e) => handleRowContextMenu(e, track)}
                       style={{
                         borderBottom: '1px solid rgba(255,255,255,0.03)',
                         cursor: 'pointer',
-                        background: isCurrentTrack ? 'rgba(255, 45, 85, 0.06)' : 'transparent',
+                        background: isSelected ? 'rgba(255, 45, 85, 0.15)' : (isCurrentTrack ? 'rgba(255, 45, 85, 0.06)' : 'transparent'),
                         transition: 'background 0.15s'
                       }}
                       className="table-row-hover"
                     >
-                      {/* # Column */}
-                      <td style={{ padding: '14px 20px', fontSize: '13px', color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-secondary)', width: '50px' }}>
-                        {isPlayingThis ? (
-                          <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '12px' }}>
-                            <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'barBounce 1s ease infinite alternate' }} />
-                            <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'barBounce 0.8s ease infinite alternate 0.2s' }} />
-                            <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'barBounce 1.2s ease infinite alternate 0.1s' }} />
-                          </div>
-                        ) : (
-                          index + 1
-                        )}
+                      {/* Checkbox Column */}
+                      <td style={{ padding: '14px 10px 14px 20px', width: '30px' }}>
+                        <button
+                          onClick={(e) => handleCheckboxClick(e, index, track)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: isSelected ? 'var(--primary-color)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            opacity: isSelected ? 1 : 0.4
+                          }}
+                          className="row-checkbox"
+                        >
+                          {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                        </button>
                       </td>
+
+                      {/* # Column */}
+                      {col('index') && (
+                        <td style={{ padding: '14px 10px', fontSize: '13px', color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-secondary)', width: '50px' }}>
+                          {isPlayingThis ? (
+                            <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '12px' }}>
+                              <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'barBounce 1s ease infinite alternate' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'barBounce 0.8s ease infinite alternate 0.2s' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'barBounce 1.2s ease infinite alternate 0.1s' }} />
+                            </div>
+                          ) : index + 1}
+                        </td>
+                      )}
 
                       {/* Title Column */}
-                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : '#fff' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {/* Instant Heart Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(track);
-                            }}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: 'pointer',
-                              padding: '2px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              color: isFav ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)',
-                              transition: 'transform 0.2s, color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                            title={isFav ? "取消最愛收藏" : "加入我的最愛"}
-                          >
-                            <Heart size={14} fill={isFav ? "var(--primary-color)" : "transparent"} />
-                          </button>
-
-                          <Music size={14} color={isCurrentTrack ? 'var(--primary-color)' : 'var(--text-muted)'} />
-                          <span style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '300px',
-                            display: 'inline-block'
-                          }}>{track.title}</span>
-                        </div>
-                      </td>
+                      {col('title') && (
+                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : '#fff' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleFavorite(track); }}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: isFav ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)', transition: 'transform 0.2s, color 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              title={isFav ? '取消最愛收藏' : '加入我的最愛'}
+                            >
+                              <Heart size={14} fill={isFav ? 'var(--primary-color)' : 'transparent'} />
+                            </button>
+                            <Music size={14} color={isCurrentTrack ? 'var(--primary-color)' : 'var(--text-muted)'} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px', display: 'inline-block' }}>{track.title}</span>
+                          </div>
+                        </td>
+                      )}
 
                       {/* Artist Column */}
-                      <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        {track.artist}
-                      </td>
+                      {col('artist') && (
+                        <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-secondary)' }}>{track.artist}</td>
+                      )}
 
                       {/* Album Column */}
-                      <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                        {track.album}
-                      </td>
+                      {col('album') && (
+                        <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-muted)' }}>{track.album}</td>
+                      )}
 
-                      {/* More options dots / play */}
-                      <td style={{ padding: '14px 20px', fontSize: '13px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRowContextMenu(e, track);
-                            }}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              color: 'var(--text-muted)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              borderRadius: '4px'
-                            }}
-                            className="more-btn"
-                          >
-                            <MoreVertical size={14} />
-                          </button>
-                          
-                          <button style={{
-                            border: 'none',
-                            background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)',
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            cursor: 'pointer'
-                          }} title="播放這首">
-                            <Play size={12} fill="#fff" style={{ marginLeft: '1px' }} />
-                          </button>
-                        </div>
-                      </td>
+                      {/* Rating Column */}
+                      {col('rating') && (
+                        <td style={{ padding: '14px 20px' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            {[1,2,3,4,5].map(star => {
+                              const currentRating = trackRatings?.[track.id] || 0;
+                              return (
+                                <button
+                                  key={star}
+                                  onClick={() => setTrackRating(track.id, currentRating === star ? 0 : star)}
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: star <= currentRating ? '#ffcc00' : 'rgba(255,255,255,0.2)',
+                                    cursor: 'pointer',
+                                    padding: '1px',
+                                    fontSize: '13px',
+                                    lineHeight: 1,
+                                    transition: 'transform 0.1s'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.3)'}
+                                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                  ★
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Actions Column */}
+                      {col('actions') && (
+                        <td style={{ padding: '14px 20px', fontSize: '13px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button onClick={(e) => { e.stopPropagation(); handleRowContextMenu(e, track); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }} className="more-btn"><MoreVertical size={14} /></button>
+                            <button style={{ border: 'none', background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }} title="播放這首"><Play size={12} fill="#fff" style={{ marginLeft: '1px' }} /></button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -642,6 +866,193 @@ const LocalLibrary = () => {
           </div>
         )}
       </div>
+
+      {/* ACTION BAR (Multi-selection) */}
+      {selectedTrackIds.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '100px', // Above PlaybackBar
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(28, 30, 38, 0.95)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: '16px',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          zIndex: 9999
+        }}>
+          <div style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>
+            已選擇 <span style={{ color: 'var(--primary-color)' }}>{selectedTrackIds.size}</span> 首歌曲
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+            {/* 加入指定歌單 */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowPlaylistDropdown(v => !v)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              >
+                <ListPlus size={16} /> 加入歌單 ▾
+              </button>
+
+              {/* Dropdown */}
+              {showPlaylistDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 8px)',
+                    left: 0,
+                    background: 'rgba(28, 30, 38, 0.98)',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '10px',
+                    padding: '6px',
+                    minWidth: '180px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                    zIndex: 99999
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* 加入目前播放佇列 */}
+                  <button
+                    onClick={() => {
+                      const selected = sortedTracks.filter(t => selectedTrackIds.has(t.id));
+                      setPlaylist([...playlist, ...selected]);
+                      setSelectedTrackIds(new Set());
+                      setShowPlaylistDropdown(false);
+                    }}
+                    style={dropdownItemStyle}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    🎵 加入目前播放佇列
+                  </button>
+
+                  {playlists.length > 0 && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                  )}
+
+                  {playlists.map(pl => (
+                    <button
+                      key={pl.id}
+                      onClick={() => {
+                        const selected = sortedTracks.filter(t => selectedTrackIds.has(t.id));
+                        selected.forEach(track => addTrackToPlaylist(pl.id, track));
+                        setSelectedTrackIds(new Set());
+                        setShowPlaylistDropdown(false);
+                        alert(`已將 ${selected.length} 首歌曲加入「${pl.name}」！`);
+                      }}
+                      style={dropdownItemStyle}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      📋 {pl.name}
+                    </button>
+                  ))}
+
+                  {playlists.length === 0 && (
+                    <div style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      尚未建立任何歌單
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Play Now Selection */}
+            <button
+              onClick={() => {
+                const selected = sortedTracks.filter(t => selectedTrackIds.has(t.id));
+                setPlaylist(selected);
+                playTrackInList(selected, 0, activeView);
+                setSelectedTrackIds(new Set());
+              }}
+              style={{
+                background: 'var(--primary-gradient)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px var(--primary-glow)'
+              }}
+            >
+              <PlayCircle size={16} /> 播放所選
+            </button>
+            
+            {/* Delete Selection (only in active views where deletion makes sense) */}
+            <button
+              onClick={() => {
+                if (window.confirm(`確定要從清單移除這 ${selectedTrackIds.size} 首歌曲嗎？`)) {
+                  // Actually implement batch delete based on activeView
+                  if (activeView === 'library') {
+                    const newLib = library.filter(t => !selectedTrackIds.has(t.id));
+                    setLibrary(newLib);
+                  } else if (activeView.startsWith('playlist-')) {
+                    const pid = activeView.replace('playlist-', '');
+                    selectedTrackIds.forEach(id => removeTrackFromPlaylist(pid, id));
+                  }
+                  setSelectedTrackIds(new Set());
+                }
+              }}
+              style={{
+                background: 'rgba(255, 59, 48, 0.1)',
+                border: '1px solid rgba(255, 59, 48, 0.3)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                color: '#ff3b30',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)'}
+            >
+              <Trash2 size={16} /> 移除所選
+            </button>
+          </div>
+
+          <button
+            onClick={() => setSelectedTrackIds(new Set())}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              marginLeft: '8px',
+              padding: '4px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* FLOAT GLASSMORPHIC CONTEXT MENU */}
       {contextMenu && (() => {
@@ -1103,3 +1514,4 @@ const LocalLibrary = () => {
 };
 
 export default LocalLibrary;
+
