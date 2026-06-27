@@ -3,29 +3,105 @@ const path = require('path');
 const fs = require('fs');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
+const approvedScanRoots = new Set();
 
-// Fast recursive directory scanner using Node.js fs.promises (avoids WebKit FileSystem API limitations)
-async function scanAudioFiles(dirPath, results = []) {
-  try {
-    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    const promises = [];
-    for (const entry of entries) {
-      // Skip hidden files/folders and dev junk
-      if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '__MACOSX') continue;
-      const fullPath = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) {
-        promises.push(scanAudioFiles(fullPath, results));
-      } else {
-        const ext = path.extname(entry.name).toLowerCase();
-        if (AUDIO_EXTENSIONS.has(ext)) {
-          results.push(fullPath);
-        }
+function resolveExistingPath(targetPath) {
+  return fs.realpathSync.native ? fs.realpathSync.native(targetPath) : fs.realpathSync(targetPath);
+}
+
+function rememberApprovedRoots(paths) {
+  for (const rawPath of paths || []) {
+    if (!rawPath) continue;
+    try {
+      const resolved = resolveExistingPath(rawPath);
+      const stat = fs.statSync(resolved);
+      approvedScanRoots.add(stat.isDirectory() ? resolved : path.dirname(resolved));
+    } catch (e) {
+      console.warn('Skipping unapproved root candidate:', rawPath, e.message);
+    }
+  }
+}
+
+function rememberApprovedRootsFromUserData(data) {
+  const roots = [];
+  const collections = [data?.library || [], data?.favorites || []];
+  for (const playlist of data?.playlists || []) {
+    collections.push(playlist?.tracks || []);
+  }
+  for (const tracks of collections) {
+    for (const track of tracks) {
+      if (track?.path) {
+        roots.push(track.path);
       }
     }
-    await Promise.all(promises);
-  } catch (e) {
-    console.warn('Scan error (skipping):', dirPath, e.message);
   }
+  rememberApprovedRoots(roots);
+}
+
+function isPathWithinApprovedRoots(targetPath) {
+  try {
+    const resolved = resolveExistingPath(targetPath);
+    for (const root of approvedScanRoots) {
+      if (resolved === root || resolved.startsWith(root + path.sep)) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function ensureApprovedDirectory(dirPath) {
+  const resolved = resolveExistingPath(dirPath);
+  const stat = fs.statSync(resolved);
+  if (!stat.isDirectory()) {
+    throw new Error('Approved scan target must be a directory');
+  }
+  if (!isPathWithinApprovedRoots(resolved)) {
+    throw new Error('Directory is outside approved music roots');
+  }
+  return resolved;
+}
+
+function ensureApprovedFile(filePath) {
+  const resolved = resolveExistingPath(filePath);
+  const stat = fs.statSync(resolved);
+  if (!stat.isFile()) {
+    throw new Error('Approved trash target must be a file');
+  }
+  if (!isPathWithinApprovedRoots(resolved)) {
+    throw new Error('File is outside approved music roots');
+  }
+  return resolved;
+}
+
+// Iterative scanner keeps large libraries responsive and avoids recursive Promise storms
+async function scanAudioFiles(dirPath) {
+  const results = [];
+  const pending = [dirPath];
+
+  while (pending.length > 0) {
+    const currentDir = pending.pop();
+    try {
+      const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '__MACOSX') continue;
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          pending.push(fullPath);
+        } else {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (AUDIO_EXTENSIONS.has(ext)) {
+            results.push(fullPath);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Scan error (skipping):', currentDir, e.message);
+    }
+  }
+
   return results;
 }
 
@@ -36,12 +112,14 @@ ipcMain.handle('select-folders', async (event) => {
     title: '選擇音樂資料夾'
   });
   if (result.canceled) return [];
+  rememberApprovedRoots(result.filePaths);
   return result.filePaths;
 });
 
 // IPC: Fast Node.js folder scanner
 ipcMain.handle('scan-folder-for-audio', async (event, folderPath) => {
-  return scanAudioFiles(folderPath);
+  const approvedPath = ensureApprovedDirectory(folderPath);
+  return scanAudioFiles(approvedPath);
 });
 
 // IPC: Check if a path is a directory
@@ -64,7 +142,8 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
 // IPC: Move item to trash
 ipcMain.handle('trash-item', async (event, filePath) => {
   try {
-    await shell.trashItem(filePath);
+    const approvedPath = ensureApprovedFile(filePath);
+    await shell.trashItem(approvedPath);
     return true;
   } catch (e) {
     console.error('Failed to trash item', e);
@@ -86,7 +165,9 @@ ipcMain.handle('load-user-data', async () => {
     const dataPath = getUserDataPath();
     if (fs.existsSync(dataPath)) {
       const data = await fs.promises.readFile(dataPath, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      rememberApprovedRootsFromUserData(parsed);
+      return parsed;
     }
   } catch (e) {
     console.error('Failed to load user data:', e);
@@ -96,6 +177,7 @@ ipcMain.handle('load-user-data', async () => {
 
 ipcMain.handle('save-user-data', async (event, data) => {
   try {
+    rememberApprovedRootsFromUserData(data);
     const dataPath = getUserDataPath();
     const dir = path.dirname(dataPath);
     if (!fs.existsSync(dir)) {
