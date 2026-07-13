@@ -174,7 +174,7 @@ const ListenNow = () => {
           </button>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'none', mdDisplay: 'block' }}>
+        <div className="hero-icon" style={{ position: 'relative', zIndex: 1 }}>
           <div style={{
             width: '120px',
             height: '120px',
@@ -278,12 +278,21 @@ const ListenNow = () => {
             return (
               <div
                 key={track.id}
+                role="button"
+                tabIndex={0}
                 className="glass-card"
                 onClick={() => selectTrack(trackIdx)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectTrack(trackIdx);
+                  }
+                }}
                 style={{
                   padding: '16px',
                   cursor: 'pointer',
-                  position: 'relative'
+                  position: 'relative',
+                  outlineOffset: '2px'
                 }}
               >
                 {/* Album Cover Container with Hover Overlay */}
@@ -421,6 +430,17 @@ const ListenNow = () => {
       <style dangerouslySetInnerHTML={{__html: `
         .glass-card:hover .play-overlay {
           opacity: 1 !important;
+        }
+        .glass-card:focus-visible {
+          outline: 2px solid var(--primary-color);
+        }
+        .hero-icon {
+          display: none;
+        }
+        @media (min-width: 768px) {
+          .hero-icon {
+            display: block;
+          }
         }
         @media (max-width: 768px) {
           /* Responsive adjustments if needed */

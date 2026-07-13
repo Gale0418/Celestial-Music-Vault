@@ -4,6 +4,7 @@ const fs = require('fs');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
 const approvedScanRoots = new Set();
+const APPROVED_ROOTS_REGISTRY = 'approved-roots.json';
 
 function resolveExistingPath(targetPath) {
   return fs.realpathSync.native ? fs.realpathSync.native(targetPath) : fs.realpathSync(targetPath);
@@ -22,27 +23,13 @@ function rememberApprovedRoots(paths) {
   }
 }
 
-function rememberApprovedRootsFromUserData(data) {
-  const roots = [];
-  const collections = [data?.library || [], data?.favorites || []];
-  for (const playlist of data?.playlists || []) {
-    collections.push(playlist?.tracks || []);
-  }
-  for (const tracks of collections) {
-    for (const track of tracks) {
-      if (track?.path) {
-        roots.push(track.path);
-      }
-    }
-  }
-  rememberApprovedRoots(roots);
-}
-
 function isPathWithinApprovedRoots(targetPath) {
   try {
     const resolved = resolveExistingPath(targetPath);
     for (const root of approvedScanRoots) {
-      if (resolved === root || resolved.startsWith(root + path.sep)) {
+      const relative = path.relative(root, resolved);
+      // path.relative handles separators and prevents prefix/path-traversal tricks.
+      if (relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))) {
         return true;
       }
     }
@@ -113,6 +100,7 @@ ipcMain.handle('select-folders', async (event) => {
   });
   if (result.canceled) return [];
   rememberApprovedRoots(result.filePaths);
+  await persistApprovedRootsRegistry();
   return result.filePaths;
 });
 
@@ -134,8 +122,11 @@ ipcMain.handle('is-directory', async (event, filePath) => {
 
 // IPC listener to open Finder/File Manager highlighting the specific file path
 ipcMain.on('show-item-in-folder', (event, filePath) => {
-  if (filePath) {
-    shell.showItemInFolder(filePath);
+  if (!filePath) return;
+  try {
+    shell.showItemInFolder(ensureApprovedFile(filePath));
+  } catch (e) {
+    console.warn('Refusing to reveal unapproved item:', e.message);
   }
 });
 
@@ -157,6 +148,81 @@ ipcMain.handle('show-message-box', async (event, options) => {
   return result;
 });
 
+function isApprovedExistingTrack(track) {
+  if (!track || typeof track !== 'object' || typeof track.path !== 'string' || !track.path) return false;
+  try {
+    ensureApprovedFile(track.path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getApprovedRootsRegistryPath() {
+  return path.join(app.getPath('userData'), APPROVED_ROOTS_REGISTRY);
+}
+
+function loadApprovedRootsRegistry() {
+  approvedScanRoots.clear();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(getApprovedRootsRegistryPath(), 'utf8'));
+    const roots = Array.isArray(parsed?.roots) ? parsed.roots : [];
+    for (const rawPath of roots) {
+      try {
+        const resolved = resolveExistingPath(rawPath);
+        if (fs.statSync(resolved).isDirectory()) approvedScanRoots.add(resolved);
+      } catch {
+        // Deleted or inaccessible picker-approved roots are no longer trusted.
+      }
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Ignoring invalid approved-roots registry:', error.message);
+    }
+  }
+}
+
+async function persistApprovedRootsRegistry() {
+  const registryPath = getApprovedRootsRegistryPath();
+  const tempPath = `${registryPath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.promises.mkdir(path.dirname(registryPath), { recursive: true });
+  try {
+    await fs.promises.writeFile(
+      tempPath,
+      JSON.stringify({ version: 1, roots: Array.from(approvedScanRoots) }, null, 2),
+      'utf8'
+    );
+    try {
+      await fs.promises.rename(tempPath, registryPath);
+    } catch (error) {
+      if (error.code !== 'EEXIST' && error.code !== 'EPERM') throw error;
+      await fs.promises.rm(registryPath, { force: true });
+      await fs.promises.rename(tempPath, registryPath);
+    }
+  } finally {
+    await fs.promises.rm(tempPath, { force: true }).catch(() => {});
+  }
+}
+
+// Persisted data is untrusted input. It can retain only files already approved
+// by the native folder picker; it never expands approvedScanRoots.
+function filterPersistedTrackList(tracks) {
+  return Array.isArray(tracks) ? tracks.filter(isApprovedExistingTrack) : [];
+}
+
+function filterPersistedUserData(data) {
+  if (!data || typeof data !== 'object') return data;
+  const filtered = { ...data };
+  filtered.library = filterPersistedTrackList(data.library);
+  filtered.favorites = filterPersistedTrackList(data.favorites);
+  filtered.playlists = Array.isArray(data.playlists)
+    ? data.playlists.map((playlist) => ({
+      ...playlist,
+      tracks: filterPersistedTrackList(playlist?.tracks)
+    }))
+    : [];
+  return filtered;
+}
 // IPC: User Data Persistence (Favorites, Playlists, Library, Playback States)
 const getUserDataPath = () => path.join(app.getPath('userData'), 'user-data.json');
 
@@ -165,9 +231,7 @@ ipcMain.handle('load-user-data', async () => {
     const dataPath = getUserDataPath();
     if (fs.existsSync(dataPath)) {
       const data = await fs.promises.readFile(dataPath, 'utf8');
-      const parsed = JSON.parse(data);
-      rememberApprovedRootsFromUserData(parsed);
-      return parsed;
+      return filterPersistedUserData(JSON.parse(data));
     }
   } catch (e) {
     console.error('Failed to load user data:', e);
@@ -177,13 +241,12 @@ ipcMain.handle('load-user-data', async () => {
 
 ipcMain.handle('save-user-data', async (event, data) => {
   try {
-    rememberApprovedRootsFromUserData(data);
     const dataPath = getUserDataPath();
     const dir = path.dirname(dataPath);
     if (!fs.existsSync(dir)) {
       await fs.promises.mkdir(dir, { recursive: true });
     }
-    await fs.promises.writeFile(dataPath, JSON.stringify(data, null, 2), 'utf8');
+    await fs.promises.writeFile(dataPath, JSON.stringify(filterPersistedUserData(data), null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error('Failed to save user data:', e);
@@ -249,6 +312,7 @@ function createWindow() {
 
 // macOS standard: keep app running when all windows close unless quit
   app.whenReady().then(() => {
+    loadApprovedRootsRegistry();
     // Make sure IPC can receive crash logs and write them to a file
     ipcMain.on('crash-log', (event, errorInfo) => {
       try {
@@ -278,3 +342,7 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+module.exports = {
+  AUDIO_EXTENSIONS, approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, resolveExistingPath, isPathWithinApprovedRoots, ensureApprovedDirectory, ensureApprovedFile, scanAudioFiles, filterPersistedUserData
+};

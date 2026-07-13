@@ -8,6 +8,7 @@
     "dev": "vite",
     "start": "electron .",
     "build": "vite build",
+    "test": "node tests/security-smoke.cjs && node tests/security-behavior.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "pack": "electron-builder --dir",

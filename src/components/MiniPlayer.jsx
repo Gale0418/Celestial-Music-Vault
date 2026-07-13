@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, SkipForward, SkipBack, Maximize2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Maximize2, Music } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const MiniPlayer = ({ onExit }) => {
@@ -63,13 +63,21 @@ const MiniPlayer = ({ onExit }) => {
           borderRadius: '8px',
           overflow: 'hidden',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          background: 'rgba(255,255,255,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
-          <img 
-            src={currentTrack?.cover || 'https://via.placeholder.com/64'} 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-            alt="cover" 
-          />
+          {currentTrack?.cover ? (
+            <img
+              src={currentTrack.cover}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              alt="cover"
+            />
+          ) : (
+            <Music size={24} color="rgba(255,255,255,0.5)" />
+          )}
         </div>
 
         {/* Track Info */}

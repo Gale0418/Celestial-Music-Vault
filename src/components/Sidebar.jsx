@@ -269,12 +269,17 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           }}>
             播放清單
           </p>
-          <PlusCircle 
-            size={15} 
+          <button
             onClick={handleCreatePlaylistClick}
-            style={{ color: 'var(--text-muted)', cursor: 'pointer', transition: 'color 0.2s' }} 
+            aria-label="建立新歌單"
+            style={{ border: 'none', background: 'transparent', padding: 0, outlineOffset: '2px' }}
             className="add-playlist-btn"
-          />
+          >
+            <PlusCircle
+              size={15}
+              style={{ color: 'var(--text-muted)', cursor: 'pointer', transition: 'color 0.2s' }}
+            />
+          </button>
         </div>
 
         {playlists.length === 0 && !isCreatingPlaylist ? (
@@ -314,7 +319,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           return (
               <div
                 key={pl.id}
-                onClick={() => handleViewClick(`playlist-${pl.id}`)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -324,35 +328,56 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   fontSize: '13px',
                   background: isPlActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
                   color: isPlActive ? '#fff' : 'var(--text-secondary)',
-                  cursor: 'pointer',
                   fontWeight: isPlActive ? 600 : 500,
                   transition: 'all 0.2s',
                   position: 'relative'
                 }}
                 className="playlist-sidebar-item"
               >
-                <span style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  paddingRight: '8px'
-                }}>
-                  📻 {pl.name}
-                </span>
+                <button
+                  onClick={() => handleViewClick(`playlist-${pl.id}`)}
+                  aria-label={`檢視歌單 ${pl.name}`}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'inherit',
+                    fontFamily: 'inherit',
+                    fontSize: 'inherit',
+                    fontWeight: 'inherit',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    flex: 1,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    padding: 0,
+                    outlineOffset: '2px'
+                  }}
+                  className="playlist-btn"
+                >
+                  <span style={{ paddingRight: '8px' }}>
+                    📻 {pl.name}
+                  </span>
+                </button>
 
                 {/* Delete button (Trash icon) */}
-                <Trash2 
-                  size={12} 
-                  color="rgba(255,255,255,0.3)"
-                  className="delete-btn"
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     if (window.confirm(`確定要刪除播放清單 "${pl.name}" 嗎？`)) {
                       deletePlaylist(pl.id);
                     }
                   }}
-                  style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                />
+                  aria-label={`刪除歌單 ${pl.name}`}
+                  style={{ border: 'none', background: 'transparent', padding: 0, outlineOffset: '2px' }}
+                  className="delete-btn"
+                >
+                  <Trash2
+                    size={12}
+                    color="rgba(255,255,255,0.3)"
+                    style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                  />
+                </button>
               </div>
             );
           })}
@@ -376,6 +401,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         }
         .delete-playlist-icon:hover {
           color: var(--primary-color) !important;
+        }
+        .playlist-btn:focus-visible, .add-playlist-btn:focus-visible, .delete-btn:focus-visible {
+          outline: 2px solid var(--primary-color);
         }
       `}} />
     </aside>

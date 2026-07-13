@@ -22,20 +22,29 @@ const ImmersionView = ({ onExit }) => {
   // Auto hide controls after 3 seconds of inactivity
   useEffect(() => {
     let timeout;
-    const handleMouseMove = () => {
+    const revealControls = () => {
       setShowControls(true);
       clearTimeout(timeout);
       timeout = setTimeout(() => setShowControls(false), 3000);
     };
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    timeout = setTimeout(() => setShowControls(false), 3000);
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onExit();
+        return;
+      }
+      revealControls();
+    };
+
+    window.addEventListener('mousemove', revealControls);
+    window.addEventListener('keydown', handleKeyDown);
+    revealControls();
     
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousemove', revealControls);
+      window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(timeout);
     };
-  }, []);
+  }, [onExit]);
 
   const formatTime = (secs) => {
     if (isNaN(secs)) return '0:00';
@@ -174,8 +183,8 @@ const ImmersionView = ({ onExit }) => {
         <button 
           onClick={onExit}
           style={{
-            position: 'absolute',
-            top: '-60vh',
+            position: 'fixed',
+            top: '24px',
             right: '40px',
             ...iconBtnStyle,
             background: 'rgba(255,255,255,0.1)',

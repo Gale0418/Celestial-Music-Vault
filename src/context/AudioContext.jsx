@@ -133,6 +133,7 @@ export const AudioProvider = ({ children }) => {
   useEffect(() => {
     const audio = videoRef.current;
     if (!audio) return;
+    audio.crossOrigin = 'anonymous';
     audioRef.current = audio;
 
     // Helper to safely load audio source
@@ -396,9 +397,10 @@ export const AudioProvider = ({ children }) => {
   
   const toggleFavorite = (track) => {
     setFavorites(prev => {
-      const exists = prev.some(t => t.path === track.path || t.id === track.id);
+      const sameTrack = (t) => (t.id && track.id && t.id === track.id) || (!!t.path && !!track.path && t.path === track.path);
+      const exists = prev.some(sameTrack);
       if (exists) {
-        return prev.filter(t => t.path !== track.path && t.id !== track.id);
+        return prev.filter(t => !sameTrack(t));
       } else {
         return [...prev, track];
       }
@@ -425,7 +427,8 @@ export const AudioProvider = ({ children }) => {
   const addTrackToPlaylist = (playlistId, track) => {
     setPlaylists(prev => prev.map(p => {
       if (p.id === playlistId) {
-        const exists = p.tracks.some(t => t.path === track.path || t.id === track.id);
+        const sameTrack = (t) => (t.id && track.id && t.id === track.id) || (!!t.path && !!track.path && t.path === track.path);
+        const exists = p.tracks.some(sameTrack);
         if (exists) return p;
         return { ...p, tracks: [...p.tracks, track] };
       }
@@ -511,6 +514,7 @@ export const AudioProvider = ({ children }) => {
 
   // Previous Track
   const handlePrevTrack = () => {
+    if (!audioRef.current) return;
     if (currentTime > 5) {
       // restart current song if playing for more than 5s
       audioRef.current.currentTime = 0;
@@ -899,6 +903,10 @@ export const AudioProvider = ({ children }) => {
 
   const removeTrackFromLibrary = (trackId) => {
     setLibrary(prev => {
+      const removedTrack = prev.find(t => t.id === trackId);
+      if (removedTrack && removedTrack.url && removedTrack.url.startsWith('blob:')) {
+        URL.revokeObjectURL(removedTrack.url);
+      }
       const updated = prev.filter(t => t.id !== trackId);
       if (activeView === 'library') {
         setPlaylist(updated);

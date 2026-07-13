@@ -237,18 +237,20 @@ const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion 
 
         {/* Dislike button */}
         <button
-          onClick={() => toggleDislike(currentTrack.id)}
+          onClick={() => currentTrack && toggleDislike(currentTrack.id)}
+          disabled={!currentTrack}
           style={{
             border: 'none',
             background: 'transparent',
-            cursor: 'pointer',
+            cursor: currentTrack ? 'pointer' : 'default',
             color: isDisliked ? '#ff9500' : 'var(--text-secondary)',
             outline: 'none',
-            transition: 'transform 0.1s'
+            transition: 'transform 0.1s',
+            opacity: currentTrack ? 1 : 0.5
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseDown={(e) => { if(currentTrack) e.currentTarget.style.transform = 'scale(0.8)' }}
+          onMouseUp={(e) => { if(currentTrack) e.currentTarget.style.transform = 'scale(1)' }}
+          onMouseLeave={(e) => { if(currentTrack) e.currentTarget.style.transform = 'scale(1)' }}
           id="dislike-btn"
           title="隱藏此歌曲"
         >

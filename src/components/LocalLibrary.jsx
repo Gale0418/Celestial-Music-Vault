@@ -49,13 +49,20 @@ const LocalLibrary = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedTrackIds, setSelectedTrackIds] = useState(new Set());
+
+  useEffect(() => {
+    setSelectedTrackIds(new Set());
+  }, [activeView]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
   const [showPlaylistDropdown, setShowPlaylistDropdown] = useState(false);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(
-    () => JSON.parse(localStorage.getItem('aeromusic-columns') || 'null') || 
-    ['index', 'title', 'artist', 'album', 'rating', 'actions']
-  );
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('aeromusic-columns'));
+      if (Array.isArray(saved)) return saved;
+    } catch(e) {}
+    return ['index', 'title', 'artist', 'album', 'rating', 'actions'];
+  });
 
   const ALL_COLUMNS = [
     { id: 'index',   label: '#' },
@@ -231,8 +238,11 @@ const LocalLibrary = () => {
         const ext = entry.name.substring(dotIdx).toLowerCase();
         const supportedExts = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4'];
         if (supportedExts.includes(ext)) {
-          const file = await new Promise((resolve) => entry.file(resolve));
-          filesToImport.push(file);
+          const file = await new Promise((resolve) => entry.file(resolve, (err) => {
+            console.error('File read error:', err);
+            resolve(null);
+          }));
+          if (file) filesToImport.push(file);
         }
       }
     } else if (entry.isDirectory) {
@@ -741,7 +751,7 @@ const LocalLibrary = () => {
                   // 用 track.id 對照 currentTrack.id 判斷是否正在播放（不受 index 影響）
                   const isCurrentTrack = track.id === currentTrack?.id;
                   const isPlayingThis = isCurrentTrack && isPlaying;
-                  const isFav = favorites.some(f => f.path === track.path || f.id === track.id);
+                    const isFav = favorites.some(f => (f.id && track.id && f.id === track.id) || (!!f.path && !!track.path && f.path === track.path));
                   const isSelected = selectedTrackIds.has(track.id);
                   
                   return (
@@ -1056,7 +1066,7 @@ const LocalLibrary = () => {
 
       {/* FLOAT GLASSMORPHIC CONTEXT MENU */}
       {contextMenu && (() => {
-        const isContextMenuFav = favorites.some(f => f.path === contextMenu.track.path || f.id === contextMenu.track.id);
+        const isContextMenuFav = favorites.some(f => (f.id && contextMenu.track.id && f.id === contextMenu.track.id) || (!!f.path && !!contextMenu.track.path && f.path === contextMenu.track.path));
         return (
           <div
             className="glass-effect"
