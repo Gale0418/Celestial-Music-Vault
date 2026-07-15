@@ -272,7 +272,6 @@ const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion 
           <button
             onClick={toggleShuffle}
             style={{
-              border: 'none',
               background: isShuffle ? 'rgba(255, 45, 85, 0.12)' : 'transparent',
               cursor: 'pointer',
               color: isShuffle ? 'var(--primary-color)' : 'var(--text-secondary)',
@@ -373,7 +372,6 @@ const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion 
           <button
             onClick={cycleRepeat}
             style={{
-              border: 'none',
               background: isRepeat ? 'rgba(255, 45, 85, 0.12)' : 'transparent',
               cursor: 'pointer',
               color: isRepeat ? 'var(--primary-color)' : 'var(--text-secondary)',
@@ -577,7 +575,6 @@ const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion 
           <button
             onClick={() => setShowVideo(!showVideo)}
             style={{
-              border: 'none',
               background: showVideo ? 'rgba(255, 45, 85, 0.15)' : 'transparent',
               padding: '6px',
               borderRadius: '6px',

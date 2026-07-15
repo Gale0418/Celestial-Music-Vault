@@ -149,7 +149,10 @@ const ListenNow = () => {
           </p>
 
           <button
-            onClick={() => selectTrack(0)}
+            onClick={() => {
+              if (playlist.length > 0) selectTrack(0);
+            }}
+            disabled={playlist.length === 0}
             style={{
               padding: '10px 22px',
               borderRadius: '20px',

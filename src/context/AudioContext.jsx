@@ -669,7 +669,14 @@ export const AudioProvider = ({ children }) => {
   };
 
   const clearLibrary = () => {
-    setLibrary([]);
+    setLibrary(prev => {
+      prev.forEach(track => {
+        if (track.url?.startsWith('blob:')) {
+          URL.revokeObjectURL(track.url);
+        }
+      });
+      return [];
+    });
     if (activeView === 'library') {
       clearPlaylist();
     }
@@ -732,9 +739,13 @@ export const AudioProvider = ({ children }) => {
     }
 
     if (newTracks.length > 0) {
+      let hasRealNewTracks = false;
       setLibrary(prev => {
         const existingPaths = new Set(prev.map(t => t.path).filter(Boolean));
         const filteredNew = newTracks.filter(t => !t.path || !existingPaths.has(t.path));
+        
+        if (filteredNew.length > 0) hasRealNewTracks = true;
+        
         const updatedLib = [...prev, ...filteredNew];
         
         setPlaylist(updatedLib);
@@ -746,14 +757,16 @@ export const AudioProvider = ({ children }) => {
         return updatedLib;
       });
 
-      setIsPlaying(true);
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.play()
-            .then(() => setIsPlaying(true))
-            .catch(() => setIsPlaying(false));
-        }
-      }, 100);
+      if (hasRealNewTracks) {
+        setIsPlaying(true);
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => setIsPlaying(false));
+          }
+        }, 100);
+      }
     }
 
     setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
@@ -817,9 +830,13 @@ export const AudioProvider = ({ children }) => {
     }
 
     if (newTracks.length > 0) {
+      let hasRealNewTracks = false;
       setLibrary(prev => {
         const existingPaths = new Set(prev.map(t => t.path));
         const filteredNew = newTracks.filter(t => !existingPaths.has(t.path));
+        
+        if (filteredNew.length > 0) hasRealNewTracks = true;
+        
         const updatedLib = [...prev, ...filteredNew];
         
         setPlaylist(updatedLib);
@@ -831,13 +848,15 @@ export const AudioProvider = ({ children }) => {
         return updatedLib;
       });
       
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.play()
-            .then(() => setIsPlaying(true))
-            .catch(() => setIsPlaying(false));
-        }
-      }, 100);
+      if (hasRealNewTracks) {
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => setIsPlaying(false));
+          }
+        }, 100);
+      }
     }
 
     setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });

@@ -1019,6 +1019,13 @@ const LocalLibrary = () => {
                 if (window.confirm(`確定要從清單移除這 ${selectedTrackIds.size} 首歌曲嗎？`)) {
                   // Actually implement batch delete based on activeView
                   if (activeView === 'library') {
+                    // Revoke object URLs to avoid memory leaks
+                    const removedTracks = library.filter(t => selectedTrackIds.has(t.id));
+                    removedTracks.forEach(track => {
+                      if (track.url && track.url.startsWith('blob:')) {
+                        URL.revokeObjectURL(track.url);
+                      }
+                    });
                     const newLib = library.filter(t => !selectedTrackIds.has(t.id));
                     setLibrary(newLib);
                   } else if (activeView.startsWith('playlist-')) {
