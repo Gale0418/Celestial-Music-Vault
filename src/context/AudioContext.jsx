@@ -469,7 +469,11 @@ export const AudioProvider = ({ children }) => {
       setProgress(0);
       setCurrentTime(0);
     }
-  }, [currentTrackIndex, playlist]);
+  // ✅ 只監聽 currentTrackIndex，不監聽 playlist 整個陣列
+  // 原本 [currentTrackIndex, playlist] 會在 playlist 參考改變時（例如 autosave、
+  // favorites 更新）重新 load audio，導致頻繁轉圈圈！
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrackIndex]);
 
   // Handle Play/Pause
   const togglePlay = () => {
