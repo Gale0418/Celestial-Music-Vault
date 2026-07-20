@@ -78,9 +78,10 @@ ELECTRON_BUILDER_CACHE=/tmp/electron-builder-cache TMPDIR=/tmp \
 
 | 問題 | 原因 | 解決 |
 |------|------|------|
-| `unlinkat ... directory not empty` | SMB 在 dist-app/ 建立了 `.smbdelete` 鎖定檔 | 設定 `TMPDIR=/tmp` + `ELECTRON_BUILDER_CACHE=/tmp/...` |
-| `ENOENT: builder-debug.yml` | electron-builder 嘗試在 NAS 上寫 debug 檔但路徑被鎖 | 同上，TMPDIR 搞定 |
+| 打包失敗 `unlinkat ...` | SMB 在 dist-app/ 建立了 `.smbdelete` 鎖定檔 | 設定 `TMPDIR=/tmp` + `ELECTRON_BUILDER_CACHE=/tmp/...` |
+| 打包失敗 `ENOENT: ...` | electron-builder 嘗試在 NAS 上寫 debug 檔但路徑被鎖 | 同上，TMPDIR 搞定 |
 | `arm64 requires signing` | Apple Silicon 需要 code sign | 本機測試可 skip，若要分發需申請 Apple Developer 憑證 |
+| **【無限轉圈圈 Bug】** 換歌或閒置時狂 reload 導致 UI 凍結 | `AudioContext` 裡監聽了整個 `playlist` 陣列，只要 autosave 觸發，陣列 reference 一變就會重新 `audioRef.load()` | 修改 `useEffect` 依賴陣列，**只監聽 `currentTrackIndex`**，不要把整個 `playlist` 丟進去！ |
 
 ---
 
