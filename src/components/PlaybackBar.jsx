@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { 
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
-  Volume2, VolumeX, Sliders, MonitorPlay, ListMusic, Heart,
+  Volume2, VolumeX, Sliders, Heart,
   Video, VideoOff, Timer, Ban, Maximize, PictureInPicture2, Star
 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
-const PlaybackBar = ({ activeTab, setActiveTab, onToggleMini, onToggleImmersion }) => {
+const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
   const {
     currentTrack,
     isPlaying,

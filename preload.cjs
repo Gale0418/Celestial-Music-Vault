@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanFolderForAudio: (folderPath) => ipcRenderer.invoke('scan-folder-for-audio', folderPath),
   isDirectory: (filePath) => ipcRenderer.invoke('is-directory', filePath),
   selectFolders: () => ipcRenderer.invoke('select-folders'),
+  toMediaUrl: (filePath) => `aeromusic://app/media/${encodeURIComponent(filePath)}`,
+  toRemoteMediaUrl: (url) => `aeromusic://app/remote/${encodeURIComponent(url)}`,
   loadUserData: () => ipcRenderer.invoke('load-user-data'),
   saveUserData: (data) => ipcRenderer.invoke('save-user-data', data),
   showErrorBox: (title, content) => ipcRenderer.send('show-error-box', title, content),

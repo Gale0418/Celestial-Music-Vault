@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PlayCircle, HardDrive, Music2, PlusCircle, Radio, Heart, Trash2 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 

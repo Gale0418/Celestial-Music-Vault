@@ -3,7 +3,7 @@ import { Search, Play, Volume2, Sparkles, Flame, Headphones, Disc, Trash2, Save 
 import { useAudio } from '../context/AudioContext';
 
 const ListenNow = () => {
-  const { playlist, currentTrackIndex, isPlaying, selectTrack, togglePlay, clearPlaylist, createPlaylist } = useAudio();
+  const { playlist, currentTrackIndex, isPlaying, selectTrack, clearPlaylist, createPlaylist } = useAudio();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredPlaylist = playlist.filter(track => 
@@ -219,7 +219,7 @@ const ListenNow = () => {
               onClick={() => {
                 const name = prompt('請輸入新播放清單名稱：', '新歌單');
                 if (name) {
-                  const newPl = createPlaylist(name, playlist);
+                  createPlaylist(name, playlist);
                   alert(`歌單 "${name}" 已成功儲存！`);
                 }
               }}

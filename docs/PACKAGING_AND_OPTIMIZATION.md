@@ -1,7 +1,9 @@
 # AeroMusic — 打包指南 & 全方位優化分析
 
 > 🤖 由 Antigravity（天才青梅竹馬工程師）親筆撰寫，供未來的自己（以及其他的我）參考。
-> 最後更新：2026-07-21
+> 最後更新：2026-08-12
+
+> 2026-08-12 維護註記：本文保留原始優化分析作為 Backlog。已完成的項目包括 `trash-item`／掃描根目錄驗證、安全自訂協定、跨平台安全測試、打包資源整理與乾淨 NAS 建置腳本；各段若與目前程式衝突，以程式碼、README 與 `scripts/build-macos.sh` 為準。
 
 ---
 
@@ -13,6 +15,9 @@ music/
 ├── preload.cjs        # Context Bridge — 安全的 IPC 橋樑
 ├── vite.config.js     # Vite 前端構建設定
 ├── package.json       # 含 electron-builder 打包配置
+├── build/             # App 圖示與 electron-builder 資源
+├── scripts/           # 可重複執行的本機暫存建置腳本
+├── tests/             # 主程序安全與行為測試
 ├── src/
 │   ├── App.jsx
 │   ├── index.css
@@ -37,15 +42,19 @@ music/
 這個專案位於 `<VOLUME_PATH>`，是掛載的 NAS 網路磁碟。
 直接在上面跑 `electron-builder` 會因為 SMB 的**檔案鎖定機制** (`.smbdelete*`) 導致打包失敗。
 
-### ✅ 正確打包指令（一行搞定）
+若 `<VOLUME_PATH>` 掉線，優先在 Finder 連線：`<NAS_URL>`。
+
+### ✅ 正確打包指令
 
 ```bash
-# 在專案根目錄執行（必須設好環境變數！）：
-ELECTRON_BUILDER_CACHE=/tmp/electron-builder-cache TMPDIR=/tmp \
-  npm run build && \
-  npx electron-builder --mac --arm64 && \
-  cp -a dist-app/mac-arm64/AeroMusic.app ~/Desktop/
+# 在專案根目錄執行：
+./scripts/build-macos.sh
+
+# 或指定輸出位置：
+AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 ```
+
+腳本會先把必要原始碼複製到 `/tmp/aeromusic-build.*`，再執行 `npm ci`、測試、Lint、Vite build 與 electron-builder。這比直接在 SMB 上執行更穩定，亦可避開 macOS 對 NAS 原生 Node binding 的載入限制。
 
 **各環境變數說明：**
 
@@ -80,7 +89,8 @@ ELECTRON_BUILDER_CACHE=/tmp/electron-builder-cache TMPDIR=/tmp \
 |------|------|------|
 | 打包失敗 `unlinkat ...` | SMB 在 dist-app/ 建立了 `.smbdelete` 鎖定檔 | 設定 `TMPDIR=/tmp` + `ELECTRON_BUILDER_CACHE=/tmp/...` |
 | 打包失敗 `ENOENT: ...` | electron-builder 嘗試在 NAS 上寫 debug 檔但路徑被鎖 | 同上，TMPDIR 搞定 |
-| `arm64 requires signing` | Apple Silicon 需要 code sign | 本機測試可 skip，若要分發需申請 Apple Developer 憑證 |
+| 原生 binding 被 system policy 阻擋 | macOS 不允許載入 NAS 上的原生 Node 模組 | 使用 `scripts/build-macos.sh` 在 `/tmp` 乾淨建置 |
+| 未簽署 App 的 Gatekeeper 提示 | 目前 `identity: null`，僅供本機使用 | 正式分發需 Apple Developer 簽署與 notarization |
 | **【無限轉圈圈 Bug】** 換歌或閒置時狂 reload 導致 UI 凍結 | `AudioContext` 裡監聽了整個 `playlist` 陣列，只要 autosave 觸發，陣列 reference 一變就會重新 `audioRef.load()` | 修改 `useEffect` 依賴陣列，**只監聽 `currentTrackIndex`**，不要把整個 `playlist` 丟進去！ |
 
 ---
@@ -125,17 +135,16 @@ src/
 
 > **評語：preload.cjs 暴露太多，應收緊 IPC 攻擊面。**
 
-#### 問題一：`webSecurity: false` 非常危險
+#### 問題一：`webSecurity: false` 非常危險（2026-08-12 已修正）
 
 ```js
 // main.cjs — 這行讓整個 file:// 協議全開放
 webSecurity: false, // Allow file:// protocol for local/NAS audio files
 ```
 
-這讓任何網頁都能存取本機 `file://` 資源。若 Electron 被 XSS 攻擊，
-攻擊者可讀取整個檔案系統（包括 ~/.ssh、鑰匙圈、任意文件）。
+目前 App 與已核准的本機媒體改由 `aeromusic://` secure/standard/stream 協定提供，主程序會再次驗證 approved roots，且 `webSecurity` 維持預設開啟。
 
-#### 問題二：`trash-item` 沒有路徑白名單驗證
+#### 問題二：`trash-item` 沒有路徑白名單驗證（已修正）
 
 ```js
 ipcMain.handle('trash-item', async (event, filePath) => {
@@ -275,7 +284,7 @@ import { FixedSizeList } from 'react-window';
 
 ### 🧪 Expert F — 測試工程師（QA Engineer）
 
-> **評語：`tests/` 資料夾存在，但沒看到任何測試！**
+> **2026-08-12 現況：** 已有跨平台主程序安全 smoke test 與臨時目錄行為測試；完整 UI/E2E 仍是後續 Backlog。
 
 #### 建議補充測試
 
@@ -295,8 +304,8 @@ tests/
 
 | 優先度 | 項目 | 難度 | 影響範圍 |
 |--------|------|------|---------|
-| 🔴 緊急 | `webSecurity: false` 改回 true + 改用 protocol handler | 中 | 安全 |
-| 🔴 緊急 | `trash-item` IPC 加入副檔名白名單驗證 | 低 | 安全 |
+| ✅ 完成 | `webSecurity: false` 改回預設 + 改用 protocol handler | 中 | 安全 |
+| ✅ 完成 | `trash-item` IPC 加入 approved roots 驗證 | 低 | 安全 |
 | 🟠 高 | react-window 虛擬化大列表 | 中 | 效能（大庫必備）|
 | 🟠 高 | AudioContext 拆成多個 custom hook | 高 | 維護性 |
 | 🟡 中 | 常用回調加 `useCallback` | 低 | 效能 |
@@ -309,15 +318,11 @@ tests/
 
 ---
 
-## 五、打包快捷 alias（建議加到 ~/.zshrc）
+## 五、打包快捷指令
 
 ```bash
-alias build-aero='cd <VOLUME_PATH> && \
-  ELECTRON_BUILDER_CACHE=/tmp/electron-builder-cache TMPDIR=/tmp \
-  npm run build && \
-  npx electron-builder --mac --arm64 && \
-  cp -a dist-app/mac-arm64/AeroMusic.app ~/Desktop/ && \
-  echo "✅ AeroMusic 已成功送到桌面！(｀・ω・´)ゞ"'
+cd <VOLUME_PATH>
+AEROMUSIC_OUTPUT_DIR="$HOME/Desktop/AeroMusic" ./scripts/build-macos.sh
 ```
 
 ---

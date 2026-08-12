@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Music, Play, FolderPlus, Disc, HelpCircle, FolderOpen, MoreVertical, Heart, Plus, Trash, Trash2, CheckSquare, Square, ListPlus, PlayCircle } from 'lucide-react';
+import { UploadCloud, Music, Play, Disc, FolderOpen, MoreVertical, Heart, Plus, Trash, Trash2, CheckSquare, Square, ListPlus, PlayCircle } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const dropdownItemStyle = {
@@ -21,9 +21,7 @@ const LocalLibrary = () => {
     playlist, 
     setPlaylist,
     currentTrack,
-    currentTrackIndex, 
     isPlaying, 
-    selectTrack, 
     importLocalFiles, 
     importLocalFilesByPaths, 
     loadingState, 
@@ -60,7 +58,9 @@ const LocalLibrary = () => {
     try {
       const saved = JSON.parse(localStorage.getItem('aeromusic-columns'));
       if (Array.isArray(saved)) return saved;
-    } catch(e) {}
+    } catch {
+      // Ignore invalid saved column preferences and use the defaults below.
+    }
     return ['index', 'title', 'artist', 'album', 'rating', 'actions'];
   });
 

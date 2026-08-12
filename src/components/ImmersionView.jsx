@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Minimize2, Volume2, Maximize2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Minimize2 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 
 const ImmersionView = ({ onExit }) => {
@@ -12,9 +12,7 @@ const ImmersionView = ({ onExit }) => {
     progress,
     currentTime,
     duration,
-    seekTo,
-    volume,
-    setVolume
+    seekTo
   } = useAudio();
 
   const [showControls, setShowControls] = useState(true);

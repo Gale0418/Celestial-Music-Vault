@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 
 const AudioContext = createContext();
 
+const resolveMediaUrl = (url) => {
+  if (typeof url === 'string' && url.startsWith('https://') && window.electronAPI?.toRemoteMediaUrl) {
+    return window.electronAPI.toRemoteMediaUrl(url);
+  }
+  return url;
+};
+
 // Pre-loaded premium royalty-free streams with CORS enabled
 const DEFAULT_PLAYLIST = [
   {
@@ -139,7 +146,7 @@ export const AudioProvider = ({ children }) => {
     // Helper to safely load audio source
     const setAudioSource = (track) => {
       if (!audio || !track) return;
-      audio.src = track.url;
+      audio.src = resolveMediaUrl(track.url);
       audio.load();
     };
 
@@ -454,7 +461,7 @@ export const AudioProvider = ({ children }) => {
     // Use the same helper function we use inside useEffect
     const setAudioSource = (track) => {
       if (!audioRef.current || !track) return;
-      audioRef.current.src = track.url;
+      audioRef.current.src = resolveMediaUrl(track.url);
       audioRef.current.load();
     };
 
@@ -544,7 +551,7 @@ export const AudioProvider = ({ children }) => {
     if (track) {
       setCurrentTrackIndex(prevIndex);
       try {
-        audioRef.current.src = track.url;
+        audioRef.current.src = resolveMediaUrl(track.url);
         audioRef.current.load();
         audioRef.current.play()
           .then(() => setIsPlaying(true))
@@ -594,7 +601,7 @@ export const AudioProvider = ({ children }) => {
     if (track) {
       setCurrentTrackIndex(nextIndex);
       try {
-        audioRef.current.src = track.url;
+        audioRef.current.src = resolveMediaUrl(track.url);
         audioRef.current.load();
         audioRef.current.play()
           .then(() => setIsPlaying(true))
@@ -776,8 +783,8 @@ export const AudioProvider = ({ children }) => {
     setLoadingState({ active: false, current: 0, total: 0, percent: 0, phase: 'scanning' });
   };
 
-  // Import by native file paths (used for NAS/IPC fast scanner path)
-  // Uses file:// protocol - no blob URL needed, works perfectly on NAS drives!
+  // Import by native file paths (used for NAS/IPC fast scanner path).
+  // Packaged builds use a main-process-validated custom protocol.
   const importLocalFilesByPaths = async (filePaths) => {
     const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
     const filtered = filePaths.filter(p => {
@@ -808,8 +815,9 @@ export const AudioProvider = ({ children }) => {
 
         const randomColors = [0, 1, 2].map(() => `hsl(${Math.floor(Math.random() * 360)}, 80%, 45%)`);
 
-        // Use file:// protocol URL directly - works natively in Electron for local/NAS paths!
-        const fileUrl = 'file://' + filePath.replace(/\\/g, '/');
+        const fileUrl = window.electronAPI?.toMediaUrl
+          ? window.electronAPI.toMediaUrl(filePath)
+          : 'file://' + filePath.replace(/\\/g, '/');
 
         return {
           id: `local-${Date.now()}-${i + idx}`,
@@ -893,7 +901,7 @@ export const AudioProvider = ({ children }) => {
     const track = targetPlaylist[index];
     if (track && audioRef.current) {
       try {
-        audioRef.current.src = track.url;
+        audioRef.current.src = resolveMediaUrl(track.url);
         audioRef.current.load();
         audioRef.current.play()
           .then(() => setIsPlaying(true))

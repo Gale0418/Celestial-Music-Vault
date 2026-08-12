@@ -1,10 +1,37 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
+const REMOTE_MEDIA_HOSTS = new Set(['www.soundhelix.com']);
+const APP_SCHEME = 'aeromusic';
 const approvedScanRoots = new Set();
 const APPROVED_ROOTS_REGISTRY = 'approved-roots.json';
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: APP_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true
+    }
+  }
+]);
+
+function toMediaUrl(filePath) {
+  return `${APP_SCHEME}://app/media/${encodeURIComponent(filePath)}`;
+}
+
+function ensureApprovedRemoteMediaUrl(rawUrl) {
+  const remoteUrl = new URL(rawUrl);
+  if (remoteUrl.protocol !== 'https:' || !REMOTE_MEDIA_HOSTS.has(remoteUrl.hostname)) {
+    throw new Error('Remote media host is not approved');
+  }
+  return remoteUrl.toString();
+}
 
 function resolveExistingPath(targetPath) {
   return fs.realpathSync.native ? fs.realpathSync.native(targetPath) : fs.realpathSync(targetPath);
@@ -63,6 +90,49 @@ function ensureApprovedFile(filePath) {
   return resolved;
 }
 
+function resolveBundleFile(requestPath) {
+  const distRoot = path.resolve(__dirname, 'dist');
+  const decodedPath = decodeURIComponent(requestPath || '/index.html');
+  const relativePath = decodedPath.replace(/^\/+/, '') || 'index.html';
+  const resolved = path.resolve(distRoot, relativePath);
+  const relative = path.relative(distRoot, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('Bundle path escapes the application root');
+  }
+  return resolved;
+}
+
+async function handleAppProtocol(request) {
+  try {
+    const requestUrl = new URL(request.url);
+    if (requestUrl.host !== 'app') {
+      return new Response('Not found', { status: 404 });
+    }
+
+    if (requestUrl.pathname.startsWith('/media/')) {
+      const encodedPath = requestUrl.pathname.slice('/media/'.length);
+      if (!encodedPath) return new Response('Missing media path', { status: 400 });
+      const approvedPath = ensureApprovedFile(decodeURIComponent(encodedPath));
+      return net.fetch(pathToFileURL(approvedPath).toString(), {
+        headers: request.headers
+      });
+    }
+
+    if (requestUrl.pathname.startsWith('/remote/')) {
+      const encodedUrl = requestUrl.pathname.slice('/remote/'.length);
+      if (!encodedUrl) return new Response('Missing remote URL', { status: 400 });
+      const approvedUrl = ensureApprovedRemoteMediaUrl(decodeURIComponent(encodedUrl));
+      return net.fetch(approvedUrl, { headers: request.headers });
+    }
+
+    const bundlePath = resolveBundleFile(requestUrl.pathname);
+    return net.fetch(pathToFileURL(bundlePath).toString());
+  } catch (error) {
+    console.warn('Blocked AeroMusic protocol request:', error.message);
+    return new Response('Not found', { status: 404 });
+  }
+}
+
 // Iterative scanner keeps large libraries responsive and avoids recursive Promise storms
 async function scanAudioFiles(dirPath) {
   const results = [];
@@ -93,7 +163,7 @@ async function scanAudioFiles(dirPath) {
 }
 
 // IPC: Native multi-folder selection dialog (supports selecting multiple folders at once!)
-ipcMain.handle('select-folders', async (event) => {
+ipcMain.handle('select-folders', async (_event) => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'multiSelections'],
     title: '選擇音樂資料夾'
@@ -207,7 +277,12 @@ async function persistApprovedRootsRegistry() {
 // Persisted data is untrusted input. It can retain only files already approved
 // by the native folder picker; it never expands approvedScanRoots.
 function filterPersistedTrackList(tracks) {
-  return Array.isArray(tracks) ? tracks.filter(isApprovedExistingTrack) : [];
+  return Array.isArray(tracks)
+    ? tracks.filter(isApprovedExistingTrack).map((track) => ({
+      ...track,
+      url: toMediaUrl(track.path)
+    }))
+    : [];
 }
 
 function filterPersistedUserData(data) {
@@ -290,17 +365,21 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false, // Allow file:// protocol for local/NAS audio files
       preload: path.join(__dirname, 'preload.cjs') // Safe context bridge
     }
   });
 
-  // Load the production build index.html from dist folder (strictly local file loading, serverless!)
-  win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  // Serve the app and approved local media from one secure custom origin.
+  win.loadURL(`${APP_SCHEME}://app/index.html`);
 
   // Open external links in default OS browser instead of inside electron window
   win.webContents.setWindowOpenHandler(({ url }) => {
-    require('electron').shell.openExternal(url);
+    try {
+      const externalUrl = new URL(url);
+      if (externalUrl.protocol === 'https:') shell.openExternal(externalUrl.toString());
+    } catch {
+      // Reject malformed or non-HTTPS external navigation.
+    }
     return { action: 'deny' };
   });
 
@@ -313,6 +392,7 @@ function createWindow() {
 // macOS standard: keep app running when all windows close unless quit
   app.whenReady().then(() => {
     loadApprovedRootsRegistry();
+    protocol.handle(APP_SCHEME, handleAppProtocol);
     // Make sure IPC can receive crash logs and write them to a file
     ipcMain.on('crash-log', (event, errorInfo) => {
       try {
