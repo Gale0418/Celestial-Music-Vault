@@ -14,14 +14,14 @@ const MiniPlayer = ({ onExit }) => {
   } = useAudio();
 
   return (
-    <div style={{
+    <div className="mini-player-shell" style={{
       display: 'flex',
       flexDirection: 'row',
       alignItems: 'center',
       height: '100%',
       width: '100%',
       padding: '12px',
-      background: 'rgba(18, 20, 26, 0.95)',
+      background: 'var(--bg-glass-heavy)',
       boxShadow: 'var(--shadow-card)',
       WebkitAppRegion: 'drag', // Make whole mini player draggable
       position: 'relative',
@@ -87,7 +87,7 @@ const MiniPlayer = ({ onExit }) => {
           <h4 style={{ 
             fontSize: '14px', 
             fontWeight: 700, 
-            color: '#fff', 
+            color: 'var(--text-primary)',
             whiteSpace: 'nowrap', 
             overflow: 'hidden', 
             textOverflow: 'ellipsis',
@@ -113,20 +113,22 @@ const MiniPlayer = ({ onExit }) => {
           gap: '8px',
           WebkitAppRegion: 'no-drag' // Buttons need to be clickable
         }}>
-          <button onClick={prevTrack} style={btnStyle}><SkipBack size={16} /></button>
+          <button onClick={prevTrack} aria-label="上一首" style={btnStyle}><SkipBack size={16} /></button>
           
           <button 
-            onClick={togglePlay} 
+            onClick={togglePlay}
+            aria-label={isPlaying ? '暫停' : '播放'}
             style={{ ...btnStyle, background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '50%' }}
           >
             {isPlaying ? <Pause size={16} fill="#fff" /> : <Play size={16} fill="#fff" style={{ marginLeft: '2px' }}/>}
           </button>
           
-          <button onClick={nextTrack} style={btnStyle}><SkipForward size={16} /></button>
+          <button onClick={nextTrack} aria-label="下一首" style={btnStyle}><SkipForward size={16} /></button>
 
           {/* Exit Mini Player */}
           <button 
-            onClick={onExit} 
+            onClick={onExit}
+            aria-label="回到主畫面"
             style={{ ...btnStyle, marginLeft: '8px' }}
             title="回到主畫面"
           >
@@ -141,7 +143,7 @@ const MiniPlayer = ({ onExit }) => {
 const btnStyle = {
   border: 'none',
   background: 'transparent',
-  color: '#fff',
+  color: 'var(--text-primary)',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',

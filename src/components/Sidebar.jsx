@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { PlayCircle, HardDrive, Music2, PlusCircle, Radio, Heart, Trash2 } from 'lucide-react';
+import { PlayCircle, HardDrive, Music2, PlusCircle, Radio, Heart, Trash2, Palette } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import { THEME_OPTIONS } from '../theme';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const { 
@@ -382,6 +383,40 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             );
           })}
       </div>
+
+      <section className="theme-switcher" aria-labelledby="theme-switcher-title">
+        <div className="theme-switcher-heading">
+          <Palette size={14} aria-hidden="true" />
+          <span id="theme-switcher-title">畫風</span>
+        </div>
+        <div className="theme-options" role="radiogroup" aria-label="選擇介面畫風">
+          {THEME_OPTIONS.map((theme) => {
+            const isSelected = theme.id === themeId;
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                className={`theme-option${isSelected ? ' is-selected' : ''}`}
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={`${theme.name}：${theme.description}`}
+                title={`${theme.name}｜${theme.description}`}
+                onClick={() => onThemeChange(theme.id)}
+              >
+                <span
+                  className="theme-swatch"
+                  aria-hidden="true"
+                  style={{ background: `linear-gradient(135deg, ${theme.swatches[0]} 50%, ${theme.swatches[1]} 50%)` }}
+                />
+                <span className="theme-option-label" aria-hidden="true">{theme.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="theme-current-name">
+          {THEME_OPTIONS.find((theme) => theme.id === themeId)?.name}
+        </p>
+      </section>
 
       {/* Embedded Styles for hover support */}
       <style dangerouslySetInnerHTML={{__html: `

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import Sidebar from './components/Sidebar';
 import PlaybackBar from './components/PlaybackBar';
@@ -6,15 +6,37 @@ import ListenNow from './components/ListenNow';
 import LocalLibrary from './components/LocalLibrary';
 import MiniPlayer from './components/MiniPlayer';
 import ImmersionView from './components/ImmersionView';
+import { DEFAULT_THEME, getTheme, normalizeThemeId } from './theme';
+
+const THEME_STORAGE_KEY = 'aeromusic-theme';
+
+const getInitialTheme = () => {
+  try {
+    return normalizeThemeId(localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return DEFAULT_THEME;
+  }
+};
 
 // Content component that consumes AudioContext
 const AppContent = () => {
   const [activeTab, setActiveTab] = useState('listen-now');
   const [viewMode, setViewMode] = useState('default'); // 'default', 'mini', 'immersion'
+  const [themeId, setThemeId] = useState(getInitialTheme);
   const { currentTrack } = useAudio();
 
   // Dynamic colors matching currently playing track for Ambient Flow Background
-  const currentColors = currentTrack?.colors || ['#ff5a4f', '#ff7a68', '#ff9a7e'];
+  const selectedTheme = useMemo(() => getTheme(themeId), [themeId]);
+  const currentColors = currentTrack?.colors || selectedTheme.ambient;
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = themeId;
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    } catch {
+      // The selected theme still works for this session when storage is unavailable.
+    }
+  }, [themeId]);
 
   const handleToggleMini = () => {
     const newMode = viewMode === 'mini' ? 'default' : 'mini';
@@ -78,7 +100,12 @@ const AppContent = () => {
 
         {/* Inner App Content */}
         <div className="app-container">
-          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            themeId={themeId}
+            onThemeChange={(nextTheme) => setThemeId(normalizeThemeId(nextTheme))}
+          />
           
           <main className="main-stage" style={{
             flex: 1,

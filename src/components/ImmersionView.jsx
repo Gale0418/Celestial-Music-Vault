@@ -53,13 +53,13 @@ const ImmersionView = ({ onExit }) => {
   };
 
   return (
-    <div style={{
+    <div className="immersion-view" style={{
       position: 'fixed',
       top: 0,
       left: 0,
       width: '100vw',
       height: '100vh',
-      backgroundColor: '#000',
+      backgroundColor: 'var(--bg-color-solid)',
       zIndex: 99999,
       display: 'flex',
       flexDirection: 'column',
@@ -90,7 +90,7 @@ const ImmersionView = ({ onExit }) => {
         zIndex: 1,
         width: '45vh',
         height: '45vh',
-        borderRadius: '24px',
+        borderRadius: 'var(--radius-xl)',
         overflow: 'hidden',
         boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
         transition: 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -114,7 +114,7 @@ const ImmersionView = ({ onExit }) => {
         <h1 style={{ 
           fontSize: '36px', 
           fontWeight: 800, 
-          color: '#fff', 
+          color: 'var(--text-primary)',
           marginBottom: '10px',
           textShadow: '0 4px 12px rgba(0,0,0,0.5)'
         }}>
@@ -161,10 +161,11 @@ const ImmersionView = ({ onExit }) => {
 
         {/* Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px' }}>
-          <button onClick={prevTrack} style={iconBtnStyle}><SkipBack size={28} /></button>
+          <button onClick={prevTrack} aria-label="上一首" style={iconBtnStyle}><SkipBack size={28} /></button>
           
           <button 
-            onClick={togglePlay} 
+            onClick={togglePlay}
+            aria-label={isPlaying ? '暫停' : '播放'}
             style={{
               ...iconBtnStyle,
               background: 'rgba(255,255,255,0.2)',
@@ -176,12 +177,13 @@ const ImmersionView = ({ onExit }) => {
             {isPlaying ? <Pause size={32} fill="#fff" /> : <Play size={32} fill="#fff" style={{ marginLeft: '4px' }}/>}
           </button>
           
-          <button onClick={nextTrack} style={iconBtnStyle}><SkipForward size={28} /></button>
+          <button onClick={nextTrack} aria-label="下一首" style={iconBtnStyle}><SkipForward size={28} /></button>
         </div>
 
         {/* Top Right Exit Button */}
         <button 
           onClick={onExit}
+          aria-label="退出沉浸模式"
           style={{
             position: 'fixed',
             top: '24px',
@@ -204,7 +206,7 @@ const ImmersionView = ({ onExit }) => {
 const iconBtnStyle = {
   border: 'none',
   background: 'transparent',
-  color: '#fff',
+  color: 'var(--text-primary)',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
