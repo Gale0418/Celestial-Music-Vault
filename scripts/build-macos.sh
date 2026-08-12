@@ -39,6 +39,7 @@ npx electron-builder --mac --arm64 --dir
 APP_PATH="$BUILD_ROOT/dist-app/mac-arm64/AeroMusic.app"
 DMG_PATH="${BUILD_ROOT}/dist-app/AeroMusic-$(node -p "require('./package.json').version")-arm64.dmg"
 DMG_ROOT="$BUILD_ROOT/dmg-root"
+ENTITLEMENTS_PATH="$BUILD_ROOT/build/entitlements.mac.plist"
 
 # electron-builder/Electron may inject a permissive ATS default. AeroMusic only
 # uses HTTPS and its own secure custom protocol, so fail closed before signing.
@@ -51,11 +52,32 @@ fi
 if [[ -n "$SIGNING_IDENTITY" ]]; then
   if [[ "$SIGNING_IDENTITY" == 'Developer ID Application:'* ]]; then
     TIMESTAMP_ARG='--timestamp'
+    LEAF_SIGN_ARGS=(--options runtime)
+    APP_SIGN_ARGS=(--options runtime --entitlements "$ENTITLEMENTS_PATH")
   else
     print '注意：目前使用 Apple Development 憑證，只適用於本機開發與測試。'
     TIMESTAMP_ARG='--timestamp=none'
+    LEAF_SIGN_ARGS=()
+    APP_SIGN_ARGS=()
   fi
-  codesign --force --deep --options runtime "$TIMESTAMP_ARG" --sign "$SIGNING_IDENTITY" "$APP_PATH"
+
+  # Electron ships its media/GPU libraries with ad-hoc signatures. A later
+  # `codesign --deep` validates but does not reliably replace every nested
+  # signature, which makes Hardened Runtime reject them when the outer app has
+  # a Team ID. Re-sign leaf binaries first so the complete graph has one team.
+  while IFS= read -r nested_binary; do
+    codesign --force "${LEAF_SIGN_ARGS[@]}" "$TIMESTAMP_ARG" \
+      --sign "$SIGNING_IDENTITY" "$nested_binary"
+  done < <(find "$APP_PATH/Contents/Frameworks" -type f \
+    \( -name '*.dylib' -o -name 'chrome_crashpad_handler' \) -print)
+
+  while IFS= read -r helper_app; do
+    codesign --force --deep "${APP_SIGN_ARGS[@]}" "$TIMESTAMP_ARG" \
+      --sign "$SIGNING_IDENTITY" "$helper_app"
+  done < <(find "$APP_PATH/Contents/Frameworks" -type d -name '*.app' -print)
+
+  codesign --force --deep "${APP_SIGN_ARGS[@]}" "$TIMESTAMP_ARG" \
+    --sign "$SIGNING_IDENTITY" "$APP_PATH"
 else
   print '注意：未指定簽章憑證，產物只使用 ad-hoc 本機簽章。'
   codesign --force --deep --sign - "$APP_PATH"

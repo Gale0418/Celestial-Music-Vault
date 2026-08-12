@@ -14,7 +14,7 @@ const AppContent = () => {
   const { currentTrack } = useAudio();
 
   // Dynamic colors matching currently playing track for Ambient Flow Background
-  const currentColors = currentTrack?.colors || ['#ff2d55', '#af52de', '#007aff'];
+  const currentColors = currentTrack?.colors || ['#ff5a4f', '#ff7a68', '#ff9a7e'];
 
   const handleToggleMini = () => {
     const newMode = viewMode === 'mini' ? 'default' : 'mini';
@@ -48,7 +48,7 @@ const AppContent = () => {
 
   return (
     <div className="ambient-bg-container">
-      {/* 3 Dynamic Floating Blobs changing colors on current track */}
+      {/* Subtle ambient light follows the current track without competing with content. */}
       <div 
         className="ambient-blob blob-1" 
         style={{
@@ -63,14 +63,6 @@ const AppContent = () => {
           transition: 'background 4s ease-in-out'
         }}
       />
-      <div 
-        className="ambient-blob blob-3" 
-        style={{
-          background: `radial-gradient(circle, ${currentColors[2] || '#007aff'} 0%, rgba(175, 82, 222, 0) 70%)`,
-          transition: 'background 4s ease-in-out'
-        }}
-      />
-
       {/* Main Mac OS Simulator Frame */}
       <div className="mac-app-frame">
         {/* Native Electron Draggable Titlebar Area (enables double-click to maximize!) */}
@@ -88,7 +80,7 @@ const AppContent = () => {
         <div className="app-container">
           <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
           
-          <main style={{
+          <main className="main-stage" style={{
             flex: 1,
             height: '100%',
             overflow: 'hidden',

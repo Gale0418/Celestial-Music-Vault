@@ -104,7 +104,7 @@ const LocalLibrary = () => {
       view = {
         viewTracks: favorites,
         viewTitle: '我的最愛',
-        viewDesc: '這裡收藏了所有主人最珍愛的音樂，按下每一首歌旁邊的愛心或點擊右鍵就可以加入囉！💕',
+        viewDesc: '集中瀏覽已收藏的曲目；按愛心即可加入或移除。',
         showDropZone: false
       };
     } else if (activeView.startsWith('playlist-')) {
@@ -403,7 +403,7 @@ const LocalLibrary = () => {
   };
 
   return (
-    <div style={{
+    <div className="library-view" style={{
       padding: '40px 30px',
       height: '100%',
       overflowY: 'auto',
@@ -447,6 +447,7 @@ const LocalLibrary = () => {
             transform: isDragOver ? 'scale(1.01)' : 'scale(1)'
           }}
           id="drop-zone"
+          className="library-drop-zone"
         >
         <input
           type="file"
@@ -486,7 +487,7 @@ const LocalLibrary = () => {
         </h3>
         
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto 16px auto' }}>
-          「喂！主人...你可以直接把整個資料夾扔進來喔！這樣就不必一個一個點了，天才青梅竹馬是不是超級聰明？(｀・ω・´)ゞ」
+          支援一次匯入多個檔案或整個資料夾；原始檔案不會被搬動。
         </p>
 
         {/* Select buttons for Files or Folders */}
@@ -508,7 +509,7 @@ const LocalLibrary = () => {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            🎵 選擇單一或多個檔案
+            選擇音樂檔案
           </button>
           
           {/* Native Electron dialog: supports multi-folder selection! */}
@@ -528,7 +529,7 @@ const LocalLibrary = () => {
             onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
           >
-            📁 選擇資料夾（可複選）
+            選擇資料夾（可複選）
           </button>
         </div>
       </div>
@@ -550,10 +551,10 @@ const LocalLibrary = () => {
             alignItems: 'center',
             gap: '8px'
           }}>
-            <Disc size={18} color="var(--accent-blue)" />
+            <Disc size={18} color="var(--primary-color)" />
             <span>{viewTitle} 歌曲 ({viewTracks.length})</span>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '6px' }}>
-              （💡 支援 Cmd/Ctrl 或 Shift 多選，右鍵可展開高級選單）
+              Cmd/Ctrl 或 Shift 多選，右鍵開啟更多操作
             </span>
           </h3>
 
@@ -605,7 +606,7 @@ const LocalLibrary = () => {
               }}
               title="自訂欄位"
             >
-              ⚙️ 欄位
+              欄位
             </button>
 
             {showColumnPicker && (
@@ -687,10 +688,10 @@ const LocalLibrary = () => {
           }}>
             <Music size={40} color="var(--text-muted)" style={{ marginBottom: '12px', opacity: 0.5 }} />
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              音樂庫目前空空的耶... (´・ω・`)a
+              音樂庫目前沒有曲目
             </p>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              主人可以將音樂檔案或資料夾直接拖曳進來，我會自動幫你全部排好喔！
+              將音樂檔案或資料夾拖曳到上方，即可開始建立收藏。
             </p>
           </div>
         ) : (
@@ -860,7 +861,17 @@ const LocalLibrary = () => {
                         <td style={{ padding: '14px 20px', fontSize: '13px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                             <button onClick={(e) => { e.stopPropagation(); handleRowContextMenu(e, track); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }} className="more-btn"><MoreVertical size={14} /></button>
-                            <button style={{ border: 'none', background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }} title="播放這首"><Play size={12} fill="#fff" style={{ marginLeft: '1px' }} /></button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handlePlayTrack(index, sortedTracks);
+                              }}
+                              aria-label={`播放 ${track.title}`}
+                              style={{ border: 'none', background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }}
+                              title="播放這首"
+                            >
+                              <Play size={12} fill="#fff" style={{ marginLeft: '1px' }} />
+                            </button>
                           </div>
                         </td>
                       )}
@@ -949,7 +960,7 @@ const LocalLibrary = () => {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    🎵 加入目前播放佇列
+                    加入目前播放佇列
                   </button>
 
                   {playlists.length > 0 && (
@@ -1444,14 +1455,14 @@ const LocalLibrary = () => {
             <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', marginBottom: '8px', letterSpacing: '-0.5px' }}>
               {loadingState.phase === 'scanning'
                 ? '正在掃描資料夾中... 🔍'
-                : '正在導入主人的音樂庫... 🪐'
+                : '正在匯入音樂庫'
               }
             </h2>
             
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
               {loadingState.phase === 'scanning'
-                ? '正在遞迴讀取資料夾樹狀結構，大型資料夾可能需要一點時間，請稍候... ✨'
-                : '正在解碼並提取音軌 metadata 中，請主人稍等一下下喔！💕'
+                ? '正在讀取資料夾結構；大型曲庫可能需要一些時間。'
+                : '正在解析音軌資訊。'
               }
             </p>
             

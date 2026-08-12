@@ -46,7 +46,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   };
 
   return (
-    <aside className="glass-effect" style={{
+    <aside className="glass-effect app-sidebar" style={{
       width: 'var(--sidebar-width)',
       height: '100%',
       display: 'flex',
@@ -178,12 +178,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             textAlign: 'left',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            borderLeft: (activeTab === 'local-library' && activeView === 'library') ? '3px solid var(--accent-blue)' : '3px solid transparent',
+            borderLeft: (activeTab === 'local-library' && activeView === 'library') ? '3px solid var(--primary-color)' : '3px solid transparent',
             outline: 'none'
           }}
           className={(activeTab !== 'local-library' || activeView !== 'library') ? 'sidebar-item-hover' : ''}
         >
-          <HardDrive size={18} color={(activeTab === 'local-library' && activeView === 'library') ? 'var(--accent-blue)' : 'inherit'} />
+          <HardDrive size={18} color={(activeTab === 'local-library' && activeView === 'library') ? 'var(--primary-color)' : 'inherit'} />
           <span>我的音樂庫</span>
         </button>
         
@@ -356,7 +356,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   className="playlist-btn"
                 >
                   <span style={{ paddingRight: '8px' }}>
-                    📻 {pl.name}
+                    {pl.name}
                   </span>
                 </button>
 

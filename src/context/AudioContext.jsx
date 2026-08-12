@@ -304,7 +304,7 @@ export const AudioProvider = ({ children }) => {
       trackRatings: updatedRatings,
       playbackState
     });
-  }, [activeView, currentTrack, currentTrackIndex, favorites, isMuted, library, playlists, trackRatings, volume]);
+  }, [activeView, currentTrack, favorites, isMuted, library, playlists, trackRatings, volume]);
 
   // 1. Initial Load on Mount
   useEffect(() => {

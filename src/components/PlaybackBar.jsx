@@ -81,7 +81,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
   const eqPresets = ['Flat', 'Bass Boost', 'Vocal', 'Electronic'];
 
   return (
-    <footer className="glass-effect" style={{
+    <footer className="glass-effect playback-dock" style={{
       height: 'var(--playback-bar-height)',
       width: '100%',
       borderTop: '1px solid var(--border-glass)',
@@ -96,7 +96,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
     }} id="playback-bar">
       
       {/* LEFT: Current Track Details */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '30%', minWidth: '220px' }}>
+      <div className="playback-meta" style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '30%', minWidth: '220px' }}>
         <div style={{ position: 'relative', width: '52px', height: '52px' }}>
           <img
             src={currentTrack?.cover || defaultCover}
@@ -105,26 +105,13 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
             style={{
               width: '100%',
               height: '100%',
-              borderRadius: '50%',
+              borderRadius: '10px',
               objectFit: 'cover',
               border: '2px solid rgba(255, 255, 255, 0.1)',
-              animation: isPlaying ? 'spin 18s linear infinite' : 'none',
               boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
               transition: 'transform 0.5s ease'
             }}
           />
-          {/* Middle spindle hole to make it look like a vinyl record */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--bg-color-solid)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: '2px', flex: 1 }}>
@@ -149,8 +136,10 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
           </span>
         </div>
 
-        <button 
+        <button
           onClick={() => { if (currentTrack) toggleFavorite(currentTrack); }}
+          aria-label={isFavorite ? '從喜愛歌曲移除' : '加入喜愛歌曲'}
+          aria-pressed={isFavorite}
           style={{
             border: 'none',
             background: 'transparent',
@@ -168,7 +157,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
         </button>
 
         {/* Star Rating */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
+        <div className="playback-rating" style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
           {[1, 2, 3, 4, 5].map(star => (
             <button
               key={star}
@@ -190,6 +179,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               title={`${star} 顆星`}
+              aria-label={`評為 ${star} 顆星`}
+              aria-pressed={currentRating === star}
             >
               <Star size={14} fill={star <= currentRating ? '#ffcc00' : 'none'} />
             </button>
@@ -197,7 +188,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
         </div>
 
         {/* Window Modes (Mini Player / Immersion) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
+        <div className="playback-window-modes" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
           <button
             onClick={onToggleMini}
             style={{
@@ -213,6 +204,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
             onMouseEnter={e => e.currentTarget.style.color = '#fff'}
             onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
             title="迷你播放器"
+            aria-label="開啟迷你播放器"
           >
             <PictureInPicture2 size={16} />
           </button>
@@ -232,6 +224,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
             onMouseEnter={e => e.currentTarget.style.color = '#fff'}
             onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
             title="沉浸全螢幕模式"
+            aria-label="開啟沉浸全螢幕模式"
           >
             <Maximize size={16} />
           </button>
@@ -255,13 +248,15 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
           onMouseLeave={(e) => { if(currentTrack) e.currentTarget.style.transform = 'scale(1)' }}
           id="dislike-btn"
           title="隱藏此歌曲"
+          aria-label={isDisliked ? '取消隱藏此歌曲' : '隱藏此歌曲'}
+          aria-pressed={isDisliked}
         >
           <Ban size={16} />
         </button>
       </div>
 
       {/* MIDDLE: Primary Playback Controls & Progress Slider */}
-      <div style={{
+      <div className="playback-primary" style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -294,6 +289,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               if (!isShuffle) e.currentTarget.style.background = 'transparent';
             }}
             title="隨機播放"
+            aria-label="隨機播放"
+            aria-pressed={isShuffle}
             id="shuffle-btn"
           >
             <Shuffle size={16} />
@@ -312,6 +309,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
             onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
             onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             title="上一首"
+            aria-label="上一首"
             id="prev-btn"
           >
             <SkipBack size={20} fill="currentColor" />
@@ -344,6 +342,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               e.currentTarget.style.boxShadow = '0 4px 14px var(--primary-glow)';
             }}
             title={isPlaying ? '暫停' : '播放'}
+            aria-label={isPlaying ? '暫停' : '播放'}
             id="play-pause-btn"
           >
             {isPlaying ? (
@@ -366,6 +365,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
             onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
             onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             title="下一首"
+            aria-label="下一首"
             id="next-btn"
           >
             <SkipForward size={20} fill="currentColor" />
@@ -395,6 +395,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               if (!isRepeat) e.currentTarget.style.background = 'transparent';
             }}
             title={isRepeat === 'one' ? '單曲循環' : isRepeat ? '全部循環' : '重複播放'}
+            aria-label={isRepeat === 'one' ? '單曲循環' : isRepeat ? '全部循環' : '重複播放'}
+            aria-pressed={Boolean(isRepeat)}
             id="repeat-btn"
           >
             {isRepeat === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
@@ -425,7 +427,7 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
       </div>
 
       {/* RIGHT: Volume, Equalizer (EQ) Toggle */}
-      <div style={{
+      <div className="playback-tools" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-end',
@@ -452,6 +454,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               transition: 'all 0.2s'
             }}
             title="睡眠定時器"
+            aria-label="睡眠定時器"
+            aria-expanded={showTimerMenu}
             id="timer-menu-btn"
           >
             <Timer size={16} />
@@ -520,6 +524,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               transition: 'all 0.2s'
             }}
             title="等化器 (EQ)"
+            aria-label="等化器"
+            aria-expanded={showEqMenu}
             id="eq-menu-btn"
           >
             <Sliders size={16} />
@@ -590,6 +596,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
               border: showVideo ? '1px solid rgba(255, 45, 85, 0.3)' : '1px solid transparent'
             }}
             title={showVideo ? "隱藏影片畫面" : "顯示影片畫面"}
+            aria-label={showVideo ? '隱藏影片畫面' : '顯示影片畫面'}
+            aria-pressed={showVideo}
             id="video-toggle-btn"
           >
             {showVideo ? <Video size={17} /> : <VideoOff size={17} />}
@@ -600,6 +608,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={toggleMute}
+            aria-label={isMuted ? '取消靜音' : '靜音'}
+            aria-pressed={isMuted}
             style={{
               border: 'none',
               background: 'transparent',

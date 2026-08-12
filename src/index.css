@@ -7,22 +7,25 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
   
   /* Color Palette - Premium Dark Mode */
-  --bg-color-solid: #0d0e12;
-  --bg-glass-heavy: rgba(18, 20, 26, 0.85);
-  --bg-glass-medium: rgba(26, 29, 38, 0.6);
-  --bg-glass-light: rgba(255, 255, 255, 0.06);
-  --bg-glass-active: rgba(255, 255, 255, 0.12);
+  --bg-color-solid: #090a0c;
+  --bg-elevated: #111317;
+  --bg-glass-heavy: rgba(13, 15, 18, 0.94);
+  --bg-glass-medium: rgba(18, 20, 24, 0.78);
+  --bg-glass-light: rgba(255, 255, 255, 0.045);
+  --bg-glass-active: rgba(255, 255, 255, 0.09);
   
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --border-glass-bright: rgba(255, 255, 255, 0.15);
+  --border-glass: rgba(255, 255, 255, 0.075);
+  --border-glass-bright: rgba(255, 255, 255, 0.17);
   
-  --primary-color: #ff3b30; /* Apple Red */
-  --primary-gradient: linear-gradient(135deg, #ff2d55, #ff3b30, #ff9500);
-  --primary-glow: rgba(255, 59, 48, 0.4);
+  --primary-color: #ff6257;
+  --primary-strong: #ff4f45;
+  --primary-soft: rgba(255, 98, 87, 0.14);
+  --primary-gradient: linear-gradient(135deg, #ff7569, #ff4f45);
+  --primary-glow: rgba(255, 79, 69, 0.28);
   
   --text-primary: #f5f5f7;
-  --text-secondary: #86868b;
-  --text-muted: #6e6e73;
+  --text-secondary: #a3a5ab;
+  --text-muted: #70737c;
   
   --accent-blue: #007aff;
   --accent-green: #34c759;
@@ -30,20 +33,20 @@
   --accent-pink: #ff2d55;
   
   /* Layout Dimensions */
-  --sidebar-width: 260px;
-  --playback-bar-height: 88px;
+  --sidebar-width: 236px;
+  --playback-bar-height: 94px;
   --titlebar-height: 48px;
   
   /* Radius */
   --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 32px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   
   /* Shadow */
   --shadow-window: 0 24px 64px rgba(0, 0, 0, 0.6);
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 20px rgba(255, 59, 48, 0.25);
+  --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.34);
+  --shadow-glow: 0 0 26px rgba(255, 79, 69, 0.2);
 }
 
 /* Base Setup */
@@ -60,8 +63,8 @@ body {
   background-color: var(--bg-color-solid);
   color: var(--text-primary);
   overflow: hidden;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
   user-select: none;
 }
 
@@ -97,14 +100,16 @@ button, input {
   bottom: 0;
   z-index: 0;
   overflow: hidden;
-  background: #0d0e12;
+  background:
+    radial-gradient(circle at 72% 8%, rgba(255, 98, 87, 0.08), transparent 36%),
+    linear-gradient(145deg, #090a0c 0%, #0c0d10 55%, #08090b 100%);
 }
 
 .ambient-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(140px);
-  opacity: 0.45;
+  filter: blur(180px) saturate(72%);
+  opacity: 0.16;
   transition: all 4s ease-in-out;
   pointer-events: none;
 }
@@ -115,7 +120,7 @@ button, input {
   background: radial-gradient(circle, #ff2d55 0%, rgba(255, 45, 85, 0) 70%);
   top: -10%;
   right: -5%;
-  animation: floatBlob1 25s infinite alternate ease-in-out;
+  animation: floatBlob1 32s infinite alternate ease-in-out;
 }
 
 .blob-2 {
@@ -124,7 +129,7 @@ button, input {
   background: radial-gradient(circle, #007aff 0%, rgba(0, 122, 255, 0) 70%);
   bottom: -10%;
   left: -5%;
-  animation: floatBlob2 20s infinite alternate ease-in-out;
+  animation: floatBlob2 38s infinite alternate ease-in-out;
 }
 
 .blob-3 {
@@ -163,16 +168,16 @@ button, input {
   display: flex;
   flex-direction: column;
   width: 100vw;
-  height: 100vh;
-  background: rgba(13, 14, 18, 0.4);
-  backdrop-filter: blur(40px) saturate(220%);
-  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  height: 100dvh;
+  background: rgba(9, 10, 12, 0.55);
+  backdrop-filter: blur(34px) saturate(125%);
+  -webkit-backdrop-filter: blur(34px) saturate(125%);
 }
 
 .app-container {
   display: flex;
   flex: 1;
-  height: calc(100vh - var(--playback-bar-height));
+  height: calc(100dvh - var(--playback-bar-height));
   overflow: hidden;
 }
 
@@ -340,4 +345,215 @@ input[type="range"]:hover::-webkit-slider-thumb {
 }
 .floating-video-window::-webkit-resizer {
   background: transparent;
+}
+
+/* ==========================================================================
+   2026 Listening Room refresh
+   Targeted evolution: editorial hierarchy, quieter surfaces, visible states.
+   ========================================================================== */
+
+button {
+  -webkit-app-region: no-drag;
+}
+
+button:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--primary-color) !important;
+  outline-offset: 3px !important;
+}
+
+button:active:not(:disabled),
+[role="button"]:active {
+  transform: scale(0.98);
+}
+
+.main-stage {
+  min-width: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 18%),
+    rgba(7, 8, 10, 0.34);
+}
+
+.app-sidebar {
+  background:
+    linear-gradient(180deg, rgba(22, 24, 28, 0.95), rgba(12, 14, 17, 0.97)) !important;
+  border-right-color: rgba(255, 255, 255, 0.065) !important;
+  backdrop-filter: blur(42px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(42px) saturate(130%) !important;
+}
+
+.app-sidebar > div:first-of-type > div:first-child {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(145deg, var(--primary-color), #d9463f) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 10px 24px rgba(255, 79, 69, 0.22) !important;
+}
+
+.app-sidebar hr {
+  border-top-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+.sidebar-item-hover:hover,
+.playlist-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.055) !important;
+}
+
+.playback-dock {
+  min-height: var(--playback-bar-height);
+  background:
+    linear-gradient(180deg, rgba(20, 22, 26, 0.94), rgba(12, 14, 17, 0.98)) !important;
+  border-top-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 -24px 60px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(36px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(130%) !important;
+}
+
+.playback-dock button:hover:not(:disabled) {
+  color: var(--text-primary) !important;
+}
+
+.playback-dock input[type="range"] {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.038);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.library-view {
+  padding: 42px clamp(24px, 3vw, 44px) 72px !important;
+}
+
+.library-view > div:first-child h1 {
+  background: none !important;
+  color: var(--text-primary) !important;
+  -webkit-text-fill-color: currentColor !important;
+  font-size: clamp(30px, 3.2vw, 42px) !important;
+  font-weight: 720 !important;
+  letter-spacing: -0.045em !important;
+  text-wrap: balance;
+}
+
+.library-view > div:first-child p {
+  max-width: 64ch;
+  line-height: 1.55;
+}
+
+.library-drop-zone {
+  border-width: 1px !important;
+  border-radius: var(--radius-lg) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 98, 87, 0.075), transparent 42%),
+    rgba(255, 255, 255, 0.022) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+
+.library-drop-zone:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 98, 87, 0.11), transparent 44%),
+    rgba(255, 255, 255, 0.032) !important;
+}
+
+#local-songs-table {
+  font-variant-numeric: tabular-nums;
+}
+
+#local-songs-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+#local-songs-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(255, 98, 87, 0.42);
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --sidebar-width: 210px;
+  }
+
+  .playback-dock {
+    padding-inline: 16px !important;
+    gap: 12px;
+  }
+
+  .playback-meta {
+    width: 30% !important;
+    min-width: 238px !important;
+  }
+
+  .playback-rating,
+  .playback-window-modes,
+  .playback-dock #dislike-btn,
+  .playback-tools > div:not(:last-child) {
+    display: none !important;
+  }
+
+  .playback-primary {
+    display: flex !important;
+    width: 46% !important;
+  }
+
+  .playback-tools {
+    width: 22% !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  :root {
+    --sidebar-width: 200px;
+  }
+
+  .playback-dock #favorite-btn,
+  .playback-tools > button:not(:last-child) {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .ambient-blob,
+  .marquee-text,
+  .glow-loading::after {
+    animation: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-secondary: #d0d2d6;
+    --text-muted: #aaadb5;
+    --border-glass: rgba(255, 255, 255, 0.2);
+  }
 }
