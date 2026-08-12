@@ -70,7 +70,6 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
   --shadow-glow: 0 0 30px rgba(54, 228, 255, 0.25);
-  --sidebar-width: 196px;
 }
 
 :root[data-theme="vinyl-club"] {
@@ -94,7 +93,6 @@
   --radius-lg: 22px;
   --radius-xl: 30px;
   --shadow-glow: 0 0 28px rgba(233, 165, 75, 0.18);
-  --sidebar-width: 260px;
 }
 
 :root[data-theme="sakura-night"] {
@@ -118,7 +116,6 @@
   --radius-lg: 4px;
   --radius-xl: 8px;
   --shadow-glow: 0 18px 50px rgba(20, 20, 20, 0.12);
-  --sidebar-width: 224px;
 }
 
 /* Base Setup */
@@ -484,13 +481,12 @@ button:active:not(:disabled),
 
 :root[data-theme="vinyl-club"] .app-sidebar {
   background: linear-gradient(180deg, rgba(14, 14, 11, 0.98), rgba(3, 3, 3, 0.99)) !important;
-  border-right: 8px solid rgba(217,183,95,.26) !important;
+  border-right: 1px solid rgba(217,183,95,.38) !important;
+  box-shadow: inset -7px 0 rgba(217,183,95,.055);
 }
 
 :root[data-theme="sakura-night"] .app-sidebar {
   background: rgba(250,249,246,.98) !important;
-  margin: 12px 0 12px 12px;
-  height: calc(100% - 24px) !important;
   border: 1px solid rgba(20,20,20,.12) !important;
   border-radius: 4px;
   box-shadow: 0 24px 70px rgba(20,20,20,.12);
@@ -569,8 +565,8 @@ button:active:not(:disabled),
 :root[data-theme="sakura-night"] .playback-dock { background: rgba(250,249,246,.98) !important; }
 
 :root[data-theme="neon-city"] .playback-dock { border-top: 1px solid rgba(54,228,255,.3) !important; box-shadow: 0 -8px 0 rgba(54,228,255,.025) !important; }
-:root[data-theme="vinyl-club"] .playback-dock { border-top: 6px solid rgba(84,50,28,.5) !important; font-family: Georgia, "Times New Roman", serif; }
-:root[data-theme="sakura-night"] .playback-dock { margin: 0 12px 12px; min-height: calc(var(--playback-bar-height) - 12px); border: 1px solid rgba(20,20,20,.14) !important; border-radius: 4px; box-shadow: 0 22px 70px rgba(20,20,20,.14) !important; }
+:root[data-theme="vinyl-club"] .playback-dock { border-top: 1px solid rgba(217,183,95,.38) !important; font-family: Georgia, "Times New Roman", serif; }
+:root[data-theme="sakura-night"] .playback-dock { border: 1px solid rgba(20,20,20,.14) !important; border-radius: 4px; box-shadow: 0 -18px 70px rgba(20,20,20,.12) !important; }
 :root[data-theme="sakura-night"] .app-sidebar button,
 :root[data-theme="sakura-night"] .app-sidebar .sidebar-item-hover:hover,
 :root[data-theme="sakura-night"] .app-sidebar .playlist-sidebar-item:hover { color: var(--text-primary) !important; }

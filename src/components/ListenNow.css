@@ -68,7 +68,7 @@
 
 /* Layout identities: these themes intentionally change composition, not only color. */
 :root[data-theme="neon-city"] .listen-now { font-family: "SFMono-Regular", Consolas, monospace; }
-:root[data-theme="neon-city"] .listen-header { align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--listen-line); }
+:root[data-theme="neon-city"] .listen-header { align-items: center; border-bottom: 1px solid var(--listen-line); }
 :root[data-theme="neon-city"] .listen-header h1 { font-family: inherit; font-size: clamp(30px,4vw,48px); letter-spacing: -.04em; text-transform: uppercase; }
 :root[data-theme="neon-city"] .listen-header h1::before { content: '> '; color: var(--listen-accent); }
 :root[data-theme="neon-city"] .listen-hero { grid-template-columns: minmax(220px,.72fr) 1.28fr; border: 1px solid var(--listen-line); border-left: 5px solid var(--listen-accent); background: rgba(3,13,26,.78); }
@@ -85,7 +85,7 @@
 :root[data-theme="neon-city"] .studio-note { border: 1px solid var(--listen-line); background: rgba(4,15,29,.72); }
 
 :root[data-theme="vinyl-club"] .listen-now { font-family: Georgia, "Times New Roman", serif; }
-:root[data-theme="vinyl-club"] .listen-header { align-items: center; padding-bottom: 24px; border-bottom: 3px double var(--listen-line); }
+:root[data-theme="vinyl-club"] .listen-header { align-items: center; border-bottom: 3px double var(--listen-line); }
 :root[data-theme="vinyl-club"] .listen-header h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(38px,5vw,62px); font-style: italic; font-weight: 500; }
 :root[data-theme="vinyl-club"] .eyebrow { font-family: -apple-system,BlinkMacSystemFont,sans-serif; }
 :root[data-theme="vinyl-club"] .listen-hero { grid-template-columns: minmax(220px,.8fr) 1.2fr; border: 0; border-radius: 999px 30px 30px 999px; background: linear-gradient(90deg,rgba(233,165,75,.13),rgba(52,34,23,.65)); }
@@ -103,7 +103,6 @@
 :root[data-theme="vinyl-club"] .track-info h4 { font-family: Georgia,"Times New Roman",serif; font-size: 18px; font-weight: 500; }
 :root[data-theme="vinyl-club"] .studio-grid { border: 3px double var(--listen-line); }
 
-:root[data-theme="sakura-night"] .listen-now { padding-inline: clamp(30px,7vw,96px); }
 :root[data-theme="sakura-night"] .listen-header { align-items: center; }
 :root[data-theme="sakura-night"] .listen-header h1 { font-size: clamp(36px,5.4vw,66px); font-weight: 580; letter-spacing: -.07em; }
 :root[data-theme="sakura-night"] .listen-hero { display: flex; flex-direction: column; align-items: center; padding: 28px 40px 34px; text-align: center; background: rgba(255,255,255,.72); box-shadow: 0 30px 90px rgba(20,20,20,.1); }
@@ -227,7 +226,7 @@
   justify-content: space-between;
   gap: 24px;
 }
-.listen-header { margin: 0 auto 38px; max-width: 1320px; }
+.listen-header { height: 84px; margin: 0 auto 28px; max-width: 1320px; }
 .listen-header h1 {
   margin-top: 8px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
@@ -283,7 +282,8 @@
   align-items: center;
   gap: clamp(24px, 7vw, 110px);
   max-width: 1320px;
-  min-height: 310px;
+  height: 400px;
+  min-height: 400px;
   margin: 0 auto 78px;
   padding: clamp(30px, 5vw, 64px);
   overflow: hidden;
@@ -428,9 +428,9 @@
 }
 @media (max-width: 660px) {
   .listen-now { padding: 25px 17px 48px; }
-  .listen-header { display: grid; gap: 22px; margin-bottom: 30px; }
+  .listen-header { display: grid; height: auto; gap: 22px; margin-bottom: 30px; }
   .listen-search { width: 100%; }
-  .listen-hero { display: flex; flex-direction: column; align-items: flex-start; min-height: auto; margin-bottom: 54px; padding: 29px 21px 38px; }
+  .listen-hero { display: flex; height: auto; flex-direction: column; align-items: flex-start; min-height: auto; margin-bottom: 54px; padding: 29px 21px 38px; }
   .hero-sleeve { align-self: flex-end; width: 49vw; max-width: 205px; margin-top: -4px; }
   .section-heading { align-items: flex-start; flex-direction: column; gap: 15px; }
   .queue-actions { width: 100%; }
