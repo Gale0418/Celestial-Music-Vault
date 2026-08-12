@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">AeroMusic 預設封面</title>
+  <desc id="desc">深色太空漸層搭配音樂軌道</desc>
+  <defs>
+    <radialGradient id="bg" cx="25%" cy="20%" r="95%">
+      <stop offset="0" stop-color="#af52de"/>
+      <stop offset="0.45" stop-color="#3a235d"/>
+      <stop offset="1" stop-color="#0d0e12"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff2d55"/>
+      <stop offset="0.52" stop-color="#ff9500"/>
+      <stop offset="1" stop-color="#007aff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="72" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="154" fill="none" stroke="url(#orbit)" stroke-width="18" opacity=".92"/>
+  <circle cx="256" cy="256" r="92" fill="#11131a" stroke="#fff" stroke-opacity=".16" stroke-width="4"/>
+  <circle cx="256" cy="256" r="20" fill="#f5f5f7"/>
+  <path d="M117 334c76 44 202 45 279-9" fill="none" stroke="#fff" stroke-opacity=".23" stroke-width="10" stroke-linecap="round"/>
+  <path d="M164 132c56-34 131-41 191-10" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
+</svg>

@@ -6,3 +6,6 @@
 - 2026-08-12：NAS 上的原生 Node binding 受 macOS 系統政策限制；驗證與打包改在 `/tmp` 乾淨副本進行，不刪除 NAS 上既有 `node_modules`。
 - 2026-08-12：`dist/`、`dist-app/`、Mission Center HUD 輸出皆視為可重建產物並加入忽略規則；原始碼與任務紀錄保留。
 - 2026-08-12：改良稽核採 `council_lite + decision`；先處理原子化存檔、單一實例與相依套件安全更新，再做大型曲庫效能與模組拆分，避免高風險一次性重構。
+- 2026-08-12：第二輪採完整專家會議與 Studio 分波執行；P0 先阻止存檔損壞與 NAS 離線靜默刪除，再處理 Electron、安全依賴、React 效能、測試與發行。唱反調觀點被採納：不一次性重寫大型 Context，先用測試鎖定行為。
+- 2026-08-12：MediBuddy 與鑰匙圈盤點只找到 Apple Development 憑證；AeroMusic 1.0.0 採本機開發簽章交付，明確不宣稱 Apple 公證。建置腳本已預留 Developer ID Application＋notarytool keychain profile 的正式 lane，敏感值不進 repository。
+- 2026-08-12：electron-builder 產物的 ATS 預設會覆寫成允許任意連線；在簽章前以 `plutil` 強制關閉並 fail closed，再由 `codesign` 與 `hdiutil verify` 驗證成品。

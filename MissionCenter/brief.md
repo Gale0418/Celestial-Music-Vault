@@ -1,9 +1,9 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=d286e503d1186b42103d1d2e600dd71aca5099690b66b75def24ea3a625215ac -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=48551651a3c15ed26fdfc311565eba3a7587f32540347d44a1b005641c9eb0f0 -->
 # 任務簡報
 
 - Last organized: 2026-08-12
-- Source fingerprint: `d286e503d1186b42103d1d2e600dd71aca5099690b66b75def24ea3a625215ac`
+- Source fingerprint: `48551651a3c15ed26fdfc311565eba3a7587f32540347d44a1b005641c9eb0f0`
 - Source of truth: `tasks.md`
 - 專案: AeroMusic 維護與交付
 - 北極星: 交付安全、可重建且可直接使用的 macOS App 與 DMG

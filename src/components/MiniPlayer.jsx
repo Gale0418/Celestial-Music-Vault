@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, Pause, SkipForward, SkipBack, Maximize2, Music } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import defaultCover from '../assets/default-cover.svg';
 
 const MiniPlayer = ({ onExit }) => {
   const {
@@ -72,6 +73,7 @@ const MiniPlayer = ({ onExit }) => {
           {currentTrack?.cover ? (
             <img
               src={currentTrack.cover}
+              onError={(event) => { event.currentTarget.src = defaultCover; }}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               alt="cover"
             />

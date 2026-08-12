@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Minimize2 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import defaultCover from '../assets/default-cover.svg';
 
 const ImmersionView = ({ onExit }) => {
   const {
@@ -96,7 +97,8 @@ const ImmersionView = ({ onExit }) => {
         transform: isPlaying ? 'scale(1.02)' : 'scale(1)'
       }}>
         <img 
-          src={currentTrack?.cover || 'https://via.placeholder.com/500'} 
+          src={currentTrack?.cover || defaultCover}
+          onError={(event) => { event.currentTarget.src = defaultCover; }}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           alt="cover" 
         />

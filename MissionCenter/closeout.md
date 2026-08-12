@@ -1,8 +1,8 @@
 # 收尾
 
-- 摘要: AeroMusic 已完成穩定化、專案整理、安全強化與 macOS 桌面交付。
-- 已完成: 跨平台測試；安全自訂協定；圖示與輸出整理；README/docs；乾淨 Build；App/DMG 交付
-- 未完成: 無本次必要工作；大型架構與效能改造留作 Backlog
-- 風險: 4 個 exhaustive-deps warnings；未簽署 App 僅適合本機使用
-- 冒煙測試: npm test；npm run lint；Vite build；electron-builder；Electron 視窗/CORS；桌面程序/Renderer
-- 回顧: NAS 原生模組應一律在 /tmp 乾淨建置；UI 煙霧測試成功抓到單元測試未覆蓋的 CORS 回歸。
+- 摘要: AeroMusic 1.0.0 已完成可靠性、安全、效能、離線體驗與 macOS 發行強化並交付桌面。
+- 已完成: 原子存檔與備份復原；NAS 離線保護；Electron/IPC/導航 hardening；20,000 首排序；離線資源；Chrome 與封裝 App 回歸；Apple Development 本機簽章；DMG 交付
+- 未完成: 正式對外公證需另備 Developer ID Application 憑證與 notarytool profile；非本次本機交付阻擋
+- 風險: 預設示範串流仍需 SoundHelix 網路；Apple Development 簽章不等於 Developer ID 公證
+- 冒煙測試: npm test；零警告 lint；Vite 8 build；audit 0；Chrome UI；Electron 單例；codesign strict；hdiutil verify；桌面啟動
+- 回顧: NAS 專案應固定在 /tmp 乾淨建置；成品 plist 必須在簽章前 fail-closed 驗證；UI 與成品實測能抓到單元測試外問題

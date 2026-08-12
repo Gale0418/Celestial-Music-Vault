@@ -3,14 +3,14 @@
   "description": "AeroMusic 是為 macOS 設計的本機與 NAS 音樂播放器。",
   "author": "AeroMusic Contributors",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "main": "main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "start": "electron .",
     "build": "vite build",
-    "test": "node tests/security-smoke.cjs && node tests/security-behavior.cjs",
+    "test": "node tests/security-smoke.cjs && node tests/security-behavior.cjs && node tests/user-data-store.cjs && node tests/track-sorting.cjs",
     "lint": "eslint src main.cjs preload.cjs vite.config.js eslint.config.js tests",
     "preview": "vite preview",
     "pack": "electron-builder --dir",
@@ -21,6 +21,7 @@
     "productName": "AeroMusic",
     "files": [
       "dist/**/*",
+      "lib/**/*",
       "main.cjs",
       "preload.cjs",
       "package.json"
@@ -30,30 +31,35 @@
     },
     "mac": {
       "icon": "build/icon.icns",
+      "category": "public.app-category.music",
+      "extendInfo": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      },
       "target": [
         "dir",
         "dmg"
       ],
-      "type": "distribution",
-      "identity": null
+      "type": "distribution"
     }
   },
   "dependencies": {
-    "lucide-react": "latest",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "lucide-react": "^1.31.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "electron": "^42.3.0",
-    "electron-builder": "^26.8.1",
-    "eslint": "^10.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "electron": "^42.9.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
-    "vite": "^8.0.12"
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "globals": "^17.10.0",
+    "vite": "^8.2.1"
   }
 }

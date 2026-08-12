@@ -5,6 +5,7 @@ import {
   Video, VideoOff, Timer, Ban, Maximize, PictureInPicture2, Star
 } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import defaultCover from '../assets/default-cover.svg';
 
 const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
   const {
@@ -98,7 +99,8 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '30%', minWidth: '220px' }}>
         <div style={{ position: 'relative', width: '52px', height: '52px' }}>
           <img
-            src={currentTrack?.cover}
+            src={currentTrack?.cover || defaultCover}
+            onError={(event) => { event.currentTarget.src = defaultCover; }}
             alt={currentTrack?.title}
             style={{
               width: '100%',

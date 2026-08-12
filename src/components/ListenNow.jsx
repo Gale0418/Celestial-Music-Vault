@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Play, Volume2, Sparkles, Flame, Headphones, Disc, Trash2, Save } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import defaultCover from '../assets/default-cover.svg';
 
 const ListenNow = () => {
   const { playlist, currentTrackIndex, isPlaying, selectTrack, clearPlaylist, createPlaylist } = useAudio();
@@ -310,6 +311,7 @@ const ListenNow = () => {
                 }}>
                   <img
                     src={track.cover}
+                    onError={(event) => { event.currentTarget.src = defaultCover; }}
                     alt={track.title}
                     style={{
                       position: 'absolute',

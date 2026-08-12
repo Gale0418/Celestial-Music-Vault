@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import defaultCover from '../assets/default-cover.svg';
 
 const AudioContext = createContext();
 
@@ -16,7 +17,7 @@ const DEFAULT_PLAYLIST = [
     title: 'Aero Space Chill',
     artist: 'Lofi Dreamer',
     album: 'Cosmic Beats Vol. 1',
-    cover: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80', // Beautiful dynamic 3D abstract art
+    cover: defaultCover,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     colors: ['#ff2d55', '#af52de', '#007aff'],
     duration: '6:12'
@@ -26,7 +27,7 @@ const DEFAULT_PLAYLIST = [
     title: 'Midnight Coding',
     artist: 'Synth Wave Girl',
     album: 'Neon Cyberpunk',
-    cover: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&q=80', // Dark neon grid
+    cover: defaultCover,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
     colors: ['#007aff', '#34c759', '#af52de'],
     duration: '7:05'
@@ -36,7 +37,7 @@ const DEFAULT_PLAYLIST = [
     title: 'Morning Matcha',
     artist: 'Coffee & Books',
     album: 'Cafe Study Sessions',
-    cover: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80', // Warm coffee aesthetic
+    cover: defaultCover,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
     colors: ['#ff9500', '#ffcc00', '#34c759'],
     duration: '5:44'
@@ -46,7 +47,7 @@ const DEFAULT_PLAYLIST = [
     title: 'Rainy Afternoon',
     artist: 'Tokyo Rain',
     album: 'City Lights Ambient',
-    cover: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=400&q=80', // Rainy aesthetic
+    cover: defaultCover,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
     colors: ['#007aff', '#5856d6', '#ff2d55'],
     duration: '5:02'
@@ -56,7 +57,7 @@ const DEFAULT_PLAYLIST = [
     title: 'Sunset Boulevard',
     artist: 'Retro Horizon',
     album: 'Dreamwave Rides',
-    cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&q=80', // Retro synthwave sunset
+    cover: defaultCover,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
     colors: ['#ff2d55', '#ff9500', '#af52de'],
     duration: '6:03'
@@ -135,6 +136,8 @@ export const AudioProvider = ({ children }) => {
   const handleNextTrackRef = useRef(null);
 
   const currentTrack = playlist[currentTrackIndex] || DEFAULT_PLAYLIST[0];
+  const initialTrackRef = useRef(currentTrack);
+  const initialVolumeRef = useRef(volume);
 
   // Initialize HTML5 Video/Audio Element
   useEffect(() => {
@@ -151,8 +154,8 @@ export const AudioProvider = ({ children }) => {
     };
 
     // Load initial track without autoplay
-    setAudioSource(currentTrack);
-    audio.volume = volume;
+    setAudioSource(initialTrackRef.current);
+    audio.volume = initialVolumeRef.current;
 
     // Event Listeners
     const onTimeUpdate = () => {
@@ -281,7 +284,7 @@ export const AudioProvider = ({ children }) => {
   // --- DATA PERSISTENCE SYSTEM ---
   
   // Helper to save all user data including playlists, favorites, library and current playback state
-  const saveAllData = (updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView, updatedRatings = trackRatings) => {
+  const saveAllData = useCallback((updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView, updatedRatings = trackRatings) => {
     if (!window.electronAPI) return;
     
     const audio = videoRef.current;
@@ -301,7 +304,7 @@ export const AudioProvider = ({ children }) => {
       trackRatings: updatedRatings,
       playbackState
     });
-  };
+  }, [activeView, currentTrack, currentTrackIndex, favorites, isMuted, library, playlists, trackRatings, volume]);
 
   // 1. Initial Load on Mount
   useEffect(() => {
@@ -380,25 +383,25 @@ export const AudioProvider = ({ children }) => {
   useEffect(() => {
     if (!hasLoadedInitialData) return;
     saveAllData(library, favorites, playlists, activeView);
-  }, [library, favorites, playlists, activeView]);
+  }, [activeView, favorites, hasLoadedInitialData, library, playlists, saveAllData]);
 
   // 3. Autosave state periodically (every 10 seconds) during playback to keep it lightweight
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
-      saveAllData(library, favorites, playlists, activeView);
+      saveAllData();
     }, 10000);
     return () => clearInterval(interval);
-  }, [isPlaying, library, favorites, playlists, currentTrackIndex, activeView, volume, isMuted]);
+  }, [isPlaying, saveAllData]);
 
   // 4. Save state when window beforeunload triggers
   useEffect(() => {
     const handleUnload = () => {
-      saveAllData(library, favorites, playlists, activeView);
+      saveAllData();
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [library, favorites, playlists, currentTrackIndex, activeView, volume, isMuted]);
+  }, [saveAllData]);
 
   // --- PLAYLISTS & FAVORITES HELPER FUNCTIONS ---
   
@@ -730,7 +733,7 @@ export const AudioProvider = ({ children }) => {
           title,
           artist,
           album: 'Local Import',
-          cover: 'https://images.unsplash.com/photo-1487180142328-054b783fc471?w=400&q=80',
+          cover: defaultCover,
           url: fileUrl,
           path: file.path || '',
           colors: randomColors,
@@ -824,7 +827,7 @@ export const AudioProvider = ({ children }) => {
           title,
           artist,
           album: 'Local Import',
-          cover: 'https://images.unsplash.com/photo-1487180142328-054b783fc471?w=400&q=80',
+          cover: defaultCover,
           url: fileUrl,
           path: filePath,
           colors: randomColors,

@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { UploadCloud, Music, Play, Disc, FolderOpen, MoreVertical, Heart, Plus, Trash, Trash2, CheckSquare, Square, ListPlus, PlayCircle } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
+import { sortTracksWithOriginalIndex } from '../utils/trackSorting';
 
 const dropdownItemStyle = {
   display: 'block',
@@ -54,6 +55,8 @@ const LocalLibrary = () => {
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
   const [showPlaylistDropdown, setShowPlaylistDropdown] = useState(false);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [sortKey, setSortKey] = useState('default');
+  const [sortDirection, setSortDirection] = useState('asc');
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('aeromusic-columns'));
@@ -88,37 +91,47 @@ const LocalLibrary = () => {
   const fileInputRef = useRef(null);
   const dirInputRef = useRef(null);
 
-  // Determine current tracks, titles, descriptions based on activeView
-  let viewTracks = [];
-  let viewTitle = '本地音樂庫';
-  let viewDesc = '支援將整批音訊檔案或整個資料夾拖放進來播放！';
-  let showDropZone = false;
-
-  if (activeView === 'library') {
-    viewTracks = library;
-    viewTitle = '本地音樂庫';
-    viewDesc = '支援將整批音訊檔案或整個資料夾拖放進來播放！您的永久音樂庫會安全地儲存起來。';
-    showDropZone = true;
-  } else if (activeView === 'favorites') {
-    viewTracks = favorites;
-    viewTitle = '我的最愛';
-    viewDesc = '這裡收藏了所有主人最珍愛的音樂，按下每一首歌旁邊的愛心或點擊右鍵就可以加入囉！💕';
-    showDropZone = false;
-  } else if (activeView.startsWith('playlist-')) {
-    const playlistId = activeView.replace('playlist-', '');
-    const currentPlaylist = playlists.find(p => p.id === playlistId);
-    if (currentPlaylist) {
-      viewTracks = currentPlaylist.tracks;
-      viewTitle = currentPlaylist.name;
-      viewDesc = `這是一個自訂播放清單，共有 ${viewTracks.length} 首歌曲。主人可以在其他清單對歌曲點擊滑鼠「右鍵」來加入這裡喔！`;
+  const { viewTracks, viewTitle, viewDesc, showDropZone, sortedTracks } = useMemo(() => {
+    let view;
+    if (activeView === 'library') {
+      view = {
+        viewTracks: library,
+        viewTitle: '本地音樂庫',
+        viewDesc: '支援將整批音訊檔案或整個資料夾拖放進來播放！您的永久音樂庫會安全地儲存起來。',
+        showDropZone: true
+      };
+    } else if (activeView === 'favorites') {
+      view = {
+        viewTracks: favorites,
+        viewTitle: '我的最愛',
+        viewDesc: '這裡收藏了所有主人最珍愛的音樂，按下每一首歌旁邊的愛心或點擊右鍵就可以加入囉！💕',
+        showDropZone: false
+      };
+    } else if (activeView.startsWith('playlist-')) {
+      const playlistId = activeView.replace('playlist-', '');
+      const currentPlaylist = playlists.find((item) => item.id === playlistId);
+      if (currentPlaylist) {
+        view = {
+          viewTracks: currentPlaylist.tracks,
+          viewTitle: currentPlaylist.name,
+          viewDesc: `這是一個自訂播放清單，共有 ${currentPlaylist.tracks.length} 首歌曲。主人可以在其他清單對歌曲點擊滑鼠「右鍵」來加入這裡喔！`,
+          showDropZone: false
+        };
+      }
     }
-  } else {
-    viewTracks = playlist;
-    showDropZone = true;
-  }
-
-  // Map each track with its original index in viewTracks
-  const mappedTracks = viewTracks.map((track, originalIndex) => ({ ...track, originalIndex }));
+    if (!view) {
+      view = {
+        viewTracks: playlist,
+        viewTitle: '本地音樂庫',
+        viewDesc: '支援將整批音訊檔案或整個資料夾拖放進來播放！',
+        showDropZone: true
+      };
+    }
+    return {
+      ...view,
+      sortedTracks: sortTracksWithOriginalIndex(view.viewTracks, sortKey, sortDirection)
+    };
+  }, [activeView, favorites, library, playlist, playlists, sortDirection, sortKey]);
 
   // 播放「排序後列表」中指定 index 的歌 — 讓 playlist 狀態與 UI 顯示完全一致
   const handlePlayTrack = (sortedIndex, currentSortedTracks) => {
@@ -171,10 +184,6 @@ const LocalLibrary = () => {
     setLastSelectedIndex(index);
   };
 
-  // Interactive library sorting state
-  const [sortKey, setSortKey] = useState('default'); // 'default' | 'title' | 'artist' | 'album'
-  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
-
   const handleSort = (key) => {
     if (sortKey === key) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -183,21 +192,6 @@ const LocalLibrary = () => {
       setSortDirection('asc');
     }
   };
-
-  const sortedTracks = [...mappedTracks].sort((a, b) => {
-    if (sortKey === 'default') {
-      return sortDirection === 'asc' 
-        ? a.originalIndex - b.originalIndex 
-        : b.originalIndex - a.originalIndex;
-    }
-    
-    let valA = a[sortKey]?.toLowerCase() || '';
-    let valB = b[sortKey]?.toLowerCase() || '';
-    
-    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
 
   // 當畫面排序改變時，如果目前正在播放這個畫面，則同步更新播放清單，這樣下一首就會照新排序播
   useEffect(() => {
@@ -763,7 +757,9 @@ const LocalLibrary = () => {
                         borderBottom: '1px solid rgba(255,255,255,0.03)',
                         cursor: 'pointer',
                         background: isSelected ? 'rgba(255, 45, 85, 0.15)' : (isCurrentTrack ? 'rgba(255, 45, 85, 0.06)' : 'transparent'),
-                        transition: 'background 0.15s'
+                        transition: 'background 0.15s',
+                        contentVisibility: 'auto',
+                        containIntrinsicSize: '56px'
                       }}
                       className="table-row-hover"
                     >
@@ -1531,4 +1527,3 @@ const LocalLibrary = () => {
 };
 
 export default LocalLibrary;
-

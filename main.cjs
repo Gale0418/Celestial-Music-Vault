@@ -2,6 +2,12 @@ const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net } = require('e
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
+const {
+  atomicWriteUserDataFile,
+  createSerialWriter,
+  filterPersistedUserData: filterPersistedUserDataForRoots,
+  loadUserDataFile
+} = require('./lib/user-data-store.cjs');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
 const REMOTE_MEDIA_HOSTS = new Set(['www.soundhelix.com']);
@@ -162,8 +168,25 @@ async function scanAudioFiles(dirPath) {
   return results;
 }
 
+function isTrustedIpcSender(event) {
+  try {
+    const senderUrl = event?.senderFrame?.url || event?.sender?.getURL?.();
+    const parsed = new URL(senderUrl);
+    return parsed.protocol === `${APP_SCHEME}:` && parsed.host === 'app';
+  } catch {
+    return false;
+  }
+}
+
+function assertTrustedIpcSender(event) {
+  if (!isTrustedIpcSender(event)) {
+    throw new Error('Blocked IPC request from an untrusted renderer');
+  }
+}
+
 // IPC: Native multi-folder selection dialog (supports selecting multiple folders at once!)
-ipcMain.handle('select-folders', async (_event) => {
+ipcMain.handle('select-folders', async (event) => {
+  assertTrustedIpcSender(event);
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'multiSelections'],
     title: '選擇音樂資料夾'
@@ -176,12 +199,14 @@ ipcMain.handle('select-folders', async (_event) => {
 
 // IPC: Fast Node.js folder scanner
 ipcMain.handle('scan-folder-for-audio', async (event, folderPath) => {
+  assertTrustedIpcSender(event);
   const approvedPath = ensureApprovedDirectory(folderPath);
   return scanAudioFiles(approvedPath);
 });
 
 // IPC: Check if a path is a directory
 ipcMain.handle('is-directory', async (event, filePath) => {
+  assertTrustedIpcSender(event);
   try {
     const stat = await fs.promises.stat(filePath);
     return stat.isDirectory();
@@ -192,6 +217,7 @@ ipcMain.handle('is-directory', async (event, filePath) => {
 
 // IPC listener to open Finder/File Manager highlighting the specific file path
 ipcMain.on('show-item-in-folder', (event, filePath) => {
+  assertTrustedIpcSender(event);
   if (!filePath) return;
   try {
     shell.showItemInFolder(ensureApprovedFile(filePath));
@@ -202,6 +228,7 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
 
 // IPC: Move item to trash
 ipcMain.handle('trash-item', async (event, filePath) => {
+  assertTrustedIpcSender(event);
   try {
     const approvedPath = ensureApprovedFile(filePath);
     await shell.trashItem(approvedPath);
@@ -214,19 +241,10 @@ ipcMain.handle('trash-item', async (event, filePath) => {
 
 // IPC: Show Native Message Box
 ipcMain.handle('show-message-box', async (event, options) => {
+  assertTrustedIpcSender(event);
   const result = await dialog.showMessageBox(options);
   return result;
 });
-
-function isApprovedExistingTrack(track) {
-  if (!track || typeof track !== 'object' || typeof track.path !== 'string' || !track.path) return false;
-  try {
-    ensureApprovedFile(track.path);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function getApprovedRootsRegistryPath() {
   return path.join(app.getPath('userData'), APPROVED_ROOTS_REGISTRY);
@@ -238,11 +256,14 @@ function loadApprovedRootsRegistry() {
     const parsed = JSON.parse(fs.readFileSync(getApprovedRootsRegistryPath(), 'utf8'));
     const roots = Array.isArray(parsed?.roots) ? parsed.roots : [];
     for (const rawPath of roots) {
+      if (typeof rawPath !== 'string' || !path.isAbsolute(rawPath)) continue;
       try {
         const resolved = resolveExistingPath(rawPath);
         if (fs.statSync(resolved).isDirectory()) approvedScanRoots.add(resolved);
       } catch {
-        // Deleted or inaccessible picker-approved roots are no longer trusted.
+        // 保留曾由原生挑選器核准、但目前離線的 NAS 根目錄。
+        // 實際掃描、播放或刪除時仍必須通過 realpath/stat 驗證。
+        approvedScanRoots.add(path.resolve(rawPath));
       }
     }
   } catch (error) {
@@ -274,40 +295,20 @@ async function persistApprovedRootsRegistry() {
   }
 }
 
-// Persisted data is untrusted input. It can retain only files already approved
-// by the native folder picker; it never expands approvedScanRoots.
-function filterPersistedTrackList(tracks) {
-  return Array.isArray(tracks)
-    ? tracks.filter(isApprovedExistingTrack).map((track) => ({
-      ...track,
-      url: toMediaUrl(track.path)
-    }))
-    : [];
-}
-
 function filterPersistedUserData(data) {
-  if (!data || typeof data !== 'object') return data;
-  const filtered = { ...data };
-  filtered.library = filterPersistedTrackList(data.library);
-  filtered.favorites = filterPersistedTrackList(data.favorites);
-  filtered.playlists = Array.isArray(data.playlists)
-    ? data.playlists.map((playlist) => ({
-      ...playlist,
-      tracks: filterPersistedTrackList(playlist?.tracks)
-    }))
-    : [];
-  return filtered;
+  // 持久化資料只驗證既有授權邊界，不以 NAS 當下是否連線作為刪除依據。
+  // 真正讀取或刪除檔案時仍會經過 realpath/stat 的嚴格檢查。
+  return filterPersistedUserDataForRoots(data, approvedScanRoots, toMediaUrl);
 }
 // IPC: User Data Persistence (Favorites, Playlists, Library, Playback States)
 const getUserDataPath = () => path.join(app.getPath('userData'), 'user-data.json');
+const enqueueUserDataWrite = createSerialWriter(atomicWriteUserDataFile);
 
-ipcMain.handle('load-user-data', async () => {
+ipcMain.handle('load-user-data', async (event) => {
+  assertTrustedIpcSender(event);
   try {
-    const dataPath = getUserDataPath();
-    if (fs.existsSync(dataPath)) {
-      const data = await fs.promises.readFile(dataPath, 'utf8');
-      return filterPersistedUserData(JSON.parse(data));
-    }
+    const data = await loadUserDataFile(getUserDataPath());
+    return data ? filterPersistedUserData(data) : null;
   } catch (e) {
     console.error('Failed to load user data:', e);
   }
@@ -315,13 +316,11 @@ ipcMain.handle('load-user-data', async () => {
 });
 
 ipcMain.handle('save-user-data', async (event, data) => {
+  assertTrustedIpcSender(event);
   try {
-    const dataPath = getUserDataPath();
-    const dir = path.dirname(dataPath);
-    if (!fs.existsSync(dir)) {
-      await fs.promises.mkdir(dir, { recursive: true });
-    }
-    await fs.promises.writeFile(dataPath, JSON.stringify(filterPersistedUserData(data), null, 2), 'utf8');
+    const filtered = filterPersistedUserData(data);
+    if (!filtered) return false;
+    await enqueueUserDataWrite(getUserDataPath(), filtered);
     return true;
   } catch (e) {
     console.error('Failed to save user data:', e);
@@ -331,6 +330,7 @@ ipcMain.handle('save-user-data', async (event, data) => {
 
 // Window Mode Toggles
 ipcMain.on('toggle-mini-player', (event, isMini) => {
+  assertTrustedIpcSender(event);
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
   if (isMini) {
@@ -347,6 +347,7 @@ ipcMain.on('toggle-mini-player', (event, isMini) => {
 });
 
 ipcMain.on('toggle-fullscreen', (event, isFullscreen) => {
+  assertTrustedIpcSender(event);
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
   win.setFullScreen(isFullscreen);
@@ -365,23 +366,30 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, 'preload.cjs') // Safe context bridge
     }
   });
 
-  // Serve the app and approved local media from one secure custom origin.
-  win.loadURL(`${APP_SCHEME}://app/index.html`);
-
-  // Open external links in default OS browser instead of inside electron window
+  // Block renderer-created windows and navigation outside the app origin.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const externalUrl = new URL(url);
-      if (externalUrl.protocol === 'https:') shell.openExternal(externalUrl.toString());
-    } catch {
-      // Reject malformed or non-HTTPS external navigation.
-    }
+    console.warn('Blocked request to open a new window:', url);
     return { action: 'deny' };
   });
+
+  win.webContents.on('will-navigate', (event, navigationUrl) => {
+    try {
+      const parsed = new URL(navigationUrl);
+      if (parsed.protocol === `${APP_SCHEME}:` && parsed.host === 'app') return;
+    } catch {
+      // Malformed URL is denied below.
+    }
+    event.preventDefault();
+    console.warn('Blocked renderer navigation:', navigationUrl);
+  });
+
+  // Serve the app and approved local media from one secure custom origin.
+  win.loadURL(`${APP_SCHEME}://app/index.html`);
 
   // Display seamlessly once content is parsed
   win.once('ready-to-show', () => {
@@ -389,12 +397,27 @@ function createWindow() {
   });
 }
 
-// macOS standard: keep app running when all windows close unless quit
+function focusPrimaryWindow() {
+  const [win] = BrowserWindow.getAllWindows();
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', focusPrimaryWindow);
+
+  // macOS standard: keep app running when all windows close unless quit
   app.whenReady().then(() => {
     loadApprovedRootsRegistry();
     protocol.handle(APP_SCHEME, handleAppProtocol);
     // Make sure IPC can receive crash logs and write them to a file
     ipcMain.on('crash-log', (event, errorInfo) => {
+      assertTrustedIpcSender(event);
       try {
         const fs = require('fs');
         const path = require('path');
@@ -405,17 +428,19 @@ function createWindow() {
     });
 
     ipcMain.on('show-error-box', (event, title, content) => {
+      assertTrustedIpcSender(event);
       dialog.showErrorBox(title, content);
     });
 
     createWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
   });
-});
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

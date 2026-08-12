@@ -62,6 +62,8 @@ AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 |------|------|
 | `ELECTRON_BUILDER_CACHE=/tmp/...` | 把 Electron 框架下載快取強制寫在本機 SSD，不碰 NAS |
 | `TMPDIR=/tmp` | 所有解壓縮暫存檔案也寫在本機 |
+| `AEROMUSIC_SIGNING_IDENTITY` | 可選；明確指定鑰匙圈中的簽章憑證，不把身分寫死在 repository |
+| `AEROMUSIC_NOTARY_KEYCHAIN_PROFILE` | 可選；提交 Apple 公證時使用已存在的 notarytool 鑰匙圈 profile |
 
 ### 🔁 完整流程說明
 
@@ -75,7 +77,9 @@ AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
    ├─ 讀取 package.json 的 "build" 欄位配置
    ├─ @electron/rebuild：重新編譯 native modules（arm64）
    ├─ packaging：把 dist/ + Electron 框架 + main.cjs + preload.cjs 打包
-   ├─ 略過 code signing（identity 設為 null）
+   ├─ 預設產生 ad-hoc 本機簽章；設定簽章環境變數時使用鑰匙圈憑證
+   ├─ 深度簽章與驗證 App 後，以 hdiutil 產生 DMG 並簽章
+   ├─ 設定公證 profile 時提交 notarytool、staple 並驗證 ticket
    └─ 輸出 dist-app/mac-arm64/AeroMusic.app
          + dist-app/AeroMusic-x.x.x-arm64.dmg
 
@@ -90,7 +94,7 @@ AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 | 打包失敗 `unlinkat ...` | SMB 在 dist-app/ 建立了 `.smbdelete` 鎖定檔 | 設定 `TMPDIR=/tmp` + `ELECTRON_BUILDER_CACHE=/tmp/...` |
 | 打包失敗 `ENOENT: ...` | electron-builder 嘗試在 NAS 上寫 debug 檔但路徑被鎖 | 同上，TMPDIR 搞定 |
 | 原生 binding 被 system policy 阻擋 | macOS 不允許載入 NAS 上的原生 Node 模組 | 使用 `scripts/build-macos.sh` 在 `/tmp` 乾淨建置 |
-| 未簽署 App 的 Gatekeeper 提示 | 目前 `identity: null`，僅供本機使用 | 正式分發需 Apple Developer 簽署與 notarization |
+| Gatekeeper 對外部分發提示 | 預設只做 ad-hoc 本機簽章，不自動猜測個人憑證 | 正式分發需 Developer ID Application 與 notarization；Apple Development 只供本機開發 |
 | **【無限轉圈圈 Bug】** 換歌或閒置時狂 reload 導致 UI 凍結 | `AudioContext` 裡監聽了整個 `playlist` 陣列，只要 autosave 觸發，陣列 reference 一變就會重新 `audioRef.load()` | 修改 `useEffect` 依賴陣列，**只監聽 `currentTrackIndex`**，不要把整個 `playlist` 丟進去！ |
 
 ---
