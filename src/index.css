@@ -26,6 +26,12 @@
   --text-primary: #f5f5f7;
   --text-secondary: #a3a5ab;
   --text-muted: #70737c;
+  --on-primary: #180807;
+  --stage-background: linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 18%), rgba(7, 8, 10, 0.34);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.13);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --selection-foreground: #ffffff;
+  --selection-background: rgba(255, 98, 87, 0.42);
   
   --accent-blue: #007aff;
   --accent-green: #34c759;
@@ -66,6 +72,10 @@
   --text-primary: #eefcff;
   --text-secondary: #9fb8c5;
   --text-muted: #647d8c;
+  --on-primary: #031318;
+  --stage-background: linear-gradient(90deg, rgba(54, 228, 255, 0.025), transparent 18%), rgba(3, 10, 20, 0.42);
+  --selection-foreground: #031318;
+  --selection-background: rgba(54, 228, 255, 0.68);
   --radius-md: 4px;
   --radius-lg: 8px;
   --radius-xl: 12px;
@@ -89,6 +99,10 @@
   --text-primary: #fff8df;
   --text-secondary: #c8b98a;
   --text-muted: #827656;
+  --on-primary: #1b1304;
+  --stage-background: linear-gradient(90deg, rgba(217, 183, 95, 0.025), transparent 18%), rgba(5, 5, 4, 0.42);
+  --selection-foreground: #1b1304;
+  --selection-background: rgba(217, 183, 95, 0.72);
   --radius-md: 12px;
   --radius-lg: 22px;
   --radius-xl: 30px;
@@ -112,6 +126,12 @@
   --text-primary: #181818;
   --text-secondary: #55534f;
   --text-muted: #8a8780;
+  --on-primary: #ffffff;
+  --stage-background: linear-gradient(90deg, rgba(20, 20, 20, 0.018), transparent 18%), rgba(250, 249, 246, 0.72);
+  --scrollbar-thumb: rgba(20, 20, 20, 0.16);
+  --scrollbar-thumb-hover: rgba(20, 20, 20, 0.3);
+  --selection-foreground: #ffffff;
+  --selection-background: rgba(20, 20, 20, 0.72);
   --radius-md: 2px;
   --radius-lg: 4px;
   --radius-xl: 8px;
@@ -151,11 +171,11 @@ button, input {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb);
   border-radius: var(--radius-xl);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ==========================================================================
@@ -460,9 +480,7 @@ button:active:not(:disabled),
 
 .main-stage {
   min-width: 0;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 18%),
-    rgba(7, 8, 10, 0.34);
+  background: var(--stage-background);
 }
 
 .app-sidebar {
@@ -482,7 +500,7 @@ button:active:not(:disabled),
 :root[data-theme="vinyl-club"] .app-sidebar {
   background: linear-gradient(180deg, rgba(14, 14, 11, 0.98), rgba(3, 3, 3, 0.99)) !important;
   border-right: 1px solid rgba(217,183,95,.38) !important;
-  box-shadow: inset -7px 0 rgba(217,183,95,.055);
+  box-shadow: inset -1px 0 rgba(217,183,95,.28);
 }
 
 :root[data-theme="sakura-night"] .app-sidebar {
@@ -570,7 +588,6 @@ button:active:not(:disabled),
 :root[data-theme="sakura-night"] .app-sidebar button,
 :root[data-theme="sakura-night"] .app-sidebar .sidebar-item-hover:hover,
 :root[data-theme="sakura-night"] .app-sidebar .playlist-sidebar-item:hover { color: var(--text-primary) !important; }
-:root[data-theme="sakura-night"] .app-sidebar > div:first-of-type > span { background: linear-gradient(to right,#111,#555) !important; background-clip: text !important; }
 :root[data-theme="sakura-night"] .playback-dock span { color: var(--text-primary) !important; }
 :root[data-theme="vinyl-club"] .theme-switcher { box-shadow: inset 0 0 0 1px rgba(217,183,95,.08), 0 12px 40px rgba(217,183,95,.08); }
 :root[data-theme="sakura-night"] .theme-switcher { background: #fff; box-shadow: 6px 7px 0 #dfdcd5; }
@@ -629,16 +646,16 @@ button:active:not(:disabled),
   border-width: 1px !important;
   border-radius: var(--radius-lg) !important;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 98, 87, 0.075), transparent 42%),
-    rgba(255, 255, 255, 0.022) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+    radial-gradient(circle at 50% 0%, var(--primary-soft), transparent 42%),
+    var(--bg-glass-light) !important;
+  box-shadow: inset 0 1px 0 var(--border-glass) !important;
 }
 
 .library-drop-zone:hover {
-  border-color: rgba(255, 255, 255, 0.22) !important;
+  border-color: var(--border-glass-bright) !important;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 98, 87, 0.11), transparent 44%),
-    rgba(255, 255, 255, 0.032) !important;
+    radial-gradient(circle at 50% 0%, var(--primary-soft), transparent 44%),
+    var(--bg-glass-active) !important;
 }
 
 #local-songs-table {
@@ -654,12 +671,12 @@ button:active:not(:disabled),
 }
 
 #local-songs-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.045) !important;
+  background: var(--bg-glass-light) !important;
 }
 
 ::selection {
-  color: #fff;
-  background: rgba(255, 98, 87, 0.42);
+  color: var(--selection-foreground);
+  background: var(--selection-background);
 }
 
 @media (max-width: 1200px) {

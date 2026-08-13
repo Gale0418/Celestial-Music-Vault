@@ -74,18 +74,16 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(255, 59, 48, 0.3)'
+          boxShadow: '0 4px 12px var(--primary-glow)'
         }}>
-          <Music2 size={18} color="#fff" />
+          <Music2 size={18} color="var(--on-primary)" />
         </div>
         <span style={{
           fontFamily: 'var(--font-display)',
           fontWeight: 800,
           fontSize: '19px',
           letterSpacing: '-0.5px',
-          background: 'linear-gradient(to right, #fff, #86868b)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
+          color: 'var(--text-primary)'
         }}>
           AeroMusic
         </span>
@@ -121,7 +119,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
                 borderRadius: '10px',
                 border: 'none',
                 background: isActive ? 'var(--bg-glass-active)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--text-secondary)',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                 fontSize: '14px',
                 fontWeight: isActive ? 600 : 500,
                 textAlign: 'left',
@@ -132,6 +130,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
               }}
               className={!isActive ? 'sidebar-item-hover' : ''}
               id={`sidebar-nav-${item.id}`}
+              aria-current={isActive ? 'page' : undefined}
             >
               <Icon size={18} color={isActive ? 'var(--primary-color)' : 'inherit'} />
               <span>{item.label}</span>
@@ -143,7 +142,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
       {/* Separator */}
       <hr style={{
         border: 'none',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        borderTop: '1px solid var(--border-glass)',
         margin: '20px 20px'
       }} />
 
@@ -173,7 +172,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             borderRadius: '10px',
             border: 'none',
             background: (activeTab === 'local-library' && activeView === 'library') ? 'var(--bg-glass-active)' : 'transparent',
-            color: (activeTab === 'local-library' && activeView === 'library') ? '#fff' : 'var(--text-secondary)',
+            color: (activeTab === 'local-library' && activeView === 'library') ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontSize: '14px',
             fontWeight: (activeTab === 'local-library' && activeView === 'library') ? 600 : 500,
             textAlign: 'left',
@@ -183,6 +182,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             outline: 'none'
           }}
           className={(activeTab !== 'local-library' || activeView !== 'library') ? 'sidebar-item-hover' : ''}
+          aria-current={(activeTab === 'local-library' && activeView === 'library') ? 'page' : undefined}
         >
           <HardDrive size={18} color={(activeTab === 'local-library' && activeView === 'library') ? 'var(--primary-color)' : 'inherit'} />
           <span>我的音樂庫</span>
@@ -200,7 +200,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             borderRadius: '10px',
             border: 'none',
             background: (activeTab === 'local-library' && activeView === 'favorites') ? 'var(--bg-glass-active)' : 'transparent',
-            color: (activeTab === 'local-library' && activeView === 'favorites') ? '#fff' : 'var(--text-secondary)',
+            color: (activeTab === 'local-library' && activeView === 'favorites') ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontSize: '14px',
             fontWeight: (activeTab === 'local-library' && activeView === 'favorites') ? 600 : 500,
             textAlign: 'left',
@@ -210,6 +210,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             outline: 'none'
           }}
           className={(activeTab !== 'local-library' || activeView !== 'favorites') ? 'sidebar-item-hover' : ''}
+          aria-current={(activeTab === 'local-library' && activeView === 'favorites') ? 'page' : undefined}
         >
           <Heart size={18} color={(activeTab === 'local-library' && activeView === 'favorites') ? 'var(--primary-color)' : 'inherit'} fill={(activeTab === 'local-library' && activeView === 'favorites') ? 'var(--primary-color)' : 'transparent'} />
           <span>我的最愛</span>
@@ -231,6 +232,8 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             opacity: 0.5,
             cursor: 'not-allowed'
           }}
+          aria-label="廣播電台（尚未開放）"
+          aria-disabled="true"
         >
           <Radio size={18} />
           <span>廣播電台</span>
@@ -240,7 +243,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
       {/* Separator */}
       <hr style={{
         border: 'none',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        borderTop: '1px solid var(--border-glass)',
         margin: '20px 20px'
       }} />
 
@@ -294,6 +297,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
             <input
               type="text"
               autoFocus
+              aria-label="新歌單名稱"
               value={newPlaylistName}
               onChange={(e) => setNewPlaylistName(e.target.value)}
               onKeyDown={(e) => {
@@ -303,9 +307,9 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
               onBlur={submitNewPlaylist}
               style={{
                 width: '100%',
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff',
+                background: 'var(--bg-glass-light)',
+                border: '1px solid var(--border-glass)',
+                color: 'var(--text-primary)',
                 borderRadius: '6px',
                 padding: '4px 8px',
                 fontSize: '12px',
@@ -327,8 +331,8 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
                   padding: '8px 12px',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  background: isPlActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
-                  color: isPlActive ? '#fff' : 'var(--text-secondary)',
+                  background: isPlActive ? 'var(--bg-glass-light)' : 'transparent',
+                  color: isPlActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontWeight: isPlActive ? 600 : 500,
                   transition: 'all 0.2s',
                   position: 'relative'
@@ -355,6 +359,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
                     outlineOffset: '2px'
                   }}
                   className="playlist-btn"
+                  aria-current={isPlActive ? 'page' : undefined}
                 >
                   <span style={{ paddingRight: '8px' }}>
                     {pl.name}
@@ -375,8 +380,9 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
                 >
                   <Trash2
                     size={12}
-                    color="rgba(255,255,255,0.3)"
+                    color="var(--text-muted)"
                     style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                    className="delete-playlist-icon"
                   />
                 </button>
               </div>
@@ -418,26 +424,28 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
         </p>
       </section>
 
-      {/* Embedded Styles for hover support */}
+      {/* Theme-aware hover and focus states */}
       <style dangerouslySetInnerHTML={{__html: `
-        .sidebar-item-hover:hover {
-          background: rgba(255, 255, 255, 0.04) !important;
-          color: #fff !important;
+        .app-sidebar .sidebar-item-hover:hover {
+          background: var(--bg-glass-light) !important;
+          color: var(--text-primary) !important;
         }
-        .add-playlist-btn:hover {
-          color: #fff !important;
+        .app-sidebar .add-playlist-btn:hover {
+          color: var(--text-primary) !important;
         }
-        .playlist-sidebar-item:hover {
-          background: rgba(255, 255, 255, 0.03) !important;
-          color: #fff !important;
+        .app-sidebar .playlist-sidebar-item:hover {
+          background: var(--bg-glass-light) !important;
+          color: var(--text-primary) !important;
         }
-        .playlist-sidebar-item:hover .delete-playlist-icon {
+        .app-sidebar .playlist-sidebar-item:hover .delete-playlist-icon {
           display: block !important;
         }
-        .delete-playlist-icon:hover {
+        .app-sidebar .delete-playlist-icon:hover {
           color: var(--primary-color) !important;
         }
-        .playlist-btn:focus-visible, .add-playlist-btn:focus-visible, .delete-btn:focus-visible {
+        .app-sidebar .playlist-btn:focus-visible,
+        .app-sidebar .add-playlist-btn:focus-visible,
+        .app-sidebar .delete-btn:focus-visible {
           outline: 2px solid var(--primary-color);
         }
       `}} />

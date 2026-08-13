@@ -72,16 +72,16 @@ const AppContent = () => {
     <div className="ambient-bg-container">
       {/* Subtle ambient light follows the current track without competing with content. */}
       <div 
-        className="ambient-blob blob-1" 
+        className="ambient-blob blob-1"
         style={{
-          background: `radial-gradient(circle, ${currentColors[0]} 0%, rgba(255, 45, 85, 0) 70%)`,
+          background: `radial-gradient(circle, ${currentColors[0]} 0%, transparent 70%)`,
           transition: 'background 4s ease-in-out'
         }}
       />
       <div 
-        className="ambient-blob blob-2" 
+        className="ambient-blob blob-2"
         style={{
-          background: `radial-gradient(circle, ${currentColors[1]} 0%, rgba(0, 122, 255, 0) 70%)`,
+          background: `radial-gradient(circle, ${currentColors[1]} 0%, transparent 70%)`,
           transition: 'background 4s ease-in-out'
         }}
       />

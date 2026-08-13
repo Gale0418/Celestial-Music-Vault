@@ -11,7 +11,7 @@ const dropdownItemStyle = {
   borderRadius: '6px',
   border: 'none',
   background: 'transparent',
-  color: '#fff',
+  color: 'var(--text-primary)',
   fontSize: '13px',
   cursor: 'pointer',
   transition: 'background 0.1s'
@@ -416,9 +416,10 @@ const LocalLibrary = () => {
           fontFamily: 'var(--font-display)',
           fontSize: '32px',
           fontWeight: 800,
-          background: 'linear-gradient(135deg, #fff 0%, #a1a1a6 100%)',
+          background: 'none',
           WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          WebkitTextFillColor: 'var(--text-primary)',
+          color: 'var(--text-primary)',
           letterSpacing: '-1px'
         }}>
           {viewTitle}
@@ -431,19 +432,29 @@ const LocalLibrary = () => {
       {/* DRAG AND DROP ZONE */}
       {showDropZone && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="選擇音樂檔案，或將檔案與資料夾拖曳到此處"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onClick={triggerFileInput}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              triggerFileInput();
+            }
+          }}
           style={{
-            border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed rgba(255, 255, 255, 0.15)',
+            border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed var(--border-glass-bright)',
             borderRadius: 'var(--radius-lg)',
             padding: '48px 30px',
             textAlign: 'center',
-            background: isDragOver ? 'rgba(255, 45, 85, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+            background: isDragOver ? 'var(--primary-soft)' : 'var(--bg-glass-light)',
             cursor: 'pointer',
             transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
             marginBottom: '36px',
-            boxShadow: isDragOver ? '0 8px 32px rgba(255,45,85,0.15)' : 'none',
+            boxShadow: isDragOver ? 'var(--shadow-glow)' : 'none',
             transform: isDragOver ? 'scale(1.01)' : 'scale(1)'
           }}
           id="drop-zone"
@@ -468,7 +479,7 @@ const LocalLibrary = () => {
         />
         
         <div style={{
-          background: isDragOver ? 'var(--primary-gradient)' : 'rgba(255, 255, 255, 0.05)',
+          background: isDragOver ? 'var(--primary-gradient)' : 'var(--bg-glass-active)',
           width: '64px',
           height: '64px',
           borderRadius: '50%',
@@ -479,10 +490,10 @@ const LocalLibrary = () => {
           boxShadow: isDragOver ? '0 4px 14px var(--primary-glow)' : 'none',
           transition: 'all 0.3s'
         }}>
-          <UploadCloud size={32} color={isDragOver ? '#fff' : 'var(--text-secondary)'} />
+          <UploadCloud size={32} color={isDragOver ? '#fff' : 'var(--text-secondary)'} aria-hidden="true" />
         </div>
 
-        <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
           {isDragOver ? '放下檔案或整個資料夾即可匯入！' : '將檔案或「整包資料夾」拖曳到此處'}
         </h3>
         
@@ -518,16 +529,16 @@ const LocalLibrary = () => {
             style={{
               padding: '8px 18px',
               borderRadius: '20px',
-              border: '1px solid rgba(255,255,255,0.15)',
-              background: 'rgba(255,255,255,0.06)',
-              color: '#fff',
+              border: '1px solid var(--border-glass)',
+              background: 'var(--bg-glass-active)',
+              color: 'var(--text-primary)',
               fontWeight: 700,
               cursor: 'pointer',
               fontSize: '12px',
               transition: 'transform 0.15s, background 0.15s'
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
           >
             選擇資料夾（可複選）
           </button>
@@ -546,7 +557,7 @@ const LocalLibrary = () => {
           <h3 style={{
             fontSize: '18px',
             fontWeight: 700,
-            color: '#fff',
+            color: 'var(--text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -561,6 +572,8 @@ const LocalLibrary = () => {
           {/* 清空音樂庫按鈕 */}
           {activeView === 'library' && viewTracks.length > 0 && (
             <button
+              type="button"
+              aria-label="清空本地音樂庫"
               onClick={() => {
                 if (window.confirm('確定要清空整個本地音樂庫嗎？這將移除所有載入的清單（但不影響實際檔案）。')) {
                   clearLibrary();
@@ -590,10 +603,13 @@ const LocalLibrary = () => {
           {/* ⚙️ 欄位選擇器 */}
           <div style={{ position: 'relative' }}>
             <button
+              type="button"
+              aria-expanded={showColumnPicker}
+              aria-label="自訂顯示欄位"
               onClick={() => setShowColumnPicker(v => !v)}
               style={{
-                background: showColumnPicker ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: showColumnPicker ? 'var(--bg-glass-active)' : 'var(--bg-glass-light)',
+                border: '1px solid var(--border-glass)',
                 color: 'var(--text-secondary)',
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -615,18 +631,18 @@ const LocalLibrary = () => {
                   position: 'absolute',
                   top: 'calc(100% + 8px)',
                   right: 0,
-                  background: 'rgba(22, 24, 32, 0.98)',
+                  background: 'var(--bg-glass-heavy)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.15)',
+                  border: '1px solid var(--border-glass-bright)',
                   borderRadius: '12px',
                   padding: '8px',
                   minWidth: '170px',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                  boxShadow: 'var(--shadow-card)',
                   zIndex: 99999
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                <div style={{ padding: '4px 10px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '4px' }}>
+                <div style={{ padding: '4px 10px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border-glass)', marginBottom: '4px' }}>
                   顯示欄位
                 </div>
                 {ALL_COLUMNS.map(column => (
@@ -642,13 +658,13 @@ const LocalLibrary = () => {
                       borderRadius: '6px',
                       border: 'none',
                       background: 'transparent',
-                      color: column.id === 'title' ? 'var(--text-muted)' : '#fff',
+                      color: column.id === 'title' ? 'var(--text-muted)' : 'var(--text-primary)',
                       fontSize: '13px',
                       cursor: column.id === 'title' ? 'not-allowed' : 'pointer',
                       textAlign: 'left',
                       transition: 'background 0.15s'
                     }}
-                    onMouseEnter={e => { if (column.id !== 'title') e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                    onMouseEnter={e => { if (column.id !== 'title') e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <span style={{
@@ -656,7 +672,7 @@ const LocalLibrary = () => {
                       height: '16px',
                       borderRadius: '4px',
                       border: '1.5px solid',
-                      borderColor: visibleColumns.includes(column.id) ? 'var(--primary-color)' : 'rgba(255,255,255,0.25)',
+                      borderColor: visibleColumns.includes(column.id) ? 'var(--primary-color)' : 'var(--border-glass-bright)',
                       background: visibleColumns.includes(column.id) ? 'var(--primary-color)' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
@@ -683,8 +699,8 @@ const LocalLibrary = () => {
             borderRadius: 'var(--radius-md)',
             padding: '40px',
             textAlign: 'center',
-            background: 'rgba(255,255,255,0.01)',
-            border: '1px solid rgba(255,255,255,0.05)'
+            background: 'var(--bg-glass-light)',
+            border: '1px solid var(--border-glass)'
           }}>
             <Music size={40} color="var(--text-muted)" style={{ marginBottom: '12px', opacity: 0.5 }} />
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
@@ -709,11 +725,13 @@ const LocalLibrary = () => {
             }} id="local-songs-table">
               <thead>
                 <tr style={{
-                  borderBottom: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(255,255,255,0.02)'
+                  borderBottom: '1px solid var(--border-glass)',
+                  background: 'var(--bg-glass-light)'
                 }}>
                   <th style={{ padding: '12px 10px 12px 20px', width: '30px' }}>
                     <button
+                      type="button"
+                      aria-label="全選或取消全選歌曲"
                       onClick={() => {
                         if (selectedTrackIds.size === sortedTracks.length) {
                           setSelectedTrackIds(new Set());
@@ -755,9 +773,9 @@ const LocalLibrary = () => {
                       onClick={(e) => handleRowClick(e, index, track)}
                       onContextMenu={(e) => handleRowContextMenu(e, track)}
                       style={{
-                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        borderBottom: '1px solid var(--border-glass)',
                         cursor: 'pointer',
-                        background: isSelected ? 'rgba(255, 45, 85, 0.15)' : (isCurrentTrack ? 'rgba(255, 45, 85, 0.06)' : 'transparent'),
+                        background: isSelected ? 'var(--primary-soft)' : (isCurrentTrack ? 'var(--bg-glass-active)' : 'transparent'),
                         transition: 'background 0.15s',
                         contentVisibility: 'auto',
                         containIntrinsicSize: '56px'
@@ -767,6 +785,8 @@ const LocalLibrary = () => {
                       {/* Checkbox Column */}
                       <td style={{ padding: '14px 10px 14px 20px', width: '30px' }}>
                         <button
+                          type="button"
+                          aria-label={`${isSelected ? '取消選取' : '選取'} ${track.title}`}
                           onClick={(e) => handleCheckboxClick(e, index, track)}
                           style={{
                             background: 'transparent',
@@ -788,9 +808,9 @@ const LocalLibrary = () => {
                         <td style={{ padding: '14px 10px', fontSize: '13px', color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-secondary)', width: '50px' }}>
                           {isPlayingThis ? (
                             <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '12px' }}>
-                              <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'barBounce 1s ease infinite alternate' }} />
-                              <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'barBounce 0.8s ease infinite alternate 0.2s' }} />
-                              <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'barBounce 1.2s ease infinite alternate 0.1s' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'meterPulse 1s cubic-bezier(.22,1,.36,1) infinite alternate' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'meterPulse 0.8s cubic-bezier(.22,1,.36,1) infinite alternate 0.2s' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'meterPulse 1.2s cubic-bezier(.22,1,.36,1) infinite alternate 0.1s' }} />
                             </div>
                           ) : index + 1}
                         </td>
@@ -798,11 +818,12 @@ const LocalLibrary = () => {
 
                       {/* Title Column */}
                       {col('title') && (
-                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : '#fff' }}>
+                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 600, color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-primary)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleFavorite(track); }}
-                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: isFav ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)', transition: 'transform 0.2s, color 0.2s' }}
+                              aria-label={isFav ? `取消收藏 ${track.title}` : `收藏 ${track.title}`}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: isFav ? 'var(--primary-color)' : 'var(--text-muted)', transition: 'transform 0.2s, color 0.2s' }}
                               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
                               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                               title={isFav ? '取消最愛收藏' : '加入我的最愛'}
@@ -834,11 +855,12 @@ const LocalLibrary = () => {
                               return (
                                 <button
                                   key={star}
-                                  onClick={() => setTrackRating(track.id, currentRating === star ? 0 : star)}
+                                  onClick={(e) => { e.stopPropagation(); setTrackRating(track.id, currentRating === star ? 0 : star); }}
+                                  aria-label={`${track.title} 評分 ${star} 顆星`}
                                   style={{
                                     border: 'none',
                                     background: 'transparent',
-                                    color: star <= currentRating ? '#ffcc00' : 'rgba(255,255,255,0.2)',
+                                    color: star <= currentRating ? '#ffcc00' : 'var(--border-glass-bright)',
                                     cursor: 'pointer',
                                     padding: '1px',
                                     fontSize: '13px',
@@ -860,17 +882,18 @@ const LocalLibrary = () => {
                       {col('actions') && (
                         <td style={{ padding: '14px 20px', fontSize: '13px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                            <button onClick={(e) => { e.stopPropagation(); handleRowContextMenu(e, track); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }} className="more-btn"><MoreVertical size={14} /></button>
+                            <button type="button" aria-label={`開啟 ${track.title} 的更多操作`} onClick={(e) => { e.stopPropagation(); handleRowContextMenu(e, track); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }} className="more-btn"><MoreVertical size={14} aria-hidden="true" /></button>
                             <button
+                              type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handlePlayTrack(index, sortedTracks);
                               }}
                               aria-label={`播放 ${track.title}`}
-                              style={{ border: 'none', background: isCurrentTrack ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.08)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }}
+                              style={{ border: 'none', background: isCurrentTrack ? 'var(--primary-gradient)' : 'var(--bg-glass-active)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }}
                               title="播放這首"
                             >
-                              <Play size={12} fill="#fff" style={{ marginLeft: '1px' }} />
+                              <Play size={12} fill="currentColor" style={{ marginLeft: '1px' }} aria-hidden="true" />
                             </button>
                           </div>
                         </td>
@@ -891,18 +914,18 @@ const LocalLibrary = () => {
           bottom: '100px', // Above PlaybackBar
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(28, 30, 38, 0.95)',
+          background: 'var(--bg-glass-heavy)',
           backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,0.15)',
+          border: '1px solid var(--border-glass-bright)',
           borderRadius: '16px',
           padding: '12px 24px',
           display: 'flex',
           alignItems: 'center',
           gap: '24px',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          boxShadow: 'var(--shadow-card)',
           zIndex: 9999
         }}>
-          <div style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 600 }}>
             已選擇 <span style={{ color: 'var(--primary-color)' }}>{selectedTrackIds.size}</span> 首歌曲
           </div>
           
@@ -912,11 +935,11 @@ const LocalLibrary = () => {
               <button
                 onClick={() => setShowPlaylistDropdown(v => !v)}
                 style={{
-                  background: 'rgba(255,255,255,0.1)',
+                  background: 'var(--bg-glass-active)',
                   border: 'none',
                   padding: '8px 16px',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: 'var(--text-primary)',
                   fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
@@ -924,8 +947,8 @@ const LocalLibrary = () => {
                   gap: '8px',
                   transition: 'background 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
               >
                 <ListPlus size={16} /> 加入歌單 ▾
               </button>
@@ -937,13 +960,13 @@ const LocalLibrary = () => {
                     position: 'absolute',
                     bottom: 'calc(100% + 8px)',
                     left: 0,
-                    background: 'rgba(28, 30, 38, 0.98)',
+                    background: 'var(--bg-glass-heavy)',
                     backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    border: '1px solid var(--border-glass-bright)',
                     borderRadius: '10px',
                     padding: '6px',
                     minWidth: '180px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                    boxShadow: 'var(--shadow-card)',
                     zIndex: 99999
                   }}
                   onClick={e => e.stopPropagation()}
@@ -957,14 +980,14 @@ const LocalLibrary = () => {
                       setShowPlaylistDropdown(false);
                     }}
                     style={dropdownItemStyle}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     加入目前播放佇列
                   </button>
 
                   {playlists.length > 0 && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                    <div style={{ borderTop: '1px solid var(--border-glass)', margin: '4px 0' }} />
                   )}
 
                   {playlists.map(pl => (
@@ -978,7 +1001,7 @@ const LocalLibrary = () => {
                         alert(`已將 ${selected.length} 首歌曲加入「${pl.name}」！`);
                       }}
                       style={dropdownItemStyle}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       📋 {pl.name}
@@ -996,6 +1019,8 @@ const LocalLibrary = () => {
 
             {/* Play Now Selection */}
             <button
+              type="button"
+              aria-label="播放所選歌曲"
               onClick={() => {
                 const selected = sortedTracks.filter(t => selectedTrackIds.has(t.id));
                 setPlaylist(selected);
@@ -1094,10 +1119,10 @@ const LocalLibrary = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '2px',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: 'var(--shadow-card)',
+              border: '1px solid var(--border-glass-bright)',
               zIndex: 99999,
-              backgroundColor: 'rgba(28, 30, 38, 0.9)',
+              backgroundColor: 'var(--bg-glass-heavy)',
               backdropFilter: 'blur(30px)'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -1110,7 +1135,7 @@ const LocalLibrary = () => {
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              borderBottom: '1px solid var(--border-glass)',
               marginBottom: '4px',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -1136,7 +1161,7 @@ const LocalLibrary = () => {
                 borderRadius: '6px',
                 border: 'none',
                 background: 'transparent',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1164,7 +1189,7 @@ const LocalLibrary = () => {
                 borderRadius: '6px',
                 border: 'none',
                 background: 'transparent',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1192,7 +1217,7 @@ const LocalLibrary = () => {
                 borderRadius: '6px',
                 border: 'none',
                 background: 'transparent',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1312,7 +1337,7 @@ const LocalLibrary = () => {
                 borderRadius: '6px',
                 border: 'none',
                 background: 'transparent',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1342,7 +1367,7 @@ const LocalLibrary = () => {
                   borderRadius: '6px',
                   border: 'none',
                   background: 'transparent',
-                  color: '#fff',
+                  color: 'var(--text-primary)',
                   fontSize: '13px',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -1364,7 +1389,7 @@ const LocalLibrary = () => {
                   fontSize: '10px',
                   color: 'var(--text-muted)',
                   fontWeight: 700,
-                  borderTop: '1px solid rgba(255,255,255,0.05)',
+                  borderTop: '1px solid var(--border-glass)',
                   marginTop: '4px',
                   letterSpacing: '0.5px'
                 }}>
@@ -1417,7 +1442,7 @@ const LocalLibrary = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(13, 14, 18, 0.75)',
+          background: 'color-mix(in srgb, var(--bg-color-solid) 78%, transparent)',
           backdropFilter: 'blur(30px)',
           display: 'flex',
           flexDirection: 'column',
@@ -1430,11 +1455,11 @@ const LocalLibrary = () => {
             padding: '40px',
             borderRadius: '24px',
             textAlign: 'center',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            border: '1px solid var(--border-glass-bright)',
             maxWidth: '450px',
             width: '90%',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
-            background: 'rgba(28, 30, 38, 0.8)'
+            boxShadow: 'var(--shadow-card)',
+            background: 'var(--bg-glass-heavy)'
           }}>
             {/* Spinning Record Spindle */}
             <div style={{
@@ -1452,7 +1477,7 @@ const LocalLibrary = () => {
               <Disc size={40} color="#fff" />
             </div>
             
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', marginBottom: '8px', letterSpacing: '-0.5px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.5px' }}>
               {loadingState.phase === 'scanning'
                 ? '正在掃描資料夾中... 🔍'
                 : '正在匯入音樂庫'
@@ -1472,18 +1497,20 @@ const LocalLibrary = () => {
                 <div style={{
                   width: '100%',
                   height: '6px',
-                  background: 'rgba(255, 255, 255, 0.08)',
+                  background: 'var(--bg-glass-light)',
                   borderRadius: '3px',
                   overflow: 'hidden',
                   marginBottom: '12px',
                   position: 'relative'
                 }}>
                   <div style={{
-                    width: `${loadingState.percent}%`,
+                    width: '100%',
                     height: '100%',
                     background: 'var(--primary-gradient)',
                     borderRadius: '3px',
-                    transition: 'width 0.1s ease',
+                    transform: `scaleX(${loadingState.percent / 100})`,
+                    transformOrigin: 'left center',
+                    transition: 'transform 0.1s cubic-bezier(.22,1,.36,1)',
                     boxShadow: '0 0 10px var(--primary-glow)'
                   }} />
                 </div>
@@ -1516,17 +1543,17 @@ const LocalLibrary = () => {
 
       <style dangerouslySetInnerHTML={{__html: `
         .table-row-hover:hover {
-          background: rgba(255, 255, 255, 0.04) !important;
+          background: var(--bg-glass-active) !important;
         }
         .table-row-hover:hover .more-btn {
-          color: #fff !important;
+          color: var(--text-primary) !important;
         }
         .menu-item:hover {
-          background: rgba(255, 255, 255, 0.08) !important;
+          background: var(--bg-glass-active) !important;
         }
-        @keyframes barBounce {
-          0% { height: 3px; }
-          100% { height: 14px; }
+        @keyframes meterPulse {
+          0% { transform: scaleY(0.25); }
+          100% { transform: scaleY(1); }
         }
         @keyframes scanDot {
           0%, 100% { opacity: 0.2; transform: scale(0.8); }
