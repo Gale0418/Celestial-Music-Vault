@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import defaultCover from '../assets/default-cover.svg';
+import { clampVideoPosition, createRafThrottledUpdater } from '../utils/videoWindowPosition';
 
 const AudioContext = createContext();
 
@@ -967,45 +968,116 @@ export const AudioProvider = ({ children }) => {
     });
   };
 
-  const [videoPosition, setVideoPosition] = useState({ x: window.innerWidth - 410, y: 80 });
+  const initialVideoPosition = clampVideoPosition(
+    { x: window.innerWidth - 410, y: 80 },
+    { width: window.innerWidth, height: window.innerHeight },
+  );
+  const videoPositionRef = useRef(initialVideoPosition);
+  const videoWindowRef = useRef(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const rafPositionUpdater = useRef(null);
+  const handleMouseMoveRef = useRef(null);
+  const handleMouseUpRef = useRef(null);
 
-  const handleMouseDown = (e) => {
-    isDragging.current = true;
-    dragStart.current = {
-      x: e.clientX - videoPosition.x,
-      y: e.clientY - videoPosition.y
+  const getVideoViewport = useCallback(() => ({
+    width: document.documentElement.clientWidth || window.innerWidth,
+    height: document.documentElement.clientHeight || window.innerHeight,
+  }), []);
+
+  const getVideoWindowSize = useCallback(() => {
+    const bounds = videoWindowRef.current?.getBoundingClientRect();
+    return {
+      width: bounds?.width || 380,
+      height: bounds?.height || 240,
     };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, []);
 
-  const handleMouseMove = (e) => {
+  const applyVideoPosition = useCallback((position) => {
+    if (!videoWindowRef.current) return;
+    videoWindowRef.current.style.setProperty('--video-position-x', `${position.x}px`);
+    videoWindowRef.current.style.setProperty('--video-position-y', `${position.y}px`);
+  }, []);
+
+  if (!rafPositionUpdater.current) {
+    rafPositionUpdater.current = createRafThrottledUpdater(
+      applyVideoPosition,
+      (callback) => window.requestAnimationFrame(callback),
+      (frameId) => window.cancelAnimationFrame(frameId),
+    );
+  }
+
+  useLayoutEffect(() => {
+    applyVideoPosition(videoPositionRef.current);
+  }, [applyVideoPosition]);
+
+  const handleMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
-    const newX = Math.max(10, Math.min(window.innerWidth - 400, e.clientX - dragStart.current.x));
-    const newY = Math.max(10, Math.min(window.innerHeight - 260, e.clientY - dragStart.current.y));
-    setVideoPosition({ x: newX, y: newY });
-  };
+    const nextPosition = clampVideoPosition(
+      {
+        x: e.clientX - dragStart.current.x,
+        y: e.clientY - dragStart.current.y,
+      },
+      getVideoViewport(),
+      getVideoWindowSize(),
+    );
+    videoPositionRef.current = nextPosition;
+    rafPositionUpdater.current?.(nextPosition);
+  }, [getVideoViewport, getVideoWindowSize]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging.current) return;
     isDragging.current = false;
+    videoWindowRef.current?.removeAttribute('data-dragging');
+    if (handleMouseMoveRef.current) {
+      document.removeEventListener('mousemove', handleMouseMoveRef.current);
+    }
+    if (handleMouseUpRef.current) {
+      document.removeEventListener('mouseup', handleMouseUpRef.current);
+    }
+  }, []);
+
+  handleMouseMoveRef.current = handleMouseMove;
+  handleMouseUpRef.current = handleMouseUp;
+
+  const handleMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    videoWindowRef.current?.setAttribute('data-dragging', 'true');
+    const position = videoPositionRef.current;
+    dragStart.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+    if (handleMouseMoveRef.current) {
+      document.addEventListener('mousemove', handleMouseMoveRef.current);
+    }
+    if (handleMouseUpRef.current) {
+      document.addEventListener('mouseup', handleMouseUpRef.current);
+    }
+  }, []);
+
+  // Ensure listeners and a pending frame cannot outlive the provider.
+  useEffect(() => () => {
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  };
+    rafPositionUpdater.current?.cancel?.();
+  }, [handleMouseMove, handleMouseUp]);
 
   // Adjust position if window is resized
   useEffect(() => {
     const handleResize = () => {
-      setVideoPosition(prev => {
-        const x = Math.min(window.innerWidth - 410, prev.x);
-        const y = Math.min(window.innerHeight - 260, prev.y);
-        return { x, y };
-      });
+      const nextPosition = clampVideoPosition(
+        videoPositionRef.current,
+        getVideoViewport(),
+        getVideoWindowSize(),
+      );
+      videoPositionRef.current = nextPosition;
+      applyVideoPosition(nextPosition);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [applyVideoPosition, getVideoViewport, getVideoWindowSize]);
 
   return (
     <AudioContext.Provider
@@ -1072,22 +1144,25 @@ export const AudioProvider = ({ children }) => {
       {children}
       
       {/* Global HTML5 Video Element with Frosted Glass macOS frame */}
-      <div 
+      <div
         className="floating-video-window"
+        ref={videoWindowRef}
         style={{
           position: 'fixed',
-          left: `${videoPosition.x}px`,
-          top: `${videoPosition.y}px`,
+          left: 0,
+          top: 0,
+          transform: 'translate3d(var(--video-position-x), var(--video-position-y), 0)',
           borderRadius: '16px',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6)',
           background: 'rgba(28, 30, 38, 0.85)',
           backdropFilter: 'blur(30px)',
           WebkitBackdropFilter: 'blur(30px)',
-          zIndex: 9000,
+          zIndex: 10000,
           display: (showVideo && hasVideoTrack) ? 'flex' : 'none',
           flexDirection: 'column',
-          transition: isDragging.current ? 'none' : 'transform 0.1s ease, opacity 0.2s'
+          transition: 'opacity 0.2s ease',
+          WebkitAppRegion: 'no-drag',
         }}
         id="floating-video-window"
       >
@@ -1106,7 +1181,8 @@ export const AudioProvider = ({ children }) => {
             color: 'var(--text-secondary)',
             fontWeight: 600,
             userSelect: 'none',
-            cursor: 'move'
+            cursor: 'move',
+            WebkitAppRegion: 'no-drag',
           }}
         >
           <span>AeroPlayer - 影片播放視窗 (拖曳移動)</span>
