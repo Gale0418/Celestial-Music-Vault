@@ -26,7 +26,12 @@ const { pathToFileURL } = require('node:url');
   const css = require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'index.css'), 'utf8');
   const listenCss = require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'components', 'ListenNow.css'), 'utf8');
   assert.match(css, /--on-primary:\s*#ffdb3b/, 'yellow theme needs a readable foreground on its dark accent');
+  assert.match(css, /--primary-button-ink:\s*#171307/, 'yellow gradient buttons need a dark readable foreground');
+  assert.equal((css.match(/--theme-texture:/g) || []).length, 4, 'every theme needs its own material texture');
+  assert.equal((css.match(/--theme-sweep:/g) || []).length, 4, 'every theme needs its own light sweep');
   assert.match(listenCss, /\.track-play-icon[^}]*color:\s*var\(--listen-accent-ink\)/s, 'track controls must use theme-aware accent foreground');
+  assert.match(listenCss, /animation:\s*themeLightSweep/, 'the listening hero needs a premium light sweep');
+  assert.match(listenCss, /prefers-reduced-motion:[^)]+\)[\s\S]*animation:\s*none\s*!important/, 'light sweep must respect reduced-motion preferences');
   assert.match(listenCss, /data-theme="sakura-night"[^}]*\.tracks-grid[^}]*repeat\(2/s, 'light theme must collapse to two columns at the mobile breakpoint');
 
   console.log(`PASS: AeroMusic theme registry (${ids.length} themes)`);
