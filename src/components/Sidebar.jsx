@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { PlayCircle, HardDrive, Music2, PlusCircle, Radio, Heart, Trash2, Palette } from 'lucide-react';
 import { useAudio } from '../context/AudioContext';
 import { THEME_OPTIONS } from '../theme';
@@ -6,6 +6,7 @@ import { THEME_OPTIONS } from '../theme';
 const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const themeOptionRefs = useRef([]);
   const { 
     playlists,
     activeView,
@@ -44,6 +45,24 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
     }
     setIsCreatingPlaylist(false);
     setNewPlaylistName('');
+  };
+
+  const activeThemeIndex = Math.max(0, THEME_OPTIONS.findIndex((theme) => theme.id === themeId));
+  const handleThemeKeyDown = (event, index) => {
+    const directionByKey = {
+      ArrowRight: 1,
+      ArrowDown: 2,
+      ArrowLeft: -1,
+      ArrowUp: -2
+    };
+    const direction = directionByKey[event.key];
+    if (!direction) return;
+
+    event.preventDefault();
+    const nextIndex = (index + direction + THEME_OPTIONS.length) % THEME_OPTIONS.length;
+    const nextTheme = THEME_OPTIONS[nextIndex];
+    onThemeChange(nextTheme.id);
+    themeOptionRefs.current[nextIndex]?.focus();
   };
 
   return (
@@ -396,7 +415,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
           <span id="theme-switcher-title">畫風</span>
         </div>
         <div className="theme-options" role="radiogroup" aria-label="選擇介面畫風">
-          {THEME_OPTIONS.map((theme) => {
+          {THEME_OPTIONS.map((theme, index) => {
             const isSelected = theme.id === themeId;
             return (
               <button
@@ -405,9 +424,12 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
                 className={`theme-option${isSelected ? ' is-selected' : ''}`}
                 role="radio"
                 aria-checked={isSelected}
+                tabIndex={index === activeThemeIndex ? 0 : -1}
                 aria-label={`${theme.name}：${theme.description}`}
                 title={`${theme.name}｜${theme.description}`}
                 onClick={() => onThemeChange(theme.id)}
+                onKeyDown={(event) => handleThemeKeyDown(event, index)}
+                ref={(element) => { themeOptionRefs.current[index] = element; }}
               >
                 <span
                   className="theme-swatch"

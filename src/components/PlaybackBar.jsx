@@ -99,9 +99,14 @@ const PlaybackBar = ({ onToggleMini, onToggleImmersion }) => {
       <div className="playback-meta" style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '30%', minWidth: '220px' }}>
         <div style={{ position: 'relative', width: '52px', height: '52px' }}>
           <img
+            key={currentTrack?.id || 'default-cover'}
             src={currentTrack?.cover || defaultCover}
-            onError={(event) => { event.currentTarget.src = defaultCover; }}
-            alt={currentTrack?.title}
+            onError={(event) => {
+              if (event.currentTarget.dataset.fallbackApplied) return;
+              event.currentTarget.dataset.fallbackApplied = 'true';
+              event.currentTarget.src = defaultCover;
+            }}
+            alt={currentTrack?.title ? `${currentTrack.title} 封面` : '預設唱片封面'}
             style={{
               width: '100%',
               height: '100%',

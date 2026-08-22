@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net } = require('e
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
+const { Readable } = require('stream');
 const {
   atomicWriteUserDataFile,
   createSerialWriter,
@@ -10,6 +11,18 @@ const {
 } = require('./lib/user-data-store.cjs');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
+const MEDIA_CONTENT_TYPES = new Map([
+  ['.aac', 'audio/aac'],
+  ['.aiff', 'audio/aiff'],
+  ['.flac', 'audio/flac'],
+  ['.m4a', 'audio/mp4'],
+  ['.mp3', 'audio/mpeg'],
+  ['.mp4', 'audio/mp4'],
+  ['.ogg', 'audio/ogg'],
+  ['.opus', 'audio/ogg'],
+  ['.wav', 'audio/wav'],
+  ['.wma', 'audio/x-ms-wma']
+]);
 const REMOTE_MEDIA_HOSTS = new Set(['www.soundhelix.com']);
 const APP_SCHEME = 'aeromusic';
 const approvedScanRoots = new Set();
@@ -108,6 +121,66 @@ function resolveBundleFile(requestPath) {
   return resolved;
 }
 
+function getForwardedRangeHeaders(headers) {
+  const range = typeof headers?.get === 'function' ? headers.get('range') : headers?.Range || headers?.range;
+  return range ? { Range: range } : undefined;
+}
+
+function parseByteRange(rangeHeader, fileSize) {
+  if (!rangeHeader) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match || (!match[1] && !match[2])) return { invalid: true };
+
+  let start;
+  let end;
+  if (!match[1]) {
+    const suffixLength = Number(match[2]);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0 || fileSize === 0) return { invalid: true };
+    start = Math.max(fileSize - suffixLength, 0);
+    end = fileSize - 1;
+  } else {
+    start = Number(match[1]);
+    end = match[2] ? Number(match[2]) : fileSize - 1;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= fileSize || start > end) {
+      return { invalid: true };
+    }
+    end = Math.min(end, fileSize - 1);
+  }
+  return { start, end };
+}
+
+function getMediaContentType(filePath) {
+  return MEDIA_CONTENT_TYPES.get(path.extname(filePath).toLowerCase()) || 'application/octet-stream';
+}
+
+async function createLocalMediaResponse(filePath, rangeHeader, method = 'GET') {
+  const { size } = await fs.promises.stat(filePath);
+  const contentType = getMediaContentType(filePath);
+  const range = parseByteRange(rangeHeader, size);
+  if (range?.invalid) {
+    return new Response(null, {
+      status: 416,
+      headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes */${size}`, 'Content-Length': '0' }
+    });
+  }
+
+  const start = range?.start ?? 0;
+  const end = range?.end ?? Math.max(size - 1, 0);
+  const headers = {
+    'Accept-Ranges': 'bytes',
+    'Content-Length': String(range ? end - start + 1 : size),
+    'Content-Type': contentType
+  };
+  if (range) {
+    headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  }
+  if (String(method).toUpperCase() === 'HEAD') {
+    return new Response(null, { status: range ? 206 : 200, headers });
+  }
+  const stream = Readable.toWeb(fs.createReadStream(filePath, range ? { start, end } : undefined));
+  return new Response(stream, { status: range ? 206 : 200, headers });
+}
+
 async function handleAppProtocol(request) {
   try {
     const requestUrl = new URL(request.url);
@@ -119,16 +192,16 @@ async function handleAppProtocol(request) {
       const encodedPath = requestUrl.pathname.slice('/media/'.length);
       if (!encodedPath) return new Response('Missing media path', { status: 400 });
       const approvedPath = ensureApprovedFile(decodeURIComponent(encodedPath));
-      return net.fetch(pathToFileURL(approvedPath).toString(), {
-        headers: request.headers
-      });
+      const rangeHeaders = getForwardedRangeHeaders(request.headers);
+      return createLocalMediaResponse(approvedPath, rangeHeaders?.Range, request.method);
     }
 
     if (requestUrl.pathname.startsWith('/remote/')) {
       const encodedUrl = requestUrl.pathname.slice('/remote/'.length);
       if (!encodedUrl) return new Response('Missing remote URL', { status: 400 });
       const approvedUrl = ensureApprovedRemoteMediaUrl(decodeURIComponent(encodedUrl));
-      return net.fetch(approvedUrl, { headers: request.headers });
+      const rangeHeaders = getForwardedRangeHeaders(request.headers);
+      return net.fetch(approvedUrl, rangeHeaders ? { headers: rangeHeaders } : undefined);
     }
 
     const bundlePath = resolveBundleFile(requestUrl.pathname);
@@ -330,7 +403,7 @@ ipcMain.handle('save-user-data', async (event, data) => {
 
 // Window Mode Toggles
 ipcMain.on('toggle-mini-player', (event, isMini) => {
-  assertTrustedIpcSender(event);
+  if (!isTrustedIpcSender(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
   if (isMini) {
@@ -347,7 +420,7 @@ ipcMain.on('toggle-mini-player', (event, isMini) => {
 });
 
 ipcMain.on('toggle-fullscreen', (event, isFullscreen) => {
-  assertTrustedIpcSender(event);
+  if (!isTrustedIpcSender(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
   win.setFullScreen(isFullscreen);
@@ -417,7 +490,7 @@ if (!hasSingleInstanceLock) {
     protocol.handle(APP_SCHEME, handleAppProtocol);
     // Make sure IPC can receive crash logs and write them to a file
     ipcMain.on('crash-log', (event, errorInfo) => {
-      assertTrustedIpcSender(event);
+      if (!isTrustedIpcSender(event)) return;
       try {
         const fs = require('fs');
         const path = require('path');
@@ -428,7 +501,7 @@ if (!hasSingleInstanceLock) {
     });
 
     ipcMain.on('show-error-box', (event, title, content) => {
-      assertTrustedIpcSender(event);
+      if (!isTrustedIpcSender(event)) return;
       dialog.showErrorBox(title, content);
     });
 

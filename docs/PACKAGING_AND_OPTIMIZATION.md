@@ -150,24 +150,28 @@ webSecurity: false, // Allow file:// protocol for local/NAS audio files
 
 #### 問題二：`trash-item` 沒有路徑白名單驗證（已修正）
 
+以下是舊版的不安全示例；只檢查副檔名不能證明檔案位於使用者核准的音樂根目錄，不能照抄：
+
 ```js
 ipcMain.handle('trash-item', async (event, filePath) => {
-  await shell.trashItem(filePath); // 沒有路徑驗證！任意路徑都能刪！
+  const ext = path.extname(filePath).toLowerCase();
+  if (!SAFE_EXTS.has(ext)) throw new Error('不允許的副檔名'); // 仍不安全：沒有 approved root/path 驗證
+  await shell.trashItem(filePath);
 });
 ```
 
 #### 建議修正
 
 ```js
-// ✅ main.cjs — 加入副檔名白名單（已知問題，優先修）
+// ✅ main.cjs — realpath、stat 與 approved roots/path 邊界驗證
 ipcMain.handle('trash-item', async (event, filePath) => {
-  const SAFE_EXTS = new Set(['.mp3','.flac','.wav','.m4a','.ogg','.aac','.mp4','.aiff','.opus','.wma']);
-  const ext = path.extname(filePath).toLowerCase();
-  if (!SAFE_EXTS.has(ext)) throw new Error(`不允許刪除此類型：${ext}`);
-  await shell.trashItem(filePath);
+  const approvedPath = ensureApprovedFile(filePath);
+  await shell.trashItem(approvedPath);
   return true;
 });
 ```
+
+`ensureApprovedFile` 會先解析實體路徑、確認是一般檔案，再確認它位於原生選取器建立的 approved roots；副檔名只能作為額外 UX 過濾，不能取代這個邊界。
 
 ---
 
@@ -246,16 +250,15 @@ import { FixedSizeList } from 'react-window';
 
 建議之後整合 `electron-updater`。
 
-#### 問題 4：Hardened Runtime 需要 entitlements.plist
+#### 問題 4：Hardened Runtime 與 entitlements
 
-`hardenedRuntime: true` 已啟用，但缺少對應的 entitlements 檔，
-會在 Apple Notarization 時失敗。
+Developer ID 路徑由 `scripts/build-macos.sh` 以 `codesign --options runtime` 啟用 Hardened Runtime，並套用 `build/entitlements.mac.plist`。目前實際使用且與 Electron 執行需求相符的兩項 entitlement 如下；此專案沒有額外 native module 或外掛，因此不開啟會放寬第三方 dylib 載入限制的 `disable-library-validation`：
 
 ```xml
 <!-- build/entitlements.mac.plist -->
 <dict>
+  <key>com.apple.security.cs.allow-jit</key><true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
-  <key>com.apple.security.files.user-selected.read-write</key><true/>
 </dict>
 ```
 

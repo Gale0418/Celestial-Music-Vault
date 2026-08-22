@@ -24,6 +24,7 @@ const { pathToFileURL } = require('node:url');
   );
 
   const css = require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'index.css'), 'utf8');
+  const audioContext = require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'context', 'AudioContext.jsx'), 'utf8');
   const listenCss = require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'components', 'ListenNow.css'), 'utf8');
   assert.match(css, /--on-primary:\s*#ffdb3b/, 'yellow theme needs a readable foreground on its dark accent');
   assert.match(css, /--primary-button-ink:\s*#171307/, 'yellow gradient buttons need a dark readable foreground');
@@ -33,6 +34,12 @@ const { pathToFileURL } = require('node:url');
   assert.match(listenCss, /animation:\s*themeLightSweep/, 'the listening hero needs a premium light sweep');
   assert.match(listenCss, /prefers-reduced-motion:[^)]+\)[\s\S]*animation:\s*none\s*!important/, 'light sweep must respect reduced-motion preferences');
   assert.match(listenCss, /data-theme="sakura-night"[^}]*\.tracks-grid[^}]*repeat\(2/s, 'light theme must collapse to two columns at the mobile breakpoint');
+  assert.match(css, /@media \(prefers-contrast: more\)[\s\S]*:root\[data-theme="neon-city"\][\s\S]*--text-secondary:/, 'high contrast must override the neon theme tokens');
+  assert.match(css, /@media \(prefers-contrast: more\)[\s\S]*:root\[data-theme="vinyl-club"\][\s\S]*--text-secondary:/, 'high contrast must override the vinyl theme tokens');
+  assert.match(css, /@media \(prefers-contrast: more\)[\s\S]*:root\[data-theme="sakura-night"\][\s\S]*--text-secondary:\s*#3f3006/s, 'high contrast sakura text must remain dark');
+  assert.match(audioContext, /const latestPlaybackRef = useRef\(/, 'playback persistence must keep a latest-value ref');
+  assert.match(audioContext, /\}, \[favorites, library, playlists, trackRatings\]\);/, 'saveAllData must only depend on collection data');
+  assert.match(audioContext, /setInterval\(\(\) => \{\s*saveAllData\(\);\s*\}, 10000\);[\s\S]*\}, \[isPlaying, saveAllData\]\);/, 'playback autosave must retain a stable interval contract');
 
   console.log(`PASS: AeroMusic theme registry (${ids.length} themes)`);
 })().catch((error) => {

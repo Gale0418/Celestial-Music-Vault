@@ -72,10 +72,15 @@ const MiniPlayer = ({ onExit }) => {
         }}>
           {currentTrack?.cover ? (
             <img
+              key={currentTrack.id}
               src={currentTrack.cover}
-              onError={(event) => { event.currentTarget.src = defaultCover; }}
+              onError={(event) => {
+                if (event.currentTarget.dataset.fallbackApplied) return;
+                event.currentTarget.dataset.fallbackApplied = 'true';
+                event.currentTarget.src = defaultCover;
+              }}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              alt="cover"
+              alt={currentTrack.title ? `${currentTrack.title} 封面` : '預設唱片封面'}
             />
           ) : (
             <Music size={24} color="rgba(255,255,255,0.5)" />

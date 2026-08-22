@@ -96,11 +96,16 @@ const ImmersionView = ({ onExit }) => {
         transition: 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)',
         transform: isPlaying ? 'scale(1.02)' : 'scale(1)'
       }}>
-        <img 
+        <img
+          key={currentTrack?.id || 'default-cover'}
           src={currentTrack?.cover || defaultCover}
-          onError={(event) => { event.currentTarget.src = defaultCover; }}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-          alt="cover" 
+          onError={(event) => {
+            if (event.currentTarget.dataset.fallbackApplied) return;
+            event.currentTarget.dataset.fallbackApplied = 'true';
+            event.currentTarget.src = defaultCover;
+          }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          alt={currentTrack?.title ? `${currentTrack.title} 封面` : '預設唱片封面'}
         />
       </div>
 

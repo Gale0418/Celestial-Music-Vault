@@ -15,6 +15,33 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Resolve and validate the output before any destructive cleanup. Never allow a
+# dangerous broad target such as /, /tmp, the project, or the temporary build root.
+if [[ "$OUTPUT_DIR" != /* ]]; then
+  OUTPUT_DIR="$PROJECT_ROOT/$OUTPUT_DIR"
+fi
+OUTPUT_PARENT="$(dirname "$OUTPUT_DIR")"
+OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+if [[ -z "$OUTPUT_NAME" || "$OUTPUT_NAME" == '.' || "$OUTPUT_NAME" == '..' || ! -d "$OUTPUT_PARENT" ]]; then
+  print -u2 'AEROMUSIC_OUTPUT_DIR 必須是既有父目錄下的具名輸出目錄。'
+  exit 1
+fi
+OUTPUT_PARENT="$(cd "$OUTPUT_PARENT" && pwd -P)"
+OUTPUT_DIR="$OUTPUT_PARENT/$OUTPUT_NAME"
+if [[ -L "$OUTPUT_DIR" || ( -e "$OUTPUT_DIR" && ! -d "$OUTPUT_DIR" ) ]]; then
+  print -u2 'AEROMUSIC_OUTPUT_DIR 不得是符號連結或非目錄。'
+  exit 1
+fi
+if [[ -d "$OUTPUT_DIR" ]]; then
+  OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd -P)"
+fi
+case "$OUTPUT_DIR" in
+  /|/tmp|"$PROJECT_ROOT"|"$BUILD_ROOT")
+    print -u2 '拒絕危險的 AEROMUSIC_OUTPUT_DIR。'
+    exit 1
+    ;;
+esac
+
 rsync -a \
   --exclude '.git/' \
   --exclude 'node_modules/' \
@@ -109,7 +136,15 @@ if [[ -n "$NOTARY_PROFILE" ]]; then
 fi
 
 mkdir -p "$OUTPUT_DIR"
-ditto "$APP_PATH" "$OUTPUT_DIR/AeroMusic.app"
+APP_OUTPUT_PATH="$OUTPUT_DIR/AeroMusic.app"
+if [[ -L "$APP_OUTPUT_PATH" ]]; then
+  print -u2 '拒絕覆寫符號連結形式的舊 AeroMusic.app。'
+  exit 1
+fi
+if [[ -e "$APP_OUTPUT_PATH" ]]; then
+  rm -rf -- "$APP_OUTPUT_PATH"
+fi
+ditto "$APP_PATH" "$APP_OUTPUT_PATH"
 for artifact in "$BUILD_ROOT"/dist-app/*.dmg; do
   [[ -e "$artifact" ]] || continue
   cp -p "$artifact" "$OUTPUT_DIR/"

@@ -10,20 +10,24 @@ const filterStart = mainText.indexOf('function getApprovedRootsRegistryPath');
 const filterEnd = mainText.indexOf('// IPC: User Data Persistence');
 const helperText = mainText.slice(0, helperEnd) + mainText.slice(filterStart, filterEnd);
 const registryUserData = path.join(os.tmpdir(), `aeromusic-registry-${process.pid}`);
+let capturedFetch;
 const sandboxRequire = (id) => {
   if (id === 'electron') return {
       app: { getPath: () => registryUserData },
       protocol: { registerSchemesAsPrivileged: () => {} },
-      net: { fetch: () => Promise.resolve(new Response('fixture')) }
+      net: { fetch: (...args) => {
+        capturedFetch = args;
+        return Promise.resolve(new Response('fixture'));
+      } }
     };
   if (id === './lib/user-data-store.cjs') {
     return require(path.join(__dirname, '..', 'lib', 'user-data-store.cjs'));
   }
   return require(id);
 };
-const sandbox = { require: sandboxRequire, console, process, URL, module: { exports: {} }, exports: {}, __dirname: path.join(__dirname, '..') };
-vm.runInNewContext(`${helperText}\nmodule.exports = { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile };`, sandbox, { filename: 'main.cjs' });
-const { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile } = sandbox.module.exports;
+const sandbox = { require: sandboxRequire, console, process, URL, Response, Headers, module: { exports: {} }, exports: {}, __dirname: path.join(__dirname, '..') };
+vm.runInNewContext(`${helperText}\nmodule.exports = { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile, handleAppProtocol };`, sandbox, { filename: 'main.cjs' });
+const { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile, handleAppProtocol } = sandbox.module.exports;
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aeromusic-security-'));
 const approvedRoot = path.join(tempRoot, 'approved');
@@ -74,6 +78,65 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   approvedScanRoots.clear();
   loadApprovedRootsRegistry();
   assert.throws(() => ensureApprovedFile(outsideSong));
+
+  const mediaResponse = await handleAppProtocol({
+    url: `aeromusic://app/media/${encodeURIComponent(outsideSong)}`,
+    headers: new Headers({ Range: 'bytes=1-3' })
+  });
+  assert.equal(mediaResponse.status, 404, 'unapproved media must remain blocked');
+
+  rememberApprovedRoots([approvedRoot]);
+  fs.writeFileSync(song, '0123456789');
+  const rangedResponse = await handleAppProtocol({
+    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    headers: new Headers({ Range: 'bytes=2-5', Authorization: 'Bearer should-not-forward' })
+  });
+  assert.equal(rangedResponse.status, 206);
+  assert.equal(rangedResponse.headers.get('content-range'), 'bytes 2-5/10');
+  assert.equal(rangedResponse.headers.get('content-length'), '4');
+  assert.equal(await rangedResponse.text(), '2345');
+
+  const headResponse = await handleAppProtocol({
+    method: 'HEAD',
+    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    headers: new Headers()
+  });
+  assert.equal(headResponse.status, 200);
+  assert.equal(headResponse.headers.get('content-length'), '10');
+  assert.equal(headResponse.body, null, 'HEAD full response must not read or expose a body');
+
+  const headRangeResponse = await handleAppProtocol({
+    method: 'HEAD',
+    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    headers: new Headers({ Range: 'bytes=2-5' })
+  });
+  assert.equal(headRangeResponse.status, 206);
+  assert.equal(headRangeResponse.headers.get('content-range'), 'bytes 2-5/10');
+  assert.equal(headRangeResponse.headers.get('content-length'), '4');
+  assert.equal(headRangeResponse.body, null, 'HEAD range response must not read or expose a body');
+
+  const invalidRangeResponse = await handleAppProtocol({
+    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    headers: new Headers({ Range: 'bytes=99-100' })
+  });
+  assert.equal(invalidRangeResponse.status, 416);
+  assert.equal(invalidRangeResponse.headers.get('content-range'), 'bytes */10');
+
+  const headInvalidRangeResponse = await handleAppProtocol({
+    method: 'HEAD',
+    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    headers: new Headers({ Range: 'bytes=99-100' })
+  });
+  assert.equal(headInvalidRangeResponse.status, 416);
+  assert.equal(headInvalidRangeResponse.headers.get('content-range'), 'bytes */10');
+  assert.equal(headInvalidRangeResponse.body, null, 'HEAD invalid range response must not expose a body');
+
+  await handleAppProtocol({
+    url: 'aeromusic://app/remote/https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2Fsong.mp3',
+    headers: new Headers({ Range: 'bytes=0-10', Authorization: 'Bearer should-not-forward' })
+  });
+  assert.equal(capturedFetch[1].headers.Range, 'bytes=0-10');
+  assert.equal(capturedFetch[1].headers.Authorization, undefined);
 
   fs.rmSync(approvedRoot, { recursive: true, force: true });
   approvedScanRoots.clear();

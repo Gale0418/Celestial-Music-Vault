@@ -17,6 +17,24 @@ const dropdownItemStyle = {
   transition: 'background 0.1s'
 };
 
+const ALL_COLUMNS = [
+  { id: 'index',   label: '#' },
+  { id: 'title',   label: '歌名' },
+  { id: 'artist',  label: '藝術家' },
+  { id: 'album',   label: '專輯' },
+  { id: 'rating',  label: '星星評分' },
+  { id: 'actions', label: '操作' },
+];
+
+const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS.map(({ id }) => id);
+const VALID_COLUMN_IDS = new Set(ALL_COLUMNS.map(({ id }) => id));
+
+const normalizeVisibleColumns = (columns) => {
+  const validColumns = [...new Set(columns.filter((id) => VALID_COLUMN_IDS.has(id)))];
+  if (validColumns.length === 0) return DEFAULT_VISIBLE_COLUMNS;
+  return validColumns.includes('title') ? validColumns : [...validColumns, 'title'];
+};
+
 const LocalLibrary = () => {
   const { 
     playlist, 
@@ -60,21 +78,12 @@ const LocalLibrary = () => {
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('aeromusic-columns'));
-      if (Array.isArray(saved)) return saved;
+      if (Array.isArray(saved)) return normalizeVisibleColumns(saved);
     } catch {
       // Ignore invalid saved column preferences and use the defaults below.
     }
-    return ['index', 'title', 'artist', 'album', 'rating', 'actions'];
+    return DEFAULT_VISIBLE_COLUMNS;
   });
-
-  const ALL_COLUMNS = [
-    { id: 'index',   label: '#' },
-    { id: 'title',   label: '歌名' },
-    { id: 'artist',  label: '藝術家' },
-    { id: 'album',   label: '專輯' },
-    { id: 'rating',  label: '星星評分' },
-    { id: 'actions', label: '操作' },
-  ];
 
   const toggleColumn = (colId) => {
     // Never allow hiding title
@@ -432,19 +441,9 @@ const LocalLibrary = () => {
       {/* DRAG AND DROP ZONE */}
       {showDropZone && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="選擇音樂檔案，或將檔案與資料夾拖曳到此處"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={triggerFileInput}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              triggerFileInput();
-            }
-          }}
           style={{
             border: isDragOver ? '2px dashed var(--primary-color)' : '2px dashed var(--border-glass-bright)',
             borderRadius: 'var(--radius-lg)',
@@ -530,7 +529,7 @@ const LocalLibrary = () => {
               padding: '8px 18px',
               borderRadius: '20px',
               border: '1px solid var(--border-glass)',
-              background: 'var(--bg-glass-active)',
+              background: 'var(--bg-glass-light)',
               color: 'var(--text-primary)',
               fontWeight: 700,
               cursor: 'pointer',
@@ -538,7 +537,7 @@ const LocalLibrary = () => {
               transition: 'transform 0.15s, background 0.15s'
             }}
             onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--bg-glass-light)'; }}
           >
             選擇資料夾（可複選）
           </button>
@@ -808,9 +807,9 @@ const LocalLibrary = () => {
                         <td style={{ padding: '14px 10px', fontSize: '13px', color: isCurrentTrack ? 'var(--primary-color)' : 'var(--text-secondary)', width: '50px' }}>
                           {isPlayingThis ? (
                             <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '12px' }}>
-                              <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', animation: 'meterPulse 1s cubic-bezier(.22,1,.36,1) infinite alternate' }} />
-                              <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', animation: 'meterPulse 0.8s cubic-bezier(.22,1,.36,1) infinite alternate 0.2s' }} />
-                              <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', animation: 'meterPulse 1.2s cubic-bezier(.22,1,.36,1) infinite alternate 0.1s' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '100%', background: 'var(--primary-color)', transformOrigin: 'bottom', animation: 'meterPulse 1s cubic-bezier(.22,1,.36,1) infinite alternate' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '60%', background: 'var(--primary-color)', transformOrigin: 'bottom', animation: 'meterPulse 0.8s cubic-bezier(.22,1,.36,1) infinite alternate 0.2s' }} />
+                              <div className="bar-anim" style={{ width: '2px', height: '80%', background: 'var(--primary-color)', transformOrigin: 'bottom', animation: 'meterPulse 1.2s cubic-bezier(.22,1,.36,1) infinite alternate 0.1s' }} />
                             </div>
                           ) : index + 1}
                         </td>
@@ -948,7 +947,7 @@ const LocalLibrary = () => {
                   transition: 'background 0.2s'
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-glass-light)'}
               >
                 <ListPlus size={16} /> 加入歌單 ▾
               </button>

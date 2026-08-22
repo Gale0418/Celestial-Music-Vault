@@ -139,6 +139,8 @@ export const AudioProvider = ({ children }) => {
   const currentTrack = playlist[currentTrackIndex] || DEFAULT_PLAYLIST[0];
   const initialTrackRef = useRef(currentTrack);
   const initialVolumeRef = useRef(volume);
+  const latestPlaybackRef = useRef({ currentTrack, volume, isMuted, activeView });
+  latestPlaybackRef.current = { currentTrack, volume, isMuted, activeView };
 
   // Initialize HTML5 Video/Audio Element
   useEffect(() => {
@@ -285,16 +287,17 @@ export const AudioProvider = ({ children }) => {
   // --- DATA PERSISTENCE SYSTEM ---
   
   // Helper to save all user data including playlists, favorites, library and current playback state
-  const saveAllData = useCallback((updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = activeView, updatedRatings = trackRatings) => {
+  const saveAllData = useCallback((updatedLibrary = library, updatedFavorites = favorites, updatedPlaylists = playlists, currentView = latestPlaybackRef.current.activeView, updatedRatings = trackRatings) => {
     if (!window.electronAPI) return;
-    
+
     const audio = videoRef.current;
+    const { currentTrack: latestTrack, volume: latestVolume, isMuted: latestIsMuted } = latestPlaybackRef.current;
     const playbackState = {
-      currentTrackPath: currentTrack ? (currentTrack.path || '') : '',
-      currentTrackId: currentTrack ? currentTrack.id : '',
+      currentTrackPath: latestTrack ? (latestTrack.path || '') : '',
+      currentTrackId: latestTrack ? latestTrack.id : '',
       currentTime: audio ? audio.currentTime : 0,
-      volume,
-      isMuted,
+      volume: latestVolume,
+      isMuted: latestIsMuted,
       activeView: currentView
     };
 
@@ -305,7 +308,7 @@ export const AudioProvider = ({ children }) => {
       trackRatings: updatedRatings,
       playbackState
     });
-  }, [activeView, currentTrack, favorites, isMuted, library, playlists, trackRatings, volume]);
+  }, [favorites, library, playlists, trackRatings]);
 
   // 1. Initial Load on Mount
   useEffect(() => {
