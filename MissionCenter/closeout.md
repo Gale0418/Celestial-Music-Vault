@@ -6,3 +6,10 @@
 - 風險: 預設示範串流仍需 SoundHelix 網路；Apple Development 簽章不等於 Developer ID 公證
 - 冒煙測試: npm test；零警告 lint；Vite 8 build；audit 0；Chrome UI；Electron 單例；codesign strict；hdiutil verify；桌面啟動
 - 回顧: NAS 專案應固定在 /tmp 乾淨建置；成品 plist 必須在簽章前 fail-closed 驗證；UI 與成品實測能抓到單元測試外問題
+
+## MissionCenter 現代化與歷史債清理 · 2026-08-14
+
+- 摘要: 現有 MissionCenter 已非破壞式升級至新版任務契約，保留全部歷史任務、決策與驗證證據。
+- 已完成: 受管 project/progress 摘要、P0 焦點、每日紀錄、HUD 狀態、legacy Done audit 與 Doctor 驗證。
+- 未完成: 5 個舊 Done 任務無法在不偽造證據的前提下還原標準 smoke record，保留為明確警告債。
+- 驗證: MissionCenter Doctor OK；maintenance status 新鮮；`visual-state.json` 可解析；新任務均有通過紀錄。

@@ -1,15 +1,17 @@
-# 快照
+# 執行檢查點
 
-- 建立時間: 2026-08-12T16:50:32
-- 專案: AeroMusic 維護與交付
-- 週期: 全面可靠性、效能與發行強化
-- 目標: 交付安全、可重建且可直接使用的 macOS App 與 DMG
-- 進度: AERO-E2 全部子任務完成；桌面 AeroMusic 1.0.0 已啟動
-- 進行中任務:
+- State: inactive
+- 建立時間: 2026-08-14T03:54:22
+- 進行中任務: None
+- 狀態: Inactive
+- 版本: d22d311ca58055a4870db1e37038a72a68e12006
+- 指紋: 1f9612e3c9439fe87baceb78438b9da190ff388b844bb11c56a37d248753147c
+- 依賴: None
+- 驗證: None
+- Retry gate: retry
+- Recent attempts JSON: []
+- Diagnosis evidence JSON: []
+- 近期嘗試:
   - 無
-- 阻塞任務:
-  - 無
-- 近期決策:
-  - 本機 Apple Development 簽章；正式分發保留 Developer ID＋notarytool lane
-- 開放問題:
-  - 無
+- Notes:
+  - Mission Center 0.3.1 遷移已完成；下一次工作由 tasks.md 重新選擇。

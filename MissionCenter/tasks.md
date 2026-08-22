@@ -18,3 +18,7 @@
 | AERO-R2 | 離線體驗與 macOS 發行資訊整理 | Task | AERO-E2 | P1 | Done | Codex | AERO-S2,AERO-F2 | 已完成 | 斷網不破壞核心本機播放；發行 metadata 正確 | 1 | release, offline, ux | 1.0.0、Music 分類、本機字型與封面；未簽署限制保留 |
 | AERO-V2 | 乾淨建置、稽核、打包與全方位對抗審查 | Task | AERO-E2 | P0 | Done | Codex + Gemini | AERO-T2,AERO-R2 | 已完成 | lint/test/audit/build/pack/互動驗證具可重複證據 | 1 | verification, release | Gemini FINAL_REVIEW_PASS；模擬專家無阻擋問題；本機 Apple Development 簽章通過 |
 | AERO-C2 | 新版桌面交付與本輪結案 | Task | AERO-E2 | P0 | Done | Codex | AERO-V2 | 已完成 | 桌面成品可啟動、雜湊已記錄、工作區可重建 | 1 | closeout, delivery | 桌面 App/DMG 1.0.0 已啟動；舊版移至垃圾桶；基準 66ae6a1 |
+| MC-E1 | MissionCenter 現代化與歷史債清理 | Epic |  | P0 | Done | Codex | AERO-E2 | 已完成 | 0.3.1 Doctor 無錯誤、Resume packet 新鮮、HUD 同步 | 4 | execution, verification | 以 0.3.1 重新驗證完成；保留歷史證據 |
+| MC-M1 | 遷移舊版 Done 驗證債與欄位契約 | Task | MC-E1 | P0 | Done | Codex |  | 已完成 | 舊任務不被偽造為通過，Doctor 僅報告警告 | 1 | execution, verification | 5 個舊 Done ID 已登記為 warning-level debt |
+| MC-V1 | 更新新版摘要、焦點與 Mission HUD | Task | MC-E1 | P0 | Done | Codex | MC-M1 | 已完成 | status 新鮮、Doctor 無錯誤、HUD JSON 可解析 | 1 | verification | 新版受管 project/progress 摘要已採用 |
+| MC-M2 | 升級並驗證 Mission Center 0.3.1 | Task | MC-E1 | P0 | Done | Codex | MC-V1 | 已完成 | 已安裝 manifest 基礎版為 0.3.1；personal skill 與 plugin skill 雜湊一致；working-set、critical-lessons、snapshot、resume 與 Doctor 通過 | 2 | execution, verification | 完整版本 0.3.1+codex.9ed1bfeca60445639f45a35d424aa16e；快照需 Python 3.12 |
