@@ -74,6 +74,9 @@ final class AppModel {
     /// 非音訊曲目由原生 AVPlayer 表面呈現；URL 存在期間保留來源 lease。
     private(set) var videoURL: URL?
     private(set) var videoTrack: Track?
+    private(set) var currentTrackID: UUID?
+
+    var currentTrack: Track? { videoTrack ?? playback.queue.current }
 
     private let sourceProvider = SecurityScopedMediaSourceProvider()
     private let sourceAccess = SourceAccessCoordinator()
@@ -85,6 +88,8 @@ final class AppModel {
     /// 保持佇列涉及的 security-scoped lease 到目前播放結束，避免 NAS／檔案 App 權限在解碼中途失效。
     private var playbackAccessLeases: [SecurityScopedResourceLease] = []
     private var videoAccessLeases: [SecurityScopedResourceLease] = []
+    private var mixedQueue: [Track]?
+    private var activePlaybackContext: ModelContext?
 
     init() {
         selectedTheme = UserDefaults.standard.string(forKey: Self.themeDefaultsKey)
@@ -105,6 +110,12 @@ final class AppModel {
                 currentGainLinear: plan.currentGainLinear,
                 nextGainLinear: plan.nextGainLinear
             )
+        }
+        playback.onCurrentTrackChanged = { [weak self] track in
+            self?.currentTrackID = track?.id
+        }
+        playback.onQueueFinished = { [weak self] in
+            self?.advanceAfterAudioQueue()
         }
     }
 
@@ -228,15 +239,20 @@ final class AppModel {
     /// 從曲目所屬來源解析實體 URL，再交給原生雙節點播放管線。
     /// UI 只需要呼叫這個入口，不得自行拼接或繞過 security-scoped bookmark。
     func play(track: Track, context: ModelContext) {
-        play(tracks: [track], context: context)
+        play(tracks: [track], startingAt: 0, context: context)
     }
 
     /// 關閉目前影片並釋放其 security-scoped 存取權。影片 utility window
     /// 或 iPad sheet 消失時呼叫，確保 lease 不會提早結束也不會永久佔用。
     func stopVideoPlayback() {
+        let wasVideoPlayback = videoURL != nil || videoTrack != nil
         videoURL = nil
         videoTrack = nil
         videoAccessLeases.removeAll()
+        if wasVideoPlayback {
+            mixedQueue = nil
+            if !playback.queue.tracks.isEmpty { playback.clearQueue() }
+        }
     }
 
     /// Transport controls use this entry point so an empty queue still has a
@@ -268,8 +284,33 @@ final class AppModel {
         }
     }
 
+    /// AVPlayer 結束目前影片後，沿用相同佇列銜接下一首；下一首若是
+    /// 音訊，會回到原生音訊引擎，若仍是影片則更新影片表面。
+    func advanceAfterVideo(context: ModelContext) {
+        guard videoURL != nil else { return }
+        let queue = playback.queue
+        let nextIndex = queue.currentIndex + 1
+        guard queue.tracks.indices.contains(nextIndex) else {
+            stopVideoPlayback()
+            return
+        }
+        play(tracks: queue.tracks, startingAt: nextIndex, context: context)
+    }
+
+    private func advanceAfterAudioQueue() {
+        guard let mixedQueue, let context = activePlaybackContext,
+              let currentID = currentTrackID,
+              let currentIndex = mixedQueue.firstIndex(where: { $0.id == currentID }) else { return }
+        let nextIndex = currentIndex + 1
+        guard mixedQueue.indices.contains(nextIndex) else {
+            self.mixedQueue = nil
+            return
+        }
+        play(tracks: mixedQueue, startingAt: nextIndex, context: context)
+    }
+
     /// 播放整個佇列（歌單可跨多個來源）；所有來源都在播放生命週期內持有 lease。
-    private func play(tracks: [Track], context: ModelContext) {
+    func play(tracks: [Track], startingAt: Int = 0, context: ModelContext) {
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
@@ -279,7 +320,9 @@ final class AppModel {
                 var roots: [UUID: URL] = [:]
                 var leases: [SecurityScopedResourceLease] = []
                 var resolvedURLs: [UUID: URL] = [:]
-                guard let selectedTrack = tracks.first else { return }
+                guard tracks.indices.contains(startingAt) else { return }
+                let selectedTrack = tracks[startingAt]
+                activePlaybackContext = context
                 let selectedURL: URL
                 if let cacheStore, let cachedURL = await cacheStore.cachedURL(trackID: selectedTrack.id) {
                     selectedURL = cachedURL
@@ -316,6 +359,8 @@ final class AppModel {
                     let selectedVideoTrack = selectedTrack
                     let url = selectedURL
                     playback.clearQueue()
+                    playback.setQueue(PlaybackQueue(tracks: tracks, currentIndex: startingAt))
+                    mixedQueue = tracks
                     playbackAccessLeases.removeAll()
                     videoAccessLeases = leases
                     videoTrack = selectedVideoTrack
@@ -331,13 +376,18 @@ final class AppModel {
                 // kept out of a later audio-only queue unless they are the
                 // selected item that was just probed as audio-only above.
                 let movieContainerExtensions: Set<String> = ["mp4", "mov", "m4v"]
-                let audioTracks = tracks.filter { track in
-                    if track.id == selectedTrack.id { return true }
-                    if track.mediaKind == .video { return false }
+                let nextVideoIndex = tracks.indices.dropFirst(startingAt + 1).first { index in
+                    let track = tracks[index]
                     let ext = URL(fileURLWithPath: track.relativePath).pathExtension.lowercased()
-                    return !movieContainerExtensions.contains(ext)
+                    return track.mediaKind == .video || movieContainerExtensions.contains(ext)
+                } ?? tracks.count
+                let audioTracks = Array(tracks[startingAt..<nextVideoIndex]).filter { track in
+                    track.id == selectedTrack.id || track.mediaKind != .video
                 }
                 guard !audioTracks.isEmpty else {
+                    throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
+                }
+                guard let audioIndex = audioTracks.firstIndex(of: selectedTrack) else {
                     throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
                 }
                 for track in audioTracks.dropFirst() {
@@ -358,11 +408,12 @@ final class AppModel {
                     }
                     resolvedURLs[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 }
-                try playback.load(PlaybackQueue(tracks: audioTracks), resolvedURLs: resolvedURLs)
+                try playback.load(PlaybackQueue(tracks: audioTracks, currentIndex: audioIndex), resolvedURLs: resolvedURLs)
+                mixedQueue = nextVideoIndex < tracks.count ? tracks : nil
                 playbackAccessLeases = leases
                 try playback.play()
                 let repository = SwiftDataLibraryRepository(container: context.container)
-                try? await repository.recordPlayback(trackID: tracks[0].id, skipped: false)
+                try? await repository.recordPlayback(trackID: selectedTrack.id, skipped: false)
                 if let cacheStore {
                     let policy = CachePolicy()
                     let prefetchTracks = Array(audioTracks.dropFirst().prefix(policy.prefetchCount))

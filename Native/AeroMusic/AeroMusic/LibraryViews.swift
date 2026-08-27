@@ -111,7 +111,7 @@ struct NowPlayingView: View {
     @State private var showingVideoImporter = false
     @State private var videoSelection: VideoSelection?
     var body: some View {
-        let current = appModel.videoTrack ?? appModel.playback.queue.current
+        let current = appModel.currentTrack
         ScrollView {
             VStack(spacing: 24) {
                 ViewThatFits(in: .horizontal) {
@@ -143,10 +143,14 @@ struct NowPlayingView: View {
         #if !os(macOS)
         .sheet(item: $videoSelection) { selection in
             NavigationStack {
-                VideoExperienceView(url: selection.url)
+                VideoExperienceView(url: selection.url) {
+                    appModel.advanceAfterVideo(context: context)
+                }
                     .padding()
                     .onDisappear {
-                        appModel.stopVideoPlayback()
+                        if appModel.videoURL == selection.url {
+                            appModel.stopVideoPlayback()
+                        }
                         videoWindowStore.clear()
                     }
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { videoSelection = nil; videoWindowStore.clear() } } }
@@ -156,7 +160,7 @@ struct NowPlayingView: View {
     }
 
     @ViewBuilder private var nowPlayingControls: some View {
-        let current = appModel.videoTrack ?? appModel.playback.queue.current
+        let current = appModel.currentTrack
         VStack(alignment: .leading, spacing: 12) {
             Text("現在收聽").font(.headline).foregroundStyle(theme.metal)
             Text(current?.title ?? "夜航收藏")
@@ -200,10 +204,11 @@ struct TrackListView: View {
     var body: some View {
         LazyVStack(spacing: 2) {
             ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
+                let isCurrent = track.id == appModel.currentTrackID
                 HStack(spacing: 14) {
                     Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
-                    Image(systemName: track.mediaKind == .video ? "film" : (index == 0 ? "sparkles" : "music.note"))
-                        .foregroundStyle(index == 0 ? theme.primary : .secondary)
+                    Image(systemName: track.mediaKind == .video ? "film" : (isCurrent ? "waveform" : "music.note"))
+                        .foregroundStyle(isCurrent ? theme.primary : .secondary)
                     VStack(alignment: .leading) {
                         Text(track.title).lineLimit(1)
                         Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -211,7 +216,7 @@ struct TrackListView: View {
                     Spacer()
                     Text(track.album).foregroundStyle(.secondary).lineLimit(1)
                     Button {
-                        appModel.play(track: track, context: context)
+                        appModel.play(tracks: tracks, startingAt: index, context: context)
                     } label: {
                         Image(systemName: "play.circle.fill")
                             .foregroundStyle(theme.primary)
@@ -264,7 +269,7 @@ struct TrackListView: View {
                 }
                 .frame(minHeight: 48)
                 .padding(.horizontal, 12)
-                .background(index == 0 ? theme.primary.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 12))
+                .background(isCurrent ? theme.primary.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 12))
                 .task {
                     if index == tracks.count - 1 { await loadNextPage(generation: searchGeneration) }
                 }
@@ -450,16 +455,19 @@ private struct TrackRows: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 4) {
             ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
+                let isCurrent = track.id == appModel.currentTrackID
                 HStack {
                     Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
                     VStack(alignment: .leading) { Text(track.title); Text(track.artist).font(.caption).foregroundStyle(.secondary) }
                     Spacer()
-                    Button { appModel.play(track: track, context: context) } label: {
+                    Button { appModel.play(tracks: tracks, startingAt: index, context: context) } label: {
                         Image(systemName: "play.circle.fill")
                     }.buttonStyle(.borderless).frame(width: 44, height: 44).accessibilityLabel("播放\(track.title)")
                     Image(systemName: "heart.fill").foregroundStyle(.pink)
                 }
                 .frame(minHeight: 48).padding(.horizontal, 12)
+                .background(isCurrent ? Color.accentColor.opacity(0.12) : .clear,
+                            in: RoundedRectangle(cornerRadius: 10))
                 .task {
                     if index == tracks.count - 1 { await onLast?() }
                 }
@@ -562,7 +570,8 @@ struct QueueView: View {
                     VStack(alignment: .leading) { Text(track.title); Text(track.artist).font(.caption).foregroundStyle(.secondary) }
                     Spacer(); Image(systemName: "line.3.horizontal")
                 }.frame(minHeight: 52).padding(8)
-                .background(index == 0 ? theme.primary.opacity(0.16) : .clear, in: RoundedRectangle(cornerRadius: 14))
+                .background(track.id == appModel.currentTrackID ? theme.primary.opacity(0.16) : .clear,
+                            in: RoundedRectangle(cornerRadius: 14))
             }
             Spacer()
         }.padding(18).background(.ultraThinMaterial.opacity(0.55))

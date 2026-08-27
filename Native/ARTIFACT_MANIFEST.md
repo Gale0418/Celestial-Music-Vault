@@ -13,12 +13,12 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCoreRS/ffi/include/aero_core_ffi.h` | `b4522c807ac6b7cba23c7e60f3c1818d2ee3bdd081cc600fb16ead2490678608` |
 | `Native/AeroCoreRS/ffi/src/lib.rs` | `72236de23aaf9909f10d38f2c337bf1893b531732b778f95ab5d174e9dc30db1` |
 | `Native/AeroCoreRS/README.md` | `4a1784e707c84ea38d18cccccb937ce35af591caa4230877e7a4ad3fc75c891e` |
-| `Native/AeroMusic/AeroMusic/AppModel.swift` | `ad20b4b8bd016538c4094d7698c55e0aab1ca1a75fd5e84e2f96853989efc205` |
+| `Native/AeroMusic/AeroMusic/AppModel.swift` | `4e896aa9081bd216f2fbd69e10a300ce750181f363fb83df9a94665467a5d16b` |
 | `Native/AeroMusic/AeroMusic.xcodeproj/project.pbxproj` | `7c875b89cf454c98412a78297f1dd390d48d30c8e4fa5d52c4881f6919b8b587` |
-| `Native/AeroMusic/AeroMusic/RootView.swift` | `a14868d6563f3439f34971ef2954dda0798a63d651baeb8f2bfa13634d22ffb2` |
-| `Native/AeroMusic/AeroMusic/AeroMusicApp.swift` | `6834fa7b018d9b279eab2db168529d97ff33cbc7148ba809fab0d946a8d3bda4` |
-| `Native/AeroMusic/AeroMusic/LibraryViews.swift` | `f1c1fc94702af13f2dc4cbc3939018a322e581737b5de00d4545c9a2aaf5169b` |
-| `Native/AeroMusic/AeroMusic/VideoExperienceView.swift` | `1697f5e626812aa23c3c8fd02b6c8c79eed9ffcb29b25b8f57a1771aaa97ac05` |
+| `Native/AeroMusic/AeroMusic/RootView.swift` | `849bc918192de0d0da0331f452caaee4f71c879f88503f0319a13210cb64ea34` |
+| `Native/AeroMusic/AeroMusic/AeroMusicApp.swift` | `104b76316f91970f996b72dfa1a977a05f4286c83968fda2b8938f9e68a31f0d` |
+| `Native/AeroMusic/AeroMusic/LibraryViews.swift` | `4fd7395b36e62741b58ed1798530c157d360f85e4b6957ae439d768b747a9953` |
+| `Native/AeroMusic/AeroMusic/VideoExperienceView.swift` | `1a4bf635531acf78c2a7d76459369f22a547653e3422ec251a950d2077976af0` |
 | `Native/AeroMusic/AeroMusic/PrivacyInfo.xcprivacy` | `a6ea123e26594d361ea873b71ed1ac7a7b20f7d922b4b034a002c8043531cb24` |
 | `Native/AeroMusic/AeroMusic/Assets.xcassets/AppIcon.appiconset/Contents.json` | `a22f4805b3d8b13728a7962942f4d6a4b54812e280faab54e02b2281fba866b2` |
 | `Native/AeroMusic/AeroMusic/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | `6e22bba6268a24a33817a0d92d177372042758991b94c29806e14b41f1b348ca` |
@@ -26,8 +26,8 @@ Support 或任何 NAS 憑證。
 | `Native/AeroMusic/AeroMusic/Info.plist` | `89fe4e8b3efc6193cb1b22d54562f40cb65508f49091c1f2e4cd5742ab708b13` |
 | `Native/AeroCore/Sources/AeroDomain/Protocols.swift` | `e7ffdd0fe5a49ff49f9f1e158b5aa778a5c7156981199cb641c025b6d96c3790` |
 | `Native/AeroCore/Sources/AeroDomain/Models.swift` | `c94aecae1f17907b1a6dbf4b4a7eeb1f04c24a17276f04f9b76cd11e56d0bff2` |
-| `Native/AeroCore/Sources/AeroPlayback/NativePlaybackEngine.swift` | `f191469535fbd10fb1dda0f355100f51a72de9ef8f3c00173ac529e86c911542` |
-| `Native/AeroMusic/AeroMusic/PlayerBar.swift` | `a8bcf82390d43a24f86b89f666c6ee67e0849368445d2f1ab903f173cea8ae39` |
+| `Native/AeroCore/Sources/AeroPlayback/NativePlaybackEngine.swift` | `1ec3ddebc697157a47aacd4c14117567d16c8001ae5abcf0cdd31ca1591b0856` |
+| `Native/AeroMusic/AeroMusic/PlayerBar.swift` | `555eb8b030809898d6c32769edf4251f8ad777a5cc0d431b4e132f6241faedf6` |
 | `Native/AeroCoreRS/scripts/build-xcode.sh` | `f187821b8401abf890af1bde267125644e70d32f873b5ebc2f372f7017199f22` |
 | `Native/scripts/qualify-app-store.sh` | `0e5c32a5aa8c7ca0cef6f285af2790fb3c1ded0c34e32282fcb74e4de4f88ba0` |
 | `Native/scripts/README.md` | `25a2c8156fb3b7e1c51ddef5c330830ca712c8ef319b230552fffd3c6537a9a3` |
@@ -47,16 +47,17 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCore/Sources/AeroLibrary/SwiftDataLibraryRepository.swift` | `08b97c835c607ad89c798d716b427ac2e46336676ad9d604c0136da470c46f93` |
 | `Native/V3_REVIEW.md` | `cb9027c2abe189fc939e6a767fe5bb5f0ef2ff7da0591ee1926e697fbf0fa8e0` |
 | `Native/AeroCore/Tests/AeroCoreTests/AeroCoreTests.swift` | `13939835129960e0fdbc53727903f8e6e438bf6bee0a7bb7bc43d7a11ac55901` |
-| `MissionCenter/tasks.md` | `70992171d2c95f67a14fa90724cb7665e9584a9203428fb508f67749894c0219` |
-| `MissionCenter/smoke-tests.md` | `66683dde92bf4cc446a7e8ff582c8395358868d05c1b275cbe609ed3539e761b` |
-| `MissionCenter/daily-log.md` | `24e190d0f771961c6483a90d027f221d41a95a6050675a76cc9526d991c756f2` |
+| `MissionCenter/tasks.md` | `4ed12a0496d9bbb423be861eaab2bfbad9402cba01d22ad7a0f63a1e1fdf9e60` |
+| `MissionCenter/smoke-tests.md` | `ca715702d6c10411264db73801961fa41d8dec301aee9d899cfc2a890e0d4638` |
+| `MissionCenter/daily-log.md` | `dbe887da77b122d9b0d776881dd3cb0bbbc0ade70cb430d4fa6074895d33139c` |
 | `MissionCenter/closeout.md` | `123d99df1843aa1be74728cec2fdeaf4ac9dd50c3eb93037d71f38362c6bcd7a` |
 
 ## 驗證快照
 
 - Rust：workspace 19 core＋8 FFI＋1 shared tests、fmt、Clippy `-D warnings`。
-- Swift：隔離 scratch 15/15 tests；Metadata 使用 AVURLAsset async load 與嚴格 ReplayGain/R128 tag parser；新增搜尋 snapshot mutation、媒體種類持久化與不完整掃描保留曲目 regression。
+- Swift：完整 16/16 tests；Metadata 使用 AVURLAsset async load 與嚴格 ReplayGain/R128 tag parser；搜尋 snapshot mutation、媒體種類持久化與不完整掃描保留曲目 regression 均通過。
 - 原生媒體：MP4／MOV／M4V 依實際 AVAsset 軌道分流至 AVKit；Mac 影片視窗與 iPad 原生全螢幕／PiP 編譯通過，實際 NAS MP4 已驗證可見動態畫面。
+- 影音狀態：AVPlayer EOF 與音訊 queue-finished callback 共用 mixed queue，三種影音交界均可推進；目前曲目以可觀察 ID 驅動 Songs／Favorites／Queue 高亮，Mac／iPad Debug build 通過。
 - Playback：Sleep Timer 15／30／60／90 分鐘、取消與到時 pause 已接入共用 PlaybackEngine，Mac／iPad Release build 均通過。
 - Library UX：歌單按順序載入完整 PlaybackQueue；歌曲操作選單可釘選／取消釘選離線，pinned 狀態查詢與 scoped copy 已接入，Mac／iPad Release build 均通過。
 - Source recovery：stale／撤銷 bookmark 可由原生資料夾選擇器重新授權，既有曲目／歌單保留後重啟差異掃描；Mac／iPad Release 與最新 universal Development archive 均納入此流程。

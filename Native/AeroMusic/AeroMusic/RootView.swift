@@ -11,6 +11,7 @@ struct RootView: View {
     @Environment(VideoWindowStore.self) private var videoWindowStore
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
     #else
     @State private var videoSelection: VideoSelection?
     #endif
@@ -41,6 +42,11 @@ struct RootView: View {
             .onChange(of: appModel.videoURL) { _, url in
                 guard let url else {
                     videoWindowStore.clear()
+                    #if os(iOS)
+                    videoSelection = nil
+                    #else
+                    dismissWindow(id: "video")
+                    #endif
                     return
                 }
                 videoWindowStore.present(url: url)
@@ -53,11 +59,15 @@ struct RootView: View {
             #if os(iOS)
             .sheet(item: $videoSelection) { selection in
                 NavigationStack {
-                    VideoExperienceView(url: selection.url)
+                    VideoExperienceView(url: selection.url) {
+                        appModel.advanceAfterVideo(context: modelContext)
+                    }
                         .padding()
                         .onDisappear {
-                            appModel.stopVideoPlayback()
-                            videoWindowStore.clear()
+                            if appModel.videoURL == selection.url {
+                                appModel.stopVideoPlayback()
+                                videoWindowStore.clear()
+                            }
                         }
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {

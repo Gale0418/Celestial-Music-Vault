@@ -8,7 +8,7 @@ struct PlayerBar: View {
     @Environment(\.aeroTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
-        let current = appModel.videoTrack ?? appModel.playback.queue.current
+        let current = appModel.currentTrack
         HStack(spacing: 18) {
             ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
                 .frame(width: 56, height: 56)
@@ -89,7 +89,7 @@ struct MiniPlayerBar: View {
     var onExpand: () -> Void = {}
 
     var body: some View {
-        let current = appModel.videoTrack ?? appModel.playback.queue.current
+        let current = appModel.currentTrack
         HStack(spacing: 12) {
             ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
                 .frame(width: 42, height: 42)

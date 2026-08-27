@@ -3,6 +3,8 @@
 - 最後整理： 2026-08-28
 
 ## 2026-08-28
+- 2026-08-28 03:27 +08:00｜變更：完成 AERO-F6 最終 CodeRabbit 審查｜原因：影音 mixed queue 與跨平台視窗生命週期屬高風險播放變更，且使用者要求遵守每小時三次限制進行兔子審查｜影響：依 CLI log 確認滾動一小時內尚有一格後僅執行一次；CodeRabbit 審查 15 個變更檔並回報 0 issues，未超過配額。
+- 2026-08-28 03:20 +08:00｜變更：完成 AERO-F6 影片連播與目前曲目高亮同步，並登記 AERO-M6 右鍵選單功能差距｜原因：使用者實測影片結束不會往下、列表永久高亮第一列，另詢問原生右鍵是否與 Electron 等價｜影響：影音共用 mixed queue，AVPlayer EOF 與音訊 queue 結束皆可跨 video／audio 邊界推進；Songs／Favorites／Queue 改由可觀察 currentTrackID 高亮。iPad sheet／Mac utility window 轉場不誤清 pending queue，手勢與紅點關閉會釋放 scoped lease。AeroPlayback build、指定 Swift regression、Mac／iPad Simulator 完整 build 與 diff check 通過；原生右鍵仍未等價，列為 Backlog，不在未授權下擴張破壞性檔案操作。
 - 2026-08-28 02:34 +08:00｜變更：完成 AERO-F5，統一原生音訊／影片播放入口並更新桌面試用版｜原因：大型播放鍵空 queue 時無反應，且 MP4 等含影像媒體只進音訊管線｜影響：新增可遷移 MediaKind、AVFoundation 實際軌道／可播放能力判斷、Root shell 影片呈現、Mac AVPlayerView 與 iPad AVPlayerViewController／PiP 自動播放；純音訊維持 Gapless 核心。壞檔不再中止整個掃描或誤把既有曲目標 missing；混合 queue 不把影片送進 NativePlaybackEngine；來源 lease 於關閉影片後釋放。Swift 15/15、針對性 incomplete-scan 測試、Mac／iPad build、現有 NAS MP4 動態畫面與三輪 CodeRabbit 修正皆通過；桌面舊 App 已移至垃圾桶可復原。
 - 2026-08-28 01:34 +08:00｜變更：完成 AERO-D5 並啟動 AERO-F5｜原因：原生桌面版曲庫可見但媒體無法開啟，使用者並明確要求 MP4／其他影片格式顯示畫面｜影響：實際 UI 確認主畫面大型「播放」在空 queue 時吞掉 `unresolvedTrack` 而完全無反應；MP4 雖被索引但沒有依 video track 路由 AVKit。NAS MP4 實檔可由 `AVAudioFile` 解 AAC，故修復改採 AVFoundation 軌道能力分類，含畫面媒體走 Mac AVPlayerView／iPad AVPlayerViewController＋PiP，純音訊維持原播放核心。另記錄三份同名 App 導致 LaunchServices／SwiftData store 誤辨；Desktop 同 bundle ID 重啟後 112 個來源可恢復 available，簽章差異保留為交付風險。
 - 2026-08-28 00:48 +08:00｜變更：完成 AERO-ND1，以最新 source 的 SwiftUI＋Rust 2.0 原生 App 更正桌面交付｜原因：使用者指出 AERO-LG1 交付的是 Electron 舊介面並要求試用新版｜影響：桌面 App 現為 `com.aeromusic.native` 2.0，視窗「夜航收藏」已啟動；舊 Electron App 與 DMG 移至垃圾桶可復原；Distribution／notarization／TestFlight gate 維持未完成。

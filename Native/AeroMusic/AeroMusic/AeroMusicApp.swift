@@ -27,9 +27,14 @@ struct AeroMusicApp: App {
         .defaultSize(width: 1_360, height: 860)
         .windowStyle(.hiddenTitleBar)
         WindowGroup("影片", id: "video") {
-            VideoWindowView()
-                .environment(appModel)
-                .environment(videoWindowStore)
+            if let container {
+                VideoWindowView()
+                    .environment(appModel)
+                    .environment(videoWindowStore)
+                    .modelContainer(container)
+            } else {
+                Text("無法開啟影片播放")
+            }
         }
         .defaultSize(width: 760, height: 520)
         #else

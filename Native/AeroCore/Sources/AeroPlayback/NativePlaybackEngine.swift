@@ -70,6 +70,10 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     @Published public private(set) var isShuffleEnabled = false
     @Published public private(set) var isRepeatEnabled = false
     @Published public private(set) var sleepTimerEndDate: Date?
+    /// Lets the app shell observe queue advancement without reaching through
+    /// a nested ObservableObject from SwiftUI rows.
+    public var onCurrentTrackChanged: ((Track?) -> Void)?
+    public var onQueueFinished: (() -> Void)?
 
     private let engine = AVAudioEngine()
     private let firstNode = AVAudioPlayerNode()
@@ -132,6 +136,14 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         shuffleUpcomingTrackIfNeeded()
         elapsed = 0
         try prepareTimeline(sourceStartFrame: 0)
+        onCurrentTrackChanged?(self.queue.current)
+        updateNowPlaying()
+    }
+
+    /// 影片由 AVPlayer 解碼時仍共用同一個播放佇列，不啟動音訊 graph。
+    public func setQueue(_ queue: PlaybackQueue) {
+        self.queue = queue
+        onCurrentTrackChanged?(self.queue.current)
         updateNowPlaying()
     }
 
@@ -202,6 +214,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         firstNode.stop()
         secondNode.stop()
         queue = PlaybackQueue()
+        onCurrentTrackChanged?(nil)
         resolvedURLs.removeAll(keepingCapacity: true)
         scheduledFiles.removeAll(keepingCapacity: true)
         scheduledEngineStartFrames.removeAll(keepingCapacity: true)
@@ -234,6 +247,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             shuffleUpcomingTrackIfNeeded()
             queue.currentIndex += 1
         }
+        onCurrentTrackChanged?(queue.current)
         elapsed = 0
         try prepareTimeline(sourceStartFrame: 0)
         if resume { try play() }
@@ -251,6 +265,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         }
         let resume = isPlaying
         queue.currentIndex -= 1
+        onCurrentTrackChanged?(queue.current)
         elapsed = 0
         try prepareTimeline(sourceStartFrame: 0)
         if resume { try play() }
@@ -361,10 +376,12 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             guard isRepeatEnabled else {
                 isPlaying = false
                 elapsed = queue.current?.duration ?? elapsed
+                onQueueFinished?()
                 updateNowPlaying()
                 return
             }
             queue.currentIndex = 0
+            onCurrentTrackChanged?(queue.current)
             elapsed = 0
             shuffleUpcomingTrackIfNeeded()
             try? prepareTimeline(sourceStartFrame: 0)
@@ -373,6 +390,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             return
         }
         queue.currentIndex += 1
+        onCurrentTrackChanged?(queue.current)
         shuffleUpcomingTrackIfNeeded()
         activeNodeIsFirst.toggle()
         currentSourceStartSeconds = 0
