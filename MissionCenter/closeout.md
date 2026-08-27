@@ -18,7 +18,7 @@
 - 最新本機補強：`OfflineCacheStore.cachedURL` 先驗證 SHA-256 再供播放，釘選內容可在來源離線時直接使用；歌曲、專輯與歌手 UI 改為分頁載入；Mac 支援拖放資料夾加入音樂來源；啟動時重新檢查已保存來源。Swift 14/14、Rust 19 core＋8 FFI＋1 shared、macOS／iPad Simulator Debug build 均通過；未改變實機／Distribution／TestFlight 外部 gate。
 - 最新裝置盤點：已配對 iPad 可被 `devicectl` 看見，但 Developer Disk Image 尚未掛載；最新 generic iOS arm64 Release bundle 已通過 App Store preflight，實機安裝、NAS／背景播放／PiP 仍不宣稱完成。
 - 最新獨立 review：Antigravity request `b8d9af7c-0e8b-4d4a-a6cb-2f66f5d6953b` 以 Hub-visible 唯讀 RPC 回覆 `verdict=PASS`，無 blocking finding；其列出的 NAS／DDI／Distribution／TestFlight 仍與本文件外部 gate 一致。
-- 最新簽章證據：Xcode `-prepareDeviceSupport` 已為 iPad13,16 完成支援準備；自動開發簽章仍因本機沒有 Team `2ZYLUFSC25` 帳號及 `com.aeromusic.native` profile 失敗，故不宣稱實機安裝或 TestFlight。
+- 最新簽章證據：Xcode `-prepareDeviceSupport` 已為 iPad13,16 完成支援準備；自動開發簽章仍因本機沒有可用 Team 帳號及 `com.aeromusic.native` profile 失敗，故不宣稱實機安裝或 TestFlight。
 - Electron legacy packaging：`npm run pack` 已完成 `dist-app/mac-arm64/AeroMusic.app`（約 195 MB），Apple Development 簽章與內部 strict verify 通過；notarization 因缺少 Developer ID／notary profile 跳過。這只代表舊版封裝基線恢復，不改變 Electron 必須等原生 TestFlight 後才退場的 gate。
 - Rust boundary finalization：cache eviction policy 已經由 `aero_core_eviction_plan_v1` 接入實際 Swift cache actor；Rust 負責純 value LRU／pinned 決策，Swift 負責 Apple 檔案與權限邊界。至此可安全 Rust 化的純邏輯都有 runtime bridge；UI、AVFoundation、SwiftData、sandbox、PiP 仍刻意維持 Swift。
 - MediBuddy signing cross-check：採用其「certificate／Xcode account／profile Team 分層」排障結論後，AeroMusic 以實際 profile Team 成功產生 signed arm64 device App；配對 iPad 安裝仍因裝置鎖定導致 DDI mount 失敗，實機 gate 保持未完成。

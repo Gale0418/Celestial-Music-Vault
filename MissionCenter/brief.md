@@ -1,9 +1,9 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=12f37e125fb2f83ad8d194035f4f9acc16d3cd8516209d4c3765b737e2802f5b -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=3d21aa5b5af350bb297e74575b60f4acc0064593f486f3fa2f79f7bc474e2f33 -->
 # 任務簡報
 
 - 最後整理: 2026-08-27
-- 來源指紋: `12f37e125fb2f83ad8d194035f4f9acc16d3cd8516209d4c3765b737e2802f5b`
+- 來源指紋: `3d21aa5b5af350bb297e74575b60f4acc0064593f486f3fa2f79f7bc474e2f33`
 - 唯一真實來源: `tasks.md`
 - 專案: AeroMusic 維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器

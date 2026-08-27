@@ -49,8 +49,8 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCore/Tests/AeroCoreTests/AeroCoreTests.swift` | `d106202932c85235e50c31254ba4001bd4b98ada6bfa2f8d04971fbf5920908e` |
 | `MissionCenter/tasks.md` | `37b0099acc90603439a4368058ebacc723704f47088aac4110457d1dacd71cc4` |
 | `MissionCenter/smoke-tests.md` | `db55b8fa2f83fbf2939b607f1f920ea671123247a142b83088729773324a3402` |
-| `MissionCenter/daily-log.md` | `679c4caffe67c2c4eebc47de2a019531be00becba4fe4f7fb32addeb4e5dd594` |
-| `MissionCenter/closeout.md` | `f2abc9cc55fd51fd06d02090966751083fc705256f9fe37beffbdc3eb668fe65` |
+| `MissionCenter/daily-log.md` | `ee87273fc4d661ee21efd9c92e5b6d560401097404702c59a2e4ea674a49f1a0` |
+| `MissionCenter/closeout.md` | `123d99df1843aa1be74728cec2fdeaf4ac9dd50c3eb93037d71f38362c6bcd7a` |
 
 ## 驗證快照
 
