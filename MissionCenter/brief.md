@@ -1,9 +1,9 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=3d21aa5b5af350bb297e74575b60f4acc0064593f486f3fa2f79f7bc474e2f33 -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=8adafac818fb9548c9ea547e6dacd78f3300a403935ab3d46ce9d0c1457600ed -->
 # 任務簡報
 
 - 最後整理: 2026-08-27
-- 來源指紋: `3d21aa5b5af350bb297e74575b60f4acc0064593f486f3fa2f79f7bc474e2f33`
+- 來源指紋: `8adafac818fb9548c9ea547e6dacd78f3300a403935ab3d46ce9d0c1457600ed`
 - 唯一真實來源: `tasks.md`
 - 專案: AeroMusic 維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
@@ -18,7 +18,7 @@
 - 依使用者要求全面檢查原任務的蟹化需求：L3／P3／M3／A3／C3 已補上 Rust 純邏輯責任與 Swift 平台責任；U3 保持 SwiftUI／AVKit，避免把 Apple UI 物件硬塞過 FFI。AERO-L3 轉 In Progress。
 - AERO-L3 完成：App runtime 已改由 Rust v1 reconciliation 決定 upsert／missing，Swift SourceAccessCoordinator 持有 security scope、LibraryDataActor 分批套用結果。50k Rust ABI 與 50k SwiftData 分別通過；8 個 Swift 測試涵蓋取消、離線不清庫與持久 store 重啟；Mac/iPad Simulator build 通過。AERO-P3 轉 In Progress、M3 轉 Ready。
 - AERO-P3 完成：Rust v1 ABI 接管 sample timeline 與 ReplayGain／peak gain 規劃；Swift AVAudioEngine 改為雙節點經 transition mixer、同 host-time 共用 sample timeline，並接上 Limiter、EQ、Now Playing、remote commands、iOS background session／interruption／route recovery。13 個 Rust tests、3 條真實 ABI smoke、8 個 Swift tests、Mac/iPad build 全綠；AERO-M3 轉 In Progress。
-- [TRUNCATED] 62 additional items require canonical file access.
+- [TRUNCATED] 63 additional items require canonical file access.
 
 ## 重要護欄 (1)
 - GR-001

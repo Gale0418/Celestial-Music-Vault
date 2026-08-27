@@ -13,10 +13,10 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCoreRS/ffi/include/aero_core_ffi.h` | `b4522c807ac6b7cba23c7e60f3c1818d2ee3bdd081cc600fb16ead2490678608` |
 | `Native/AeroCoreRS/ffi/src/lib.rs` | `72236de23aaf9909f10d38f2c337bf1893b531732b778f95ab5d174e9dc30db1` |
 | `Native/AeroCoreRS/README.md` | `4a1784e707c84ea38d18cccccb937ce35af591caa4230877e7a4ad3fc75c891e` |
-| `Native/AeroMusic/AeroMusic/AppModel.swift` | `330ec91bcb61ef5e6e7d4f8be5b2f0a2512d50367ecccd5fed9e5b7bfc571cb0` |
+| `Native/AeroMusic/AeroMusic/AppModel.swift` | `4f77676059859d98a1aca626d08651456fd857b44689c35cfa17337aa96d7422` |
 | `Native/AeroMusic/AeroMusic.xcodeproj/project.pbxproj` | `7c875b89cf454c98412a78297f1dd390d48d30c8e4fa5d52c4881f6919b8b587` |
-| `Native/AeroMusic/AeroMusic/RootView.swift` | `3d4e2a08a4ffa1c1b21a3ad83f9399044b8de901d88b13d04743a9c8684412ff` |
-| `Native/AeroMusic/AeroMusic/AeroMusicApp.swift` | `edddd78b56b17869a592d54eb426729696739f01204dc69332950fb4e3f0a490` |
+| `Native/AeroMusic/AeroMusic/RootView.swift` | `1830858db3bcdc1f4c0cd999fd444665bf5f80927f815650d0a8188db4ccd932` |
+| `Native/AeroMusic/AeroMusic/AeroMusicApp.swift` | `74b91aca8014c99d7814a853a5c179c85d1e66cfd9cf3919aeff43a1e392f343` |
 | `Native/AeroMusic/AeroMusic/LibraryViews.swift` | `4c92fdd7f652d224918b635298eb782a43e897ee13baf8df29afa57103a86a14` |
 | `Native/AeroMusic/AeroMusic/VideoExperienceView.swift` | `b4b9273686c926ce0f2d3afe35887926cf4b794ebff1c7863182870ad3ce956d` |
 | `Native/AeroMusic/AeroMusic/PrivacyInfo.xcprivacy` | `a6ea123e26594d361ea873b71ed1ac7a7b20f7d922b4b034a002c8043531cb24` |
@@ -47,9 +47,9 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCore/Sources/AeroLibrary/SwiftDataLibraryRepository.swift` | `7bc133f214b5070f5487ad94bb172c101bb4263c071e74c766e19d9e0f0e3c07` |
 | `Native/V3_REVIEW.md` | `cb9027c2abe189fc939e6a767fe5bb5f0ef2ff7da0591ee1926e697fbf0fa8e0` |
 | `Native/AeroCore/Tests/AeroCoreTests/AeroCoreTests.swift` | `d106202932c85235e50c31254ba4001bd4b98ada6bfa2f8d04971fbf5920908e` |
-| `MissionCenter/tasks.md` | `37b0099acc90603439a4368058ebacc723704f47088aac4110457d1dacd71cc4` |
-| `MissionCenter/smoke-tests.md` | `db55b8fa2f83fbf2939b607f1f920ea671123247a142b83088729773324a3402` |
-| `MissionCenter/daily-log.md` | `ee87273fc4d661ee21efd9c92e5b6d560401097404702c59a2e4ea674a49f1a0` |
+| `MissionCenter/tasks.md` | `63094500649831f37f6bbe350c7e2c30e6edb7aacacf5a1f1834de8337465cbc` |
+| `MissionCenter/smoke-tests.md` | `973615ace07ca08fa0ee4e9df3210decd583adffc8f66bc0e40994a04584d0d1` |
+| `MissionCenter/daily-log.md` | `170aac87c41c2895a167ad4daf86ef85b32c50c53624e2cf4b43b7d21d2de5f4` |
 | `MissionCenter/closeout.md` | `123d99df1843aa1be74728cec2fdeaf4ac9dd50c3eb93037d71f38362c6bcd7a` |
 
 ## 驗證快照

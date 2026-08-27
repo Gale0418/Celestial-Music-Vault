@@ -95,14 +95,63 @@ final class AppModel {
     }
 
     func addSource(_ url: URL, context: ModelContext) {
+        addSources([url], context: context)
+    }
+
+    /// 批次加入資料夾來源，讓 Finder／檔案 App 的多選結果只需一次存檔，
+    /// 並在同一批次內去除重複路徑。單一資料夾仍透過這個入口維持相同行為。
+    func addSources(_ urls: [URL], context: ModelContext) {
+        let directories = urls.filter(\.hasDirectoryPath)
+        guard !directories.isEmpty else { return }
+
+        let existingPaths = Set((try? context.fetch(FetchDescriptor<MediaSourceRecord>()))?.compactMap { source in
+            try? sourceProvider.resolveWithRefresh(bookmark: source.bookmarkData).url.standardizedFileURL.path
+        } ?? [])
+        var seenPaths = existingPaths
+        var pendingSources: [MediaSourceRecord] = []
+        var failures: [String] = []
+
+        for url in directories {
+            let normalizedURL = url.standardizedFileURL
+            guard seenPaths.insert(normalizedURL.path).inserted else { continue }
+            do {
+                let bookmark = try sourceProvider.makeBookmark(for: normalizedURL)
+                let source = MediaSourceRecord(
+                    displayName: normalizedURL.lastPathComponent,
+                    bookmarkData: bookmark,
+                    status: .scanning
+                )
+                context.insert(source)
+                pendingSources.append(source)
+            } catch {
+                failures.append(normalizedURL.lastPathComponent)
+            }
+        }
+
+        guard !pendingSources.isEmpty else {
+            if !failures.isEmpty {
+                errorMessage = "無法加入資料夾：" + failures.joined(separator: "、")
+            }
+            return
+        }
+
         do {
-            let bookmark = try sourceProvider.makeBookmark(for: url)
-            let source = MediaSourceRecord(displayName: url.lastPathComponent, bookmarkData: bookmark, status: .scanning)
-            context.insert(source)
             try context.save()
-            Task { await scan(source: source, context: context) }
         } catch {
+            // Keep unrelated pending edits intact, but never leave this failed
+            // batch queued for a later, unrelated context.save().
+            for source in pendingSources {
+                context.delete(source)
+            }
             errorMessage = error.localizedDescription
+            return
+        }
+
+        for source in pendingSources {
+            Task { await scan(source: source, context: context) }
+        }
+        if !failures.isEmpty {
+            errorMessage = "部分資料夾無法加入：" + failures.joined(separator: "、")
         }
     }
 

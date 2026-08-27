@@ -21,8 +21,12 @@ struct RootView: View {
             }
             .environment(\.aeroTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
-            .fileImporter(isPresented: $appModel.showingImporter, allowedContentTypes: [.folder]) { result in
-                if case let .success(url) = result { appModel.addSource(url, context: modelContext) }
+            .fileImporter(
+                isPresented: $appModel.showingImporter,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: true
+            ) { result in
+                if case let .success(urls) = result { appModel.addSources(urls, context: modelContext) }
                 if case let .failure(error) = result { appModel.errorMessage = error.localizedDescription }
             }
             .alert("AeroMusic", isPresented: Binding(get: { appModel.errorMessage != nil }, set: { if !$0 { appModel.errorMessage = nil } })) {
@@ -57,9 +61,7 @@ private struct WideRootView: View {
         #if os(macOS)
         .dropDestination(for: URL.self) { urls, _ in
             let directories = urls.filter(\.hasDirectoryPath)
-            for url in directories {
-                appModel.addSource(url, context: modelContext)
-            }
+            appModel.addSources(directories, context: modelContext)
             return !directories.isEmpty
         }
         #endif

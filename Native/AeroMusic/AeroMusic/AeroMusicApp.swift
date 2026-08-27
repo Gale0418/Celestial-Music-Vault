@@ -19,53 +19,35 @@ struct AeroMusicApp: App {
         }
     }
 
-    @SceneBuilder
     var body: some Scene {
-        scenes
-    }
-
-    @SceneBuilder
-    private var scenes: some Scene {
-        if let container {
-            configuredScenes(container: container)
-        } else {
-            recoveryScene
-        }
-    }
-
-    @SceneBuilder
-    private func configuredScenes(container: ModelContainer) -> some Scene {
-        mainWindow(container: container)
-        #if os(macOS)
-        videoWindow
-        #endif
-    }
-
-    private var recoveryScene: some Scene {
-        WindowGroup {
-            StorageRecoveryView(message: storageError ?? "未知資料庫錯誤")
-        }
-    }
-
-    @SceneBuilder
-    private func mainWindow(container: ModelContainer) -> some Scene {
         #if os(macOS)
         WindowGroup {
-            RootView()
-                .environment(appModel)
-                .modelContainer(container)
-                .environment(videoWindowStore)
+            appContent
         }
         .defaultSize(width: 1_360, height: 860)
         .windowStyle(.hiddenTitleBar)
+        WindowGroup("影片", id: "video") {
+            VideoWindowView()
+                .environment(videoWindowStore)
+        }
+        .defaultSize(width: 760, height: 520)
         #else
         WindowGroup {
+            appContent
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var appContent: some View {
+        if let container {
             RootView()
                 .environment(appModel)
                 .modelContainer(container)
                 .environment(videoWindowStore)
+        } else {
+            StorageRecoveryView(message: storageError ?? "未知資料庫錯誤")
         }
-        #endif
     }
 
     private struct StorageRecoveryView: View {
@@ -84,14 +66,4 @@ struct AeroMusicApp: App {
         }
     }
 
-    #if os(macOS)
-    @SceneBuilder
-    private var videoWindow: some Scene {
-        WindowGroup("影片", id: "video") {
-            VideoWindowView()
-                .environment(videoWindowStore)
-        }
-        .defaultSize(width: 760, height: 520)
-    }
-    #endif
 }

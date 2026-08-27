@@ -73,6 +73,7 @@
 - Electron／Chrome legacy packaging：`npm run pack`（electron-builder `--dir`）完成 `dist-app/mac-arm64/AeroMusic.app`，Apple Development 簽章與內部 `codesign --verify --deep --strict` 通過；成品約 195 MB，notarization 明確跳過（本機沒有 Developer ID／notary profile），因此只記為 legacy packaging pass，不升格成正式發行或 Electron 退場。
 - Rust cache policy wiring：`aero_core_eviction_plan_v1` 已加入 ABI；`FileOfflineCacheStore` 透過 `CacheEvictionPlanner` 注入 Rust LRU，Swift 只負責刪檔／manifest／checksum，package-only 測試保留 deterministic Swift fallback。Rust 19 core、FFI bridge（含 pinned protection）、Swift 14/14、macOS／iPad Debug build 全部通過。
 - MediBuddy signing playbook cross-check：參考隔壁專案的 Team/profile 分層經驗，改以 Xcode 實際解析的 profile Team（不把 Apple ID／密碼／profile 內容寫入 repo）執行 AeroMusic iOS Debug Automatic Signing；產出 `com.aeromusic.native` arm64 signed app 並由 `codesign -dv` 確認 Apple Development／TeamIdentifier。嘗試安裝已配對 iPad 時，CoreDevice 明確回報 device locked、DDI 無法掛載；未把 signed build 冒充實機 runtime pass。
+- AERO-M4 多資料夾來源批次匯入（螃蟹版）：原生 `fileImporter` 開啟 `allowsMultipleSelection`，Mac 拖放與 picker 共用 `AppModel.addSources`；批次建立 bookmark、單次存檔、標準化路徑去重後逐來源掃描，既有單來源 facade 與重新授權單選行為不變。macOS universal Debug／iPad Simulator Debug build、Rust 27 tests、Swift 14 tests 通過；必要的 Swift 6 `SceneBuilder` recovery 結構修正一併納入。CodeRabbit 第二輪 0 findings；首輪指出的 save 失敗暫存插入已改為只刪除本批來源。
 
 ## 2026-08-26
 - 啟動 AeroMusic 2.0 SwiftUI 原生重建；建立 AERO-E3 任務樹並記錄雙平台、NAS、離線、隱私與 Electron 退場護欄。
