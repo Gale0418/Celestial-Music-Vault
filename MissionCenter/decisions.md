@@ -11,3 +11,14 @@
 - 2026-08-12：electron-builder 產物的 ATS 預設會覆寫成允許任意連線；在簽章前以 `plutil` 強制關閉並 fail closed，再由 `codesign` 與 `hdiutil verify` 驗證成品。
 - 2026-08-13：MissionCenter 遷移採非破壞式就地升級；`tasks.md` 繼續為唯一任務生命週期來源，舊版 Done 但無法重建標準驗證者改以 `legacy-done-audit.json` 列為警告債，不補寫假的通過紀錄。
 - 2026-08-14：發現前次實際以 0.2.1 工具驗證後重開 MC-E1；改以已安裝插件 manifest `0.3.1+codex.9ed1bfeca60445639f45a35d424aa16e` 為版本根據，確認 personal skill 與 plugin skill SHA-256 一致，並以 0.3.1 腳本補齊 `working-set.md`、`critical-lessons.md`與新版 execution checkpoint。
+- 2026-08-26：AeroMusic 2.0 採 Swift 6、SwiftUI、SwiftData 與 Apple 第一方媒體框架，單一專案支援 macOS 15+ 與 iPadOS 18+；兩台裝置皆獨立使用，不做遙控、同步或 Handoff。
+- 2026-08-26：NAS 只透過 Finder／檔案 App 先行掛載，再由 security-scoped bookmark 授權；不內建 SMB 登入、不保存 NAS 帳密，來源暫離線時保留曲庫紀錄。
+- 2026-08-26：2.0 直接納入 Gapless、ReplayGain/R128、EQ、Metadata、本機聲學分析、可解釋 Smart DJ、手動釘選與 10 GB 智慧快取；不使用雲端 AI、帳號或第三方分析。
+- 2026-08-26：原生版採 Impeccable comp-first；四主題共用導覽與元件契約。Electron 舊版與資料不遷移也不刪除，待 TestFlight 與 App Store 驗收穩定後才退場。
+- 2026-08-26：使用者否決黑膠／器材感，視覺權威改為 Celestial Cloud Atlas；以星空、雲朵、極光與繽紛光暈建立四套主題，黑膠與唱盤意象明確排除。
+- 2026-08-26：原生核心拆為 AeroDomain、AeroLibrary、AeroPlayback、AeroAnalysis、AeroCache、AeroThemes 六個 Swift Package 模組，由單一 macOS／iPadOS SwiftUI App target 組裝。
+- 2026-08-27：使用者核准「蟹化 GO」；AeroMusic 2.0 改採 SwiftUI／SwiftData／AVFoundation 原生外殼＋in-repo `AeroCoreRS` Rust 靜態核心。Rust 接管可獨立驗證的 scan diff、cache policy、Smart DJ 計分、聲學與 sample timeline 純邏輯；Apple 平台物件與生命週期不跨 FFI。
+- 2026-08-27：明確拒絕 Tauri／React／WebView 路線，避免在 Mac＋iPad only 產品同時維護 Web UI、Rust backend 與 Swift plugin；Rust 先以 shadow implementation 與 Swift oracle 做差分驗證，未通過不得切換。
+- 2026-08-27：`AeroCoreRS` 第一里程碑採 Rust 標準函式庫、手寫窄幅 C ABI 與版本化 value DTO；新增 crate／unsafe／codegen 工具都必須另行記錄授權、維護與退出成本。Cargo 產物固定於本機 `/tmp`，不在 NAS 工作區建立活躍 `target/`。
+- 2026-08-27：使用者指定 `critic_full` 為主要功能完成後的最終會議，不逐切片重複派送；已核准 3 critic＋1 arbiter、總 32k tokens、initial 5k/seat、delta 3k/seat、每席 8＋4 tool calls、25 分鐘與最多一輪 delta。RS3 因尚未接入 runtime、可完全移除且 CodeRabbit 0 issues，記錄低風險非感知 skip；預算保留至 V3。
+- 2026-08-27：完成全任務蟹化邊界盤點。L3 scan diff、P3 sample timeline／gain、M3 搜尋排序、A3 聲學／DJ、C3 cache policy 進 Rust；SwiftUI、SwiftData、security-scoped URL、AVFoundation／AVKit／MediaPlayer、檔案協調與 SHA-256 留在 Swift。U3 不為追求 Rust 比例硬跨 FFI，避免增加平台維護成本。

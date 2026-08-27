@@ -1,10 +1,13 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
 <!-- Deprecated compatibility view: focus.md is generated from tasks.md only and must never be edited or treated as a second lifecycle source. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=38c57efb9c0df2721973610ea7bb87da285a62e6f0b739c01780a188a7acf90f -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=1a7aa3574b9ef390a9e8e6c3ffeb64ce23df017fca63958340a3105271fc3f22 -->
 # P0 焦點
 
 - 唯一真實來源: `tasks.md`
-- 未完成 P0: 0
+- 未完成 P0: 3
 
 | ID | 標題 | 狀態 | 下一步 | 依賴 | 驗證方式 |
 | --- | --- | --- | --- | --- | --- |
+| AERO-E3 | AeroMusic 2.0 SwiftUI＋Rust 原生重建 | In Progress | 🦀 critic_full PASS；本機 universal Development archive 已驗證；完成實機／沙盒／授權素材與 Distribution archive qualification 後進入 AERO-R3 TestFlight | AERO-E2 | macOS 15+ 與 iPadOS 18+ 通過完整驗收並可送審 |
+| AERO-V3 | 效能、故障、實機、隱私與 App Store 驗證 | In Progress | 🦀 本機與 Simulator 回歸全綠；universal Development archive 與 codesign gate 已通過；依 `Native/APP_STORE_GATE.md` 補授權節目 reference material、實機／沙盒／隱私驗證、送審 metadata 與 Distribution archive，完成後進入 AERO-R3 TestFlight | AERO-A3,AERO-C3,AERO-U3 | 自動測試、實機矩陣、隱私與沙盒檢查通過；最終 critic findings 全數 disposition |
+| AERO-R3 | TestFlight、送審與 Electron 安全退場 | Backlog | 封閉測試通過後送審 | AERO-V3 | 原生版穩定且退場清單獲核准 |

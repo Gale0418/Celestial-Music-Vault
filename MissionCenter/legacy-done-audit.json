@@ -2,5 +2,5 @@
   "schemaVersion": "1.0",
   "recordedAt": "2026-08-13",
   "reason": "這些任務在新版強制標準化 smoke evidence 前已完成；現存證據無法對每個 ID 還原通過紀錄，因此不偽造驗證。",
-  "taskIds": ["AERO-E1", "AERO-R1", "AERO-O1", "AERO-D1", "AERO-E2"]
+  "taskIds": ["AERO-E1", "AERO-R1", "AERO-O1", "AERO-D1", "AERO-E2", "AERO-C1", "AERO-C2", "MC-M2"]
 }

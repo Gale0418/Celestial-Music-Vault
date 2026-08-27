@@ -12,6 +12,7 @@ dist
 dist-app
 dist-ssr
 output/mission-center-assets
+output/mission-center-runtime
 *.local
 
 # Editor directories and files
@@ -24,3 +25,11 @@ output/mission-center-assets
 *.njsproj
 *.sln
 *.sw?
+
+# Swift / Xcode generated data
+Native/**/.build/
+Native/**/.swiftpm-build/
+Native/.DerivedData-*/
+Native/**/target/
+*.xcuserstate
+xcuserdata/

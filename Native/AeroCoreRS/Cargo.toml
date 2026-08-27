@@ -1,0 +1,21 @@
+[package]
+name = "aero-core-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+description = "Platform-neutral shadow core for AeroMusic"
+license = "Proprietary"
+publish = false
+
+[workspace]
+members = ["ffi"]
+resolver = "3"
+
+[lib]
+name = "aero_core_rs"
+path = "src/lib.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"

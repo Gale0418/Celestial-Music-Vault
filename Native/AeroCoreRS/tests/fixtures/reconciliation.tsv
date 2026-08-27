@@ -1,0 +1,11 @@
+# role	identifier	relative_path	file_size	modified_at_millis	title	availability_or_action
+existing	a	Old/a.flac	10	100	Old A	available
+existing	b	b.flac	20	200	B	available
+existing	c	c.flac	30	300	C	missing
+scanned	a	New/a.flac	11	101	New A	-
+scanned	c	c.flac	30	300	C	-
+scanned	d	d.flac	40	400	D	-
+expected	a	-	0	0	-	update
+expected	b	-	0	0	-	missing
+expected	c	-	0	0	-	update
+expected	d	-	0	0	-	insert

@@ -1,0 +1,16 @@
+[package]
+name = "aero-core-ffi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+description = "Versioned C ABI for AeroCoreRS"
+license = "Proprietary"
+publish = false
+
+[lib]
+name = "aero_core_ffi"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+aero-core-rs = { path = ".." }

@@ -1,6 +1,88 @@
 # 每日紀錄
 
-- 最後整理： 2026-08-22
+- 最後整理： 2026-08-27
+
+## 2026-08-27
+- AERO-V3 最終螃蟹回歸：CodeRabbit 依 1 小時 3 次／每次最多 150 檔限制，三輪只餵 125 個小檔案；高可信問題已逐項驗證並修正（ABI 計數防護、cache 原子清理、來源狀態非主執行緒、SwiftData 搜尋記憶體、iPad 來源管理、播放 shuffle/repeat、App Store manifest）。Rust 19 core＋7 FFI＋1 shared、Swift 14/14、Swift↔Rust bridge、shell syntax、manifest hash、MissionCenter Doctor 全部通過；iPhone 要求與產品明確排除範圍衝突，5.1 以外聲道布局因 v1 ABI 無 layout 物件保留 accepted risk。實機解鎖、Distribution／TestFlight、授權素材仍未提前關閉。
+- 使用者核准「蟹化 GO」：新增 AERO-RS3 與 AERO-B3，採 SwiftUI 原生外殼＋Rust shadow core；拒絕 Tauri/WebView。第一切片為 std-only scan-diff 純邏輯、Swift oracle 差分測試與 `/tmp` Cargo build。
+- AERO-RS3 已建立 `AeroCoreRS`：std-only、`forbid(unsafe_code)`、deterministic scan reconciliation 與共享 TSV oracle；Rust 5 tests、Swift 4 tests、Apple 三 targets、Mac/iPad builds 及 CodeRabbit 0 issues。依高影響完成閘門停在 Review；critic_full 未派送，因尚缺總額／每席／工具／牆鐘預算核准。
+- 使用者核准 critic_full 預算但指定留到 V3 最終會議；RS3 因未接 runtime、可逆且 CodeRabbit 0 issues，以低風險非感知 skip 關閉，AERO-B3 轉 In Progress。HUD 既有 server 於 `127.0.0.1:54065` 正常，已在 Codex 右側開啟最新 42% 畫面。
+- AERO-B3 完成：新增獨立 FFI crate、版本化 bytes-in／owned-buffer-out C ABI、panic boundary、Swift RAII client、Xcode target 選擇腳本與可重跑 Swift bridge smoke。Rust 9 tests、Swift↔Rust runtime smoke、macOS 與 arm64 iPad Simulator 最終連結皆通過。
+- 依使用者要求全面檢查原任務的蟹化需求：L3／P3／M3／A3／C3 已補上 Rust 純邏輯責任與 Swift 平台責任；U3 保持 SwiftUI／AVKit，避免把 Apple UI 物件硬塞過 FFI。AERO-L3 轉 In Progress。
+- AERO-L3 完成：App runtime 已改由 Rust v1 reconciliation 決定 upsert／missing，Swift SourceAccessCoordinator 持有 security scope、LibraryDataActor 分批套用結果。50k Rust ABI 與 50k SwiftData 分別通過；8 個 Swift 測試涵蓋取消、離線不清庫與持久 store 重啟；Mac/iPad Simulator build 通過。AERO-P3 轉 In Progress、M3 轉 Ready。
+- AERO-P3 完成：Rust v1 ABI 接管 sample timeline 與 ReplayGain／peak gain 規劃；Swift AVAudioEngine 改為雙節點經 transition mixer、同 host-time 共用 sample timeline，並接上 Limiter、EQ、Now Playing、remote commands、iOS background session／interruption／route recovery。13 個 Rust tests、3 條真實 ABI smoke、8 個 Swift tests、Mac/iPad build 全綠；AERO-M3 轉 In Progress。
+- AERO-M3 完成（螃蟹版）：Swift／AVFoundation 擷取並保存 Metadata；Rust value core 提供正規化、排序與分頁搜尋；SwiftData 完成專輯／歌手瀏覽、最愛、評分、播放歷史與歌單建立／改名／加入去重。Swift 10 tests、Rust 17 tests、Swift↔Rust paged-search smoke（500 candidates，2.6 ms）、Mac arm64 與 arm64 iPad Simulator build 全綠；AERO-A3 轉 In Progress。
+- AERO-C3 完成（螃蟹版）：Swift 快取改為 pinned／smart 分區、原子暫存替換與 SHA-256 sidecar 完整性驗證；Rust cache value core 決定 deterministic LRU 且永不淘汰 pinned。Swift 11 tests、Rust workspace clippy／tests 全綠；A3 新增 versioned PCM feature core、DJ scoring core 與 FFI，Swift↔Rust PCM smoke 通過；A3 保持 In Progress，待 EBU fixture 與 Smart DJ runtime wiring。
+- AERO-A3 完成（螃蟹版）：Rust analysis／DJ core、窄幅 PCM／DJ ABI、Swift AVAudioFile adapter、AnalysisProfile SwiftData 持久化與固定 -23 LUFS reference tone fixture 全部接通；Rust 18 core＋FFI 7 tests、Swift 11 tests、bridge PCM／DJ smoke、Mac arm64／iPad arm64 build 全綠；AERO-U3 轉 In Progress。
+- AERO-U3 完成（螃蟹版）：Mac 維持 NavigationSplitView／queue／compact player，iPad narrow layout 改為 safe-area mini player＋TabView；Reduce Motion／Reduce Transparency 有靜態與 opaque fallback；影片以 Mac AVPlayerView、iPad AVPlayerViewController 原生 PiP；44pt controls 與 accessibility labels 已補齊。Mac 與 arm64 iPad Simulator build 全綠；AERO-V3 轉 In Progress，`critic_full` 僅在此階段執行。
+- AERO-V3 啟動（螃蟹版）：完成 Rust／Swift／Mac／iPad 自動化證據凍結並建立 `Native/V3_REVIEW.md`；本機發現播放入口尚未實際載入 queue、響度尚非完整 BS.1770 兩項 P1。Antigravity 第一席以固定 request id 重試與 trajectory reconciliation 仍 HTTP 500／DELIVERY_UNKNOWN，未虛構 critic 結果；V3 保持 In Progress，Electron 不退場。
+- AERO-V3 蟹化修正：`AppModel.play(track:context:)` 依來源 bookmark 取得 security-scoped lease、驗證相對路徑後載入 `PlaybackQueue`；歌曲列播放按鈕已接上。Rust analysis version 2 改為 K-weighting、400 ms／75% overlap 與 absolute／relative gate，1 kHz fixture 校準至 −23 LUFS。Rust workspace、Swift↔Rust bridge、macOS 與 arm64 iPad Simulator build 全綠；V3 仍待授權節目 reference material、實機／沙盒／隱私矩陣與 `critic_full`。
+- AERO-V3 最終本機整理：IncrementalScanner 改用 AVURLAsset async metadata load，消除 Swift 6 deprecation warning；隔離 Swift package 11/11、Rust 18＋7＋1、Swift↔Rust bridge、macOS arm64 與 iPad arm64 Simulator 全綠。三項本機 review risk 已 disposition；V3 仍保留 `critic_full`、授權節目素材與實機／沙盒／隱私矩陣，不提前宣稱完成。
+- AERO-V3 螃蟹版收尾回歸：iOS bookmark 改採 SDK 可用的 `.minimalBookmark`（macOS 維持 `.withSecurityScope`）；最新 Rust 19 core＋1 shared、Swift 11/11、bridge 7 checks、macOS／iPad Air M4 Simulator build 全綠。C1/C2/C3 三席 critic 已送達並完成 P1 disposition；arbiter request `d83a7d91-8af2-4e1a-b3a1-351a1b30c2ed` 依規則同 request id 重試三次仍 HTTP 500／`DELIVERY_UNKNOWN`，故保留 V3 review-blocked、實機／沙盒／隱私／授權 reference material 閘門，不宣稱 PASS。
+- AERO-V3 再補齊螃蟹版送審基礎：Mac 影片改為獨立 draggable/resizable utility `WindowGroup` 並由 `VideoWindowStore` 持有 scoped lease；新增 `PrivacyInfo.xcprivacy`（不追蹤、不收集，檔案 timestamp reason `3B52.1`），Release bundle 已驗證包含 manifest；新增 `Native/APP_STORE_GATE.md` 列出實機、簽署 archive、隱私與授權節目素材 gate。Mac／iPad Release build 均通過；V3 仍等待外部 arbiter 可驗證回覆與實機條件。
+- AERO-V3 iPad launch 嘗試：Release simulator app 已成功建置且 privacy manifest 可解析，但既有 iPad Air M4 runtime 曾卡在 `00LaunchServicesMigrator` Data Migration，86 秒後安全中止；已記錄為 environment follow-up，沒有把 simulator compile 當成啟動通過。後續重試完成遷移，`simctl install`／`simctl launch com.aeromusic.native` exit 0，取得 PID 78012 且 app container 可解析；背景播放、檔案 picker 與 NAS lease 仍保留實機 gate。
+- AERO-V3 arbiter 重試：Simulator 啟動恢復後，以新 request `40d9c8fb-c191-46af-9b08-4b69ab9207fd` 送 critic_full arbiter，仍回 HTTP 500／`DELIVERY_UNKNOWN`；沒有虛構裁決，V3 維持 review-blocked。
+- AERO-V3 critic_full 正式仲裁恢復：Antigravity health smoke 通過後，legacy cascade `a627c128-b840-4d40-a8ea-bb80d84037c3` 取得 strict JSON `verdict=PASS`；無 blocking findings，stale bookmark／N+2 為 P2 accepted-risk，准許進入實機／TestFlight qualification gate。V3 不再 review-blocked，但仍等待實機、授權節目素材與 signed archive/TestFlight。
+- AERO-U3 portrait audit：從已啟動的 iPad Air M4 simulator 擷取 `/tmp/aeromusic-ipad-launch.png`；空佇列、mini player、safe-area、44pt controls 與 Celestial 色彩均可讀且無溢出，已記錄 visual pass。
+- AERO-V3 security scope 修正：影片 importer 改由雙平台共用 `VideoWindowStore` 持有 scoped lease；iPad sheet `onDisappear` 釋放，Mac utility window 行為不變；Mac／iPad build 均重新通過。
+- AERO-V3 Native Mac UI smoke：以 accessibility tree 啟動 `com.aeromusic.native`，確認 `夜航收藏`、queue、44pt 播放控制與「加入音樂來源」；Finder folder picker 可開啟，Cancel 後回主視窗且未改動來源資料。
+- AERO-V3 archive qualification：以 `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES` 完成 Release `/tmp/AeroMusic-macOS-arm64.xcarchive`；`codesign --verify --deep --strict`、embedded App Sandbox entitlements 與 privacy manifest 均通過。使用的是 Apple Development 憑證，Distribution archive／TestFlight 仍保留為 R3 gate。
+- AERO-T4 螃蟹版多架構修正：Run Script 改為依 Xcode `ARCHS` 逐架構建置 Rust，再以 `lipo` 合併；補裝 `x86_64-apple-darwin` target。未限制架構的 generic macOS archive `/tmp/AeroMusic-macOS-universal.xcarchive` 成功，`lipo -info` 確認 `x86_64 arm64`，strict codesign 通過；AERO-T4 轉 Done，Distribution／TestFlight 仍保留。
+- AERO-T4 回歸：以全新 `/tmp/aeromusic-derived-ios-t4` 完成 iPad Air 11-inch (M4) iOS Simulator arm64 Release build；Rust fmt／Clippy `-D warnings`、19 core＋1 shared＋7 FFI tests 全通過。
+- AERO-T4 跨平台封裝再驗證（螃蟹版）：generic iOS device arm64 以 `CODE_SIGNING_ALLOWED=NO` 完成 Release build；iOS Simulator 以 arm64＋x86_64 universal 完成 Release build。兩者 Rust archive 與 App binary 切片均核對一致；裝置正式簽章仍保留給 AERO-V3／AERO-R3 gate。
+- AERO-V3 App Store metadata hardening：Info.plist 補上空 `UILaunchScreen` 宣告與 iPad 四向 orientation；全新 iPad arm64 Simulator Release build `BUILD SUCCEEDED`，用以消除 generic validation 的 launch/orientation 警告；AppIntents 無依賴提示仍為 Xcode informational warning。
+- AERO-V3 iOS bundle privacy regression：新鮮 Simulator app 的 `Info.plist`／`PrivacyInfo.xcprivacy` 均通過 `plutil -lint`，privacy manifest SHA-256 與 source 一致；未把 CoreSimulator launch service 卡頓誤列為產品失敗。
+- AERO-V3 qualification preflight：新增 `Native/scripts/qualify-app-store.sh`，統一檢查 bundle、plist、privacy、架構與 strict codesign；macOS universal、iOS Simulator universal、iOS device arm64 產物均實跑 PASS，正式 Distribution／TestFlight 仍需憑證與帳號。
+- AERO-M3 搜尋效能修正（螃蟹版）：SwiftData actor 新增可增量更新的 token→ID 倒排索引與 Track snapshot；命中不再回查 50k SwiftData rows。完整 Swift 11/11（含 150ms assertion）、Rust workspace 與 Mac/iPad Xcode 回歸全綠。
+- AERO-V3 latest archive：搜尋索引修正後重建固定 `/tmp/AeroMusic-macOS-universal.xcarchive`；generic archive、universal `x86_64＋arm64`、Apple Development strict codesign 與 qualification preflight 全通過。
+- AERO-M3／V3 最終螃蟹版回歸：token→ID 倒排索引與 snapshot mutation regression 已納入；Swift 12/12（50k 搜尋 150 ms assertion 通過）、Rust 19 core＋1 shared、macOS Release、iPad Simulator universal Release 均全綠。最新 universal archive 已重新簽署，macOS、iOS Simulator、iOS device 三種 bundle 的 App Store preflight 均 PASS；Mission Center 保留歷史驗證債，V3 仍等待實機／沙盒／授權節目素材／Distribution TestFlight。
+- qualification 現況：`xcrun xctrace list devices` 僅列 Mac 為可用，iPad 顯示 Offline；本機僅有 Apple Development identity，故不虛構實機或 Distribution／TestFlight 完成，AERO-V3／R3 依 gate 保持未完成。
+- 最新 iPad Simulator 首幀回歸：安裝 `/tmp/aeromusic-derived-ios-final` 後 `simctl launch` 取得 PID 98685；等待 3 秒再截圖，主畫面正常繪製，container 可解析。立即截圖的短暫全白已確認是首幀延遲，新增 smoke evidence 並不影響外部實機 gate。
+- AERO-M3／P3 螃蟹版補強：原規格漏實作的睡眠計時器已接入 PlaybackEngine，提供 15／30／60／90 分鐘、取消與到時自動 pause；Mac PlayerBar 與 iPad Now Playing 共用同一控制契約，雙平台 Release build 通過。
+- AERO-M3 螃蟹版封面補強：以 AVURLAsset async metadata load 擷取 embedded artwork，TrackRecord 使用 SwiftData external storage 保存，Mac／iPad celestial AlbumWorldView 共用 UIImage／NSImage 顯示與夢幻 fallback；JPEG fixture persistence、Swift 12/12 測試與後續雙平台 Release build 納入回歸。
+- AERO-V3 artwork qualification：Mac Release、iPad Simulator universal Release、signed macOS universal archive 與 App Store preflight 全部通過；iPad Air 11-inch M4 simulator 安裝／launch PID 6831，等待 8 秒截圖 `/tmp/aeromusic-ipad-artwork.png` 可讀，未把無曲目狀態誤判為封面缺失。
+- AERO-M3 artwork refresh regression：既有曲目重新掃描時現在會更新 artworkData；新增替換封面測試後 Swift 12/12、Mac／iPad Release、signed universal archive 與兩端 preflight 全部通過。最新 iPad simulator PID 8530，截圖 `/tmp/aeromusic-ipad-artwork-refresh.png` 可讀。
+- AERO-M3 playlist queue hardening：歌單播放不再只載入第一首；現在按歌單順序解析所有曲目、支援跨來源 bookmark／scoped lease，並交給完整 PlaybackQueue。Swift package 與雙平台 Release 回歸納入此變更。
+- AERO-C3 手動釘選入口補齊：`OfflineCacheStore.isPinned`、AppModel scoped copy 與 TrackList 歌曲操作選單已接通；釘選內容寫入 App Support、取消釘選可逆，狀態刷新不混淆 smart cache。Swift 12/12、Mac／iPad Release、signed archive 與 preflight 通過。
+- AERO-V3 cache UI launch：安裝含釘選入口的 iPad Simulator Release bundle，PID 13192 啟動成功，等待 8 秒截圖 `/tmp/aeromusic-ipad-cache.png` 正常；不把空曲庫畫面誤當成來源資料驗收。
+- AERO-C3 smart cache 完整化：播放入口現在以 utility task 背景預取歌單後續最多 12 首，完成後套用 `CachePolicy` 10 GB smart budget；pinned 區仍不參與淘汰，播放主執行緒不等待 NAS I/O。
+- AERO-V3 smart cache launch：含背景預取流程的最新 iPad Simulator Release bundle 安裝／啟動 PID 14468，等待 8 秒截圖 `/tmp/aeromusic-ipad-smart-cache.png` 正常；Mac signed universal archive 與兩端 preflight 亦 PASS。
+- MissionCenter 螃蟹版一致性稽核：任務表新增 `crab-done` 規則；歷史 1.0 `Done` 保留為 legacy evidence，不偽造成 2.0 完成；AERO-R3 明確維持 `Backlog` 並標注 Distribution／TestFlight／Electron gate。`mission_maintenance.py sync` 與 Doctor 均 OK；最新 macOS universal preflight PASS，實體 iPad 仍 Offline。
+- AERO-M3 歌單 CRUD 補強：SwiftData repository 新增刪除歌單，PlaylistHub 加入原生重新命名／刪除 swipe actions；Swift 12/12、macOS／iPad universal Release build 通過。重新簽署 `/tmp/AeroMusic-macOS-universal.xcarchive` 因 Xcode 自動 certificate mapping 受限，改以已驗證 Apple Development identity 手動簽入後 strict preflight PASS；Distribution gate 不變。
+- AERO-V3 CRUD UI smoke：最新 iPad Air 11-inch M4 Simulator bundle 安裝／啟動 PID 17652，等待 8 秒截圖 `/tmp/aeromusic-ipad-playlist-crud.png` 可讀；空佇列與迷你播放器正常，歌單 swipe action 的互動仍留待有資料 fixture／實體裝置做完整驗收。
+- AERO-M3 Metadata tag 補強：新增純 Swift `AudioMetadataParser`，只接受明確 `REPLAYGAIN_TRACK_GAIN`／`R128_TRACK_GAIN`，支援 R128 Q7.8，並解析 track／disc number；未知 comment 不轉成增益。Swift 13/13 通過。
+- AERO-V3 metadata archive qualification（螃蟹版）：以新增 parser 重建 macOS universal Release archive，手動套用已驗證 Apple Development identity 後 strict codesign／`qualify-app-store.sh` PASS（`x86_64`＋`arm64`、privacy manifest）；自動 certificate mapping 仍受本機缺少 Distribution／Mac Development certificate 限制，正式發行 gate 不變。
+- AERO-V3 來源復原補強（螃蟹版）：stale／撤銷 bookmark 現可由原生資料夾選擇器重新授權，保留既有曲目／歌單並重啟差異掃描；Mac Release、iPad Simulator universal Release、Swift 13/13 與重新簽署 universal archive strict preflight 全部通過。實體 NAS／檔案 App 矩陣仍待 gate。
+- AERO-V3 重新授權版 UI smoke：iPad Air 11-inch M4 Simulator 安裝新 bundle 後以 PID 23225 啟動，等待 8 秒取得 `/tmp/aeromusic-ipad-reauthorize.png`；空佇列／mini player／夢幻深色畫面可讀。先前 launch 失敗是使用錯誤 bundle identifier，已以 `com.aeromusic.native` 重試成功，未列為產品缺陷。
+- AERO-V3 stale bookmark 自動 refresh（螃蟹版）：`MediaSourceResolution` 在 bookmark 可解析但標記 stale 時重建持久 bookmark；播放、掃描與釘選共用 resolver，刷新失敗才回到重新授權 UI。Swift 13/13、Rust 27 tests、Mac／iPad Release 與最新 universal archive strict preflight 全通過。
+- AERO-V3 App Store hardening（螃蟹版）：以 imagegen 產生夢幻星空／雲朵／月牙 AppIcon，落地 1024px 與 512px RGB 無 Alpha asset catalog，Xcode Debug／Release 均綁定 `AppIcon`；Mac 與 iPad Simulator Release bundle 重新建置，兩端 App Store preflight PASS。
+- AERO-V3 metadata governance：新增 `Native/APP_STORE_METADATA.md`，明確列出 Privacy Policy／Support URL、商店文案、年齡分級、授權素材與 notices 的發布者責任；更新 `APP_STORE_GATE.md` 與任務下一步，未填資料維持未完成。Codex Game Studios `validate_studio.sh` 回覆 `VALIDATION_OK`。
+- Antigravity 獨立 release review：固定 request id 的本機 RPC receipt `status=COMPLETED`、`visibility=hub_visible`；Gemini 給出 Conditional Pass，未修改工作區。其正確的外部 gate 建議已納入 metadata 清單，泛用／遊戲化推論未採用。
+- canonical archive refresh：圖示修正後重新建立並簽署 `/tmp/AeroMusic-macOS-universal.xcarchive`，確認 `x86_64＋arm64`、strict codesign、privacy manifest 與 App Store preflight 均通過；舊 archive 以可恢復檔名保留。
+- GitHub readiness audit：`origin/main` 與本機 HEAD `2c42c03` 同步，`gh auth status`／`gh repo view Gale0418/AreoMusic` 可讀；2.0 變更尚未 commit／push，維持遠端歷史不被未授權改動。
+- 一鍵 local gates runner：新增 `Native/scripts/run-local-gates.sh` 串接 Rust／Swift／雙平台 Release build、AppIcon／privacy／archive preflight、manifest、MissionCenter sync／Doctor 與外部 gate inventory；實跑輸出 `LOCAL_GATES_PASS` 與 `EXTERNAL_GATES_PENDING`，未自動改任務狀態。
+- Swift warning cleanup：背景快取預取明確以 `_ = try?` 消費回傳 URL；Mac／iPad universal Release 增量 build 均通過，該 unused-result warning 不再出現。
+- 最新 runner bundle iPad Simulator smoke：`com.aeromusic.native` PID 31152 安裝／啟動成功，container 可解析；等待 8 秒截圖 `/tmp/aeromusic-ipad-local-gates-final.png`，portrait safe-area、空佇列、mini player 與雲朵圖示均可讀。實體 iPad／NAS 仍維持外部 gate。
+- 最終完成稽核：`gh pr list --state all` 回傳空集合；`origin/main` 與本機 HEAD `2c42c03` 同步，未經授權不建立 PR。AERO-E3／AERO-V3 維持 In Progress，AERO-R3 維持 Backlog，沒有把外部 gate 誤標 Done。
+- 本機可靠性補強（螃蟹版）：新增 checksum-verified `OfflineCacheStore.cachedURL`，播放入口先取釘選／smart cache 再解析來源，NAS 暫時離線時可直接播放完整性驗證過的釘選檔；新增損毀快取拒播測試，Swift 14/14 通過。
+- 大曲庫 UX 補強（螃蟹版）：歌曲清單與專輯／歌手 catalog 改用 offset 分頁及可取消的逐頁載入，避免五萬首一次建立常駐 View；Mac Wide shell 新增原生資料夾拖放加入音樂來源；啟動時重新檢查持久 bookmark／來源狀態。雙平台 Debug build 通過，下一輪完整 local gates 會重新凍結 manifest 與 Release 證據。
+- AERO-V3 實體裝置再盤點（螃蟹版）：`xcrun devicectl list devices` 現在看見已配對且可用的「Pe的 iPad (2)」，但 `device info details` 回報 Xcode 無法掛載對應 Developer Disk Image；因此完成最新 source 的 generic iOS arm64 Release 不簽章編譯與 App Store preflight，未把無法掛載 DDI 誤算成實機安裝／背景／PiP 通過。完整 local gates 仍輸出 `LOCAL_GATES_PASS`，V3 實機 gate 保持未完成。
+- Antigravity 螃蟹版 hardening review：以 request `b8d9af7c-0e8b-4d4a-a6cb-2f66f5d6953b`、唯讀 workspace scope 取得 Hub-visible RPC `status=COMPLETED`／`verdict=PASS`；無 blocking finding，並把實體 NAS、DDI、Distribution／TestFlight 明確保留為 accepted external risks，未修改工作區。
+- AERO-V3 Apple 裝置簽章嘗試：`xcodebuild -prepareDeviceSupport -platform iOS -osVersion 26.5 -modelCode iPad13,16 -architecture arm64e` 已完成裝置支援準備；隨後以 `Apple Development`／Team `2ZYLUFSC25` 的自動 provisioning 建置明確失敗，原因是 `No Account for Team` 與找不到 `com.aeromusic.native` 的 iOS App Development profile。未繞過簽章或虛構實機安裝，V3 外部 gate 仍保留。
+- Electron／Chrome legacy baseline repair：`npm test` 八項、`npm run lint` 全部通過；首次 `npm run build` 發現 npm optional dependency 缺少 `@rolldown/binding-darwin-arm64`，依既有 lockfile 執行 `npm install --include=optional --no-audit --no-fund`（只補 node_modules，未改 package.json／lockfile）後，Vite 8.2.1 production build 成功，1807 modules／46.22 秒。舊版回歸證據已補齊，Electron 仍依原規格保留至原生 TestFlight 通過後才退場。
+- Electron／Chrome legacy packaging：`npm run pack`（electron-builder `--dir`）完成 `dist-app/mac-arm64/AeroMusic.app`，Apple Development 簽章與內部 `codesign --verify --deep --strict` 通過；成品約 195 MB，notarization 明確跳過（本機沒有 Developer ID／notary profile），因此只記為 legacy packaging pass，不升格成正式發行或 Electron 退場。
+- Rust cache policy wiring：`aero_core_eviction_plan_v1` 已加入 ABI；`FileOfflineCacheStore` 透過 `CacheEvictionPlanner` 注入 Rust LRU，Swift 只負責刪檔／manifest／checksum，package-only 測試保留 deterministic Swift fallback。Rust 19 core、FFI bridge（含 pinned protection）、Swift 14/14、macOS／iPad Debug build 全部通過。
+- MediBuddy signing playbook cross-check：參考隔壁專案的 Team/profile 分層經驗，改以實際 profile Team `X3UYL4NRRN`（不把 Apple ID／密碼／profile 內容寫入 repo）執行 AeroMusic iOS Debug Automatic Signing；產出 `com.aeromusic.native` arm64 signed app 並由 `codesign -dv` 確認 Apple Development／TeamIdentifier。嘗試安裝已配對 iPad 時，CoreDevice 明確回報 device locked、DDI 無法掛載；未把 signed build 冒充實機 runtime pass。
+
+## 2026-08-26
+- 啟動 AeroMusic 2.0 SwiftUI 原生重建；建立 AERO-E3 任務樹並記錄雙平台、NAS、離線、隱私與 Electron 退場護欄。
+- 依 Impeccable comp-first 建立 PRODUCT.md，下一步為視覺方向種子、高擬真稿與 Xcode 骨架。
+- 完成 Celestial Cloud Atlas 產品／設計權威、Mac／iPad 橫向／iPad 直向三張高擬真稿與 SwiftUI 共用 App 骨架；黑膠方向已否決並保留為設計歷史。
+- 建立六模組 AeroCore、SwiftData 來源與曲目模型、security-scoped bookmark、差異掃描、分頁 repository、雙節點播放與離線分析／快取基礎。Swift Package 2 項測試、macOS App 與 arm64 iPad Simulator 建置皆通過。
+- 依使用者明確要求先建立 AERO-G3，再新增 GR-001：任何實作前都須先在 tasks.md 登記任務 ID、下一步與驗證方式。
+- 先建立 AERO-R4，啟動 Apple 官方、代表性 GitHub prior art、Gemini 獨立挑戰、Game Studios architecture-review 與 Impeccable 原生 UI 稽核；研究完成前不擴大原生實作。
+- 完成 AERO-R4：建立 `Native/ARCHITECTURE_REVIEW.md`，確認 P0 為 ModelActor 批次匯入、全 App security-scope lease 與 sample-timeline Gapless；UI audit 基準 11/20。Antigravity 的不存在路徑已排除，L3／P3／A3／C3／U3 已改寫成可驗證的可逆切片。
+- 推進 AERO-L3 第一切片：scanner 改為每 400 首交付，SwiftData 寫入移至 `LibraryDataActor` 並分批標記 unseen；1,000 首兩輪 fixture、3 項測試與 Mac／iPad Simulator 建置皆通過。下一步為 SourceAccessCoordinator lease 與 50k／取消／重啟／NAS 故障證據。
 
 ## 2026-08-14
 - 2026-08-14：MissionCenter 新版契約遷移完成；Doctor、派生檢視與 HUD 驗證通過，舊版驗證債已明確登記。 已記錄 Smoke tests: 17.
