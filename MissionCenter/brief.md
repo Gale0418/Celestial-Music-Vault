@@ -1,24 +1,21 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=8adafac818fb9548c9ea547e6dacd78f3300a403935ab3d46ce9d0c1457600ed -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=294b16c88f5a3692ad460d1badd42afac8226243afa393ee67e8dfcf503d1ac8 -->
 # 任務簡報
 
-- 最後整理: 2026-08-27
-- 來源指紋: `8adafac818fb9548c9ea547e6dacd78f3300a403935ab3d46ce9d0c1457600ed`
+- 最後整理: 2026-08-28
+- 來源指紋: `294b16c88f5a3692ad460d1badd42afac8226243afa393ee67e8dfcf503d1ac8`
 - 唯一真實來源: `tasks.md`
 - 專案: AeroMusic 維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
 - 週期: AeroMusic 2.0 原生重建
 
-## 今日摘要 · 2026-08-27
-- AERO-V3 最終螃蟹回歸：CodeRabbit 依 1 小時 3 次／每次最多 150 檔限制，三輪只餵 125 個小檔案；高可信問題已逐項驗證並修正（ABI 計數防護、cache 原子清理、來源狀態非主執行緒、SwiftData 搜尋記憶體、iPad 來源管理、播放 shuffle/repeat、App Store manifest）。Rust 19 core＋7 FFI＋1 shared、Swift 14/14、Swift↔Rust bridge、shell syntax、manifest hash、MissionCenter Doctor 全部通過；iPhone 要求與產品明確排除範圍衝突，5.1 以外聲道布局因 v1 ABI 無 layout 物件保留 accepted risk。實機解鎖、Distribution／TestFlight、授權素材仍未提前關閉。
-- 使用者核准「蟹化 GO」：新增 AERO-RS3 與 AERO-B3，採 SwiftUI 原生外殼＋Rust shadow core；拒絕 Tauri/WebView。第一切片為 std-only scan-diff 純邏輯、Swift oracle 差分測試與 `/tmp` Cargo build。
-- AERO-RS3 已建立 `AeroCoreRS`：std-only、`forbid(unsafe_code)`、deterministic scan reconciliation 與共享 TSV oracle；Rust 5 tests、Swift 4 tests、Apple 三 targets、Mac/iPad builds 及 CodeRabbit 0 issues。依高影響完成閘門停在 Review；critic_full 未派送，因尚缺總額／每席／工具／牆鐘預算核准。
-- 使用者核准 critic_full 預算但指定留到 V3 最終會議；RS3 因未接 runtime、可逆且 CodeRabbit 0 issues，以低風險非感知 skip 關閉，AERO-B3 轉 In Progress。HUD 既有 server 於 `127.0.0.1:54065` 正常，已在 Codex 右側開啟最新 42% 畫面。
-- AERO-B3 完成：新增獨立 FFI crate、版本化 bytes-in／owned-buffer-out C ABI、panic boundary、Swift RAII client、Xcode target 選擇腳本與可重跑 Swift bridge smoke。Rust 9 tests、Swift↔Rust runtime smoke、macOS 與 arm64 iPad Simulator 最終連結皆通過。
-- 依使用者要求全面檢查原任務的蟹化需求：L3／P3／M3／A3／C3 已補上 Rust 純邏輯責任與 Swift 平台責任；U3 保持 SwiftUI／AVKit，避免把 Apple UI 物件硬塞過 FFI。AERO-L3 轉 In Progress。
-- AERO-L3 完成：App runtime 已改由 Rust v1 reconciliation 決定 upsert／missing，Swift SourceAccessCoordinator 持有 security scope、LibraryDataActor 分批套用結果。50k Rust ABI 與 50k SwiftData 分別通過；8 個 Swift 測試涵蓋取消、離線不清庫與持久 store 重啟；Mac/iPad Simulator build 通過。AERO-P3 轉 In Progress、M3 轉 Ready。
-- AERO-P3 完成：Rust v1 ABI 接管 sample timeline 與 ReplayGain／peak gain 規劃；Swift AVAudioEngine 改為雙節點經 transition mixer、同 host-time 共用 sample timeline，並接上 Limiter、EQ、Now Playing、remote commands、iOS background session／interruption／route recovery。13 個 Rust tests、3 條真實 ABI smoke、8 個 Swift tests、Mac/iPad build 全綠；AERO-M3 轉 In Progress。
-- [TRUNCATED] 63 additional items require canonical file access.
+## 今日摘要 · 2026-08-28
+- 2026-08-28 02:34 +08:00｜變更：完成 AERO-F5，統一原生音訊／影片播放入口並更新桌面試用版｜原因：大型播放鍵空 queue 時無反應，且 MP4 等含影像媒體只進音訊管線｜影響：新增可遷移 MediaKind、AVFoundation 實際軌道／可播放能力判斷、Root shell 影片呈現、Mac AVPlayerView 與 iPad AVPlayerViewController／PiP 自動播放；純音訊維持 Gapless 核心。壞檔不再中止整個掃描或誤把既有曲目標 missing；混合 queue 不把影片送進 NativePlaybackEngine；來源 lease 於關閉影片後釋放。Swift 15/15、針對性 incomplete-scan 測試、Mac／iPad build、現有 NAS MP4 動態畫面與三輪 CodeRabbit 修正皆通過；桌面舊 App 已移至垃圾桶可復原。
+- 2026-08-28 01:34 +08:00｜變更：完成 AERO-D5 並啟動 AERO-F5｜原因：原生桌面版曲庫可見但媒體無法開啟，使用者並明確要求 MP4／其他影片格式顯示畫面｜影響：實際 UI 確認主畫面大型「播放」在空 queue 時吞掉 `unresolvedTrack` 而完全無反應；MP4 雖被索引但沒有依 video track 路由 AVKit。NAS MP4 實檔可由 `AVAudioFile` 解 AAC，故修復改採 AVFoundation 軌道能力分類，含畫面媒體走 Mac AVPlayerView／iPad AVPlayerViewController＋PiP，純音訊維持原播放核心。另記錄三份同名 App 導致 LaunchServices／SwiftData store 誤辨；Desktop 同 bundle ID 重啟後 112 個來源可恢復 available，簽章差異保留為交付風險。
+- 2026-08-28 00:48 +08:00｜變更：完成 AERO-ND1，以最新 source 的 SwiftUI＋Rust 2.0 原生 App 更正桌面交付｜原因：使用者指出 AERO-LG1 交付的是 Electron 舊介面並要求試用新版｜影響：桌面 App 現為 `com.aeromusic.native` 2.0，視窗「夜航收藏」已啟動；舊 Electron App 與 DMG 移至垃圾桶可復原；Distribution／notarization／TestFlight gate 維持未完成。
+- 2026-08-28 00:36 +08:00｜變更：完成 AERO-LG1，重新打包並更新桌面 Electron 保留版｜原因：使用者要求移除桌面舊版並交付目前程式｜影響：`AeroMusic.app` 與 `AeroMusic-1.3.2-arm64.dmg` 已以驗證後新包替換；舊檔移至垃圾桶可復原；App 從桌面啟動成功，原生 2.0 與 Electron 退場 gate 不變。
+- 2026-08-28：AERO-LG1 桌面 Electron 保留版重新打包、可復原替換與啟動驗證完成。 已記錄冒煙測試: 78.
+- 2026-08-28：AERO-ND1 最新 SwiftUI＋Rust 2.0 原生版桌面試用交付與啟動驗證完成。 已記錄冒煙測試: 79.
 
 ## 重要護欄 (1)
 - GR-001

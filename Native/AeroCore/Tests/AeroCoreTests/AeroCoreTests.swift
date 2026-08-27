@@ -215,6 +215,29 @@ final class AeroCoreTests: XCTestCase {
         XCTAssertEqual(updatedTrack?.artworkData, Data([0x89, 0x50, 0x4E, 0x47]))
     }
 
+    func testMediaKindSurvivesReconciliationAndLegacyDefaultsToAudio() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let video = ScannedMediaFile(
+            relativePath: "Concert/星河.mov", fileIdentifier: "video",
+            fileSize: 2, modifiedAt: .now, title: "星河現場", mediaKind: .video
+        )
+        try await repository.applyReconciliation(upserts: [video], missingIdentifiers: [], sourceID: sourceID)
+        let imported = try await repository.tracks(sourceID: sourceID)
+        XCTAssertEqual(imported.first?.mediaKind, .video)
+
+        let legacy = TrackRecord(
+            sourceID: sourceID,
+            file: ScannedMediaFile(relativePath: "legacy.flac", fileIdentifier: "legacy",
+                                   fileSize: 1, modifiedAt: .now, title: "舊曲目")
+        )
+        XCTAssertEqual(legacy.domain.mediaKind, .audio)
+    }
+
     func testSearchSnapshotReflectsTrackMutations() async throws {
         let container = try ModelContainer(
             for: MediaSourceRecord.self, TrackRecord.self,
@@ -352,6 +375,46 @@ final class AeroCoreTests: XCTestCase {
         let tracks = try await repository.tracks(sourceID: sourceID)
         XCTAssertEqual(tracks.count, 1)
         XCTAssertEqual(tracks.first?.availability, .available)
+    }
+
+    func testIncompleteReachableScanPreservesTracksWhoseMetadataFailed() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self,
+            TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let existing = ScannedMediaFile(
+            relativePath: "Album/damaged-on-rescan.mp4",
+            fileIdentifier: "damaged-on-rescan",
+            fileSize: 10,
+            modifiedAt: .now,
+            title: "Keep Existing"
+        )
+        try await repository.applyScan([existing], sourceID: sourceID, sourceWasReachable: true)
+
+        let incompleteScanID = await repository.beginScan(sourceID: sourceID)
+        let readableSibling = ScannedMediaFile(
+            relativePath: "Album/new.m4a",
+            fileIdentifier: "new",
+            fileSize: 20,
+            modifiedAt: .now,
+            title: "New"
+        )
+        try await repository.applyScanBatch([readableSibling], sourceID: sourceID, scanID: incompleteScanID)
+        try await repository.finishScan(
+            sourceID: sourceID,
+            scanID: incompleteScanID,
+            sourceWasReachable: false
+        )
+
+        let tracks = try await repository.tracks(sourceID: sourceID)
+        XCTAssertEqual(tracks.count, 2)
+        XCTAssertEqual(
+            tracks.first(where: { $0.fileIdentifier == "damaged-on-rescan" })?.availability,
+            .available
+        )
     }
 
     func testCancelledScannerStopsBeforePublishingBatch() async throws {

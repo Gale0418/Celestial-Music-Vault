@@ -102,6 +102,7 @@ struct LibraryStageView: View {
 
 struct NowPlayingView: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.modelContext) private var context
     @Environment(\.aeroTheme) private var theme
     @Environment(VideoWindowStore.self) private var videoWindowStore
     #if os(macOS)
@@ -110,7 +111,7 @@ struct NowPlayingView: View {
     @State private var showingVideoImporter = false
     @State private var videoSelection: VideoSelection?
     var body: some View {
-        let current = appModel.playback.queue.current
+        let current = appModel.videoTrack ?? appModel.playback.queue.current
         ScrollView {
             VStack(spacing: 24) {
                 ViewThatFits(in: .horizontal) {
@@ -144,7 +145,10 @@ struct NowPlayingView: View {
             NavigationStack {
                 VideoExperienceView(url: selection.url)
                     .padding()
-                    .onDisappear { videoWindowStore.clear() }
+                    .onDisappear {
+                        appModel.stopVideoPlayback()
+                        videoWindowStore.clear()
+                    }
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { videoSelection = nil; videoWindowStore.clear() } } }
             }
         }
@@ -152,7 +156,7 @@ struct NowPlayingView: View {
     }
 
     @ViewBuilder private var nowPlayingControls: some View {
-        let current = appModel.playback.queue.current
+        let current = appModel.videoTrack ?? appModel.playback.queue.current
         VStack(alignment: .leading, spacing: 12) {
             Text("現在收聽").font(.headline).foregroundStyle(theme.metal)
             Text(current?.title ?? "夜航收藏")
@@ -161,10 +165,13 @@ struct NowPlayingView: View {
                 .minimumScaleFactor(0.75)
             Text(current?.artist ?? "私人曲庫").font(.title3).foregroundStyle(.secondary).lineLimit(1)
             HStack {
-                Button(appModel.playback.isPlaying ? "暫停" : "播放", systemImage: appModel.playback.isPlaying ? "pause.fill" : "play.fill") {
-                    if appModel.playback.isPlaying { appModel.playback.pause() } else { try? appModel.playback.play() }
+                Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
+                    if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: context) }
                 }
+                .disabled(appModel.videoURL != nil)
+                .accessibilityHint(appModel.videoURL == nil ? "播放目前曲目" : "請使用影片播放控制項")
                 Button("隨機播放", systemImage: "shuffle") { appModel.playback.toggleShuffle() }
+                    .disabled(appModel.videoURL != nil)
                 SleepTimerMenu()
                 Button("開啟影片", systemImage: "film") { showingVideoImporter = true }
             }.buttonStyle(.borderedProminent).controlSize(.large)
@@ -172,7 +179,7 @@ struct NowPlayingView: View {
     }
 }
 
-private struct VideoSelection: Identifiable {
+struct VideoSelection: Identifiable {
     let url: URL
     var id: URL { url }
 }
@@ -195,7 +202,8 @@ struct TrackListView: View {
             ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                 HStack(spacing: 14) {
                     Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
-                    Image(systemName: index == 0 ? "sparkles" : "music.note").foregroundStyle(index == 0 ? theme.primary : .secondary)
+                    Image(systemName: track.mediaKind == .video ? "film" : (index == 0 ? "sparkles" : "music.note"))
+                        .foregroundStyle(index == 0 ? theme.primary : .secondary)
                     VStack(alignment: .leading) {
                         Text(track.title).lineLimit(1)
                         Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)

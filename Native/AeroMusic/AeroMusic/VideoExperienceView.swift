@@ -42,6 +42,7 @@ struct VideoExperienceView: View {
 #if os(macOS)
 /// Content for the dedicated draggable/resizable Mac video utility window.
 struct VideoWindowView: View {
+    @Environment(AppModel.self) private var appModel
     @Environment(VideoWindowStore.self) private var store
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -55,10 +56,14 @@ struct VideoWindowView: View {
             }
         }
         .frame(minWidth: 520, minHeight: 360)
-        .onDisappear { store.clear() }
+        .onDisappear {
+            appModel.stopVideoPlayback()
+            store.clear()
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("關閉") {
+                    appModel.stopVideoPlayback()
                     store.clear()
                     dismissWindow(id: "video")
                 }
@@ -75,14 +80,18 @@ private struct PlatformVideoPlayer: NSViewRepresentable {
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.controlsStyle = .floating
-        view.player = AVPlayer(url: url)
+        let player = AVPlayer(url: url)
+        view.player = player
+        player.play()
         return view
     }
 
     func updateNSView(_ view: AVPlayerView, context: Context) {
         guard let asset = view.player?.currentItem?.asset as? AVURLAsset,
               asset.url == url else {
-            view.player = AVPlayer(url: url)
+            let player = AVPlayer(url: url)
+            view.player = player
+            player.play()
             return
         }
     }
@@ -95,14 +104,18 @@ private struct PlatformVideoPlayer: UIViewControllerRepresentable {
         let controller = AVPlayerViewController()
         controller.player = AVPlayer(url: url)
         controller.allowsPictureInPicturePlayback = true
+        controller.canStartPictureInPictureAutomaticallyFromInline = true
         controller.entersFullScreenWhenPlaybackBegins = false
+        controller.player?.play()
         return controller
     }
 
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
         guard let asset = controller.player?.currentItem?.asset as? AVURLAsset,
               asset.url == url else {
-            controller.player = AVPlayer(url: url)
+            let player = AVPlayer(url: url)
+            controller.player = player
+            player.play()
             return
         }
     }

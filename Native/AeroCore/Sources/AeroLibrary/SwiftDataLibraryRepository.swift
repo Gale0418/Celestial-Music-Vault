@@ -242,6 +242,7 @@ public actor LibraryDataActor {
             record.fileSize = file.fileSize
             record.modifiedAt = file.modifiedAt
             record.replayGainDB = file.replayGainDB
+            record.mediaKindRaw = file.mediaKind.rawValue
             record.availabilityRaw = MediaAvailability.available.rawValue
             record.lastSeenScanID = scanID
             if record.modelContext == nil { modelContext.insert(record) }

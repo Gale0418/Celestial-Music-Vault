@@ -8,6 +8,12 @@ import AeroThemes
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
+    @Environment(VideoWindowStore.self) private var videoWindowStore
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #else
+    @State private var videoSelection: VideoSelection?
+    #endif
 
     var body: some View {
         @Bindable var appModel = appModel
@@ -32,6 +38,39 @@ struct RootView: View {
             .alert("AeroMusic", isPresented: Binding(get: { appModel.errorMessage != nil }, set: { if !$0 { appModel.errorMessage = nil } })) {
                 Button("好") { appModel.errorMessage = nil }
             } message: { Text(appModel.errorMessage ?? "") }
+            .onChange(of: appModel.videoURL) { _, url in
+                guard let url else {
+                    videoWindowStore.clear()
+                    return
+                }
+                videoWindowStore.present(url: url)
+                #if os(macOS)
+                openWindow(id: "video")
+                #else
+                videoSelection = VideoSelection(url: url)
+                #endif
+            }
+            #if os(iOS)
+            .sheet(item: $videoSelection) { selection in
+                NavigationStack {
+                    VideoExperienceView(url: selection.url)
+                        .padding()
+                        .onDisappear {
+                            appModel.stopVideoPlayback()
+                            videoWindowStore.clear()
+                        }
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("完成") {
+                                    videoSelection = nil
+                                    appModel.stopVideoPlayback()
+                                    videoWindowStore.clear()
+                                }
+                            }
+                        }
+                }
+            }
+            #endif
         }
     }
 }

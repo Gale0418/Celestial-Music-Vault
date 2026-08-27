@@ -20,6 +20,7 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
     public var rating: Int
     public var analysis: AnalysisProfile?
     public var availability: MediaAvailability
+    public var mediaKind: MediaKind
 
     public init(
         id: UUID = UUID(), sourceID: UUID, relativePath: String,
@@ -29,7 +30,8 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
         duration: TimeInterval = 0, fileSize: Int64, modifiedAt: Date,
         replayGainDB: Double? = nil, isFavorite: Bool = false,
         rating: Int = 0, analysis: AnalysisProfile? = nil,
-        availability: MediaAvailability = .available
+        availability: MediaAvailability = .available,
+        mediaKind: MediaKind = .audio
     ) {
         self.id = id
         self.sourceID = sourceID
@@ -50,6 +52,7 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
         self.rating = min(5, max(0, rating))
         self.analysis = analysis
         self.availability = availability
+        self.mediaKind = mediaKind
     }
 }
 
@@ -132,3 +135,7 @@ public struct CachePolicy: Hashable, Codable, Sendable {
 
 public enum MediaAvailability: String, Codable, Sendable { case available, sourceOffline, missing, permissionRequired }
 public enum MediaSourceStatus: String, Codable, Sendable { case available, offline, permissionRequired, scanning }
+/// The playable media surface selected by AVFoundation during scanning.
+/// `.audio` is the migration/default value for records created before video
+/// indexing was introduced.
+public enum MediaKind: String, Codable, Hashable, Sendable { case audio, video }

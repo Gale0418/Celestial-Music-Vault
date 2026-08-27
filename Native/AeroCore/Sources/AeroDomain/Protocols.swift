@@ -131,15 +131,16 @@ public struct ScannedMediaFile: Hashable, Sendable {
     public var discNumber: Int?
     public var duration: TimeInterval
     public var replayGainDB: Double?
+    public var mediaKind: MediaKind
     public init(relativePath: String, fileIdentifier: String, fileSize: Int64, modifiedAt: Date, title: String,
                 artist: String = "未知歌手", album: String = "未知專輯", albumArtist: String = "", artworkData: Data? = nil,
                 trackNumber: Int? = nil, discNumber: Int? = nil, duration: TimeInterval = 0,
-                replayGainDB: Double? = nil) {
+                replayGainDB: Double? = nil, mediaKind: MediaKind = .audio) {
         self.relativePath = relativePath; self.fileIdentifier = fileIdentifier
         self.fileSize = fileSize; self.modifiedAt = modifiedAt; self.title = title
         self.artist = artist; self.album = album; self.albumArtist = albumArtist; self.artworkData = artworkData
         self.trackNumber = trackNumber; self.discNumber = discNumber
-        self.duration = duration; self.replayGainDB = replayGainDB
+        self.duration = duration; self.replayGainDB = replayGainDB; self.mediaKind = mediaKind
     }
 }
 

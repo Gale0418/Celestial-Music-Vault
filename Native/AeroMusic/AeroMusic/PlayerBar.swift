@@ -1,12 +1,14 @@
 import SwiftUI
+import SwiftData
 import AeroThemes
 
 struct PlayerBar: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.aeroTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
-        let current = appModel.playback.queue.current
+        let current = appModel.videoTrack ?? appModel.playback.queue.current
         HStack(spacing: 18) {
             ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
                 .frame(width: 56, height: 56)
@@ -18,16 +20,23 @@ struct PlayerBar: View {
             Button("隨機", systemImage: "shuffle") { appModel.playback.toggleShuffle() }
                 .labelStyle(.iconOnly).tint(appModel.playback.isShuffleEnabled ? theme.primary : .secondary)
                 .frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
             Button("上一首", systemImage: "backward.fill") { try? appModel.playback.skipBackward() }
                 .labelStyle(.iconOnly).frame(width: 44, height: 44)
-            Button(appModel.playback.isPlaying ? "暫停" : "播放", systemImage: appModel.playback.isPlaying ? "pause.fill" : "play.fill") {
-                if appModel.playback.isPlaying { appModel.playback.pause() } else { try? appModel.playback.play() }
-            }.labelStyle(.iconOnly).buttonStyle(.borderedProminent).controlSize(.large).frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
+            Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
+                if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: modelContext) }
+            }
+            .labelStyle(.iconOnly).buttonStyle(.borderedProminent).controlSize(.large).frame(width: 44, height: 44)
+            .disabled(appModel.videoURL != nil)
+            .accessibilityHint(appModel.videoURL == nil ? "播放目前曲目" : "請使用影片播放控制項")
             Button("下一首", systemImage: "forward.fill") { try? appModel.playback.skipForward() }
                 .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
             Button("重複", systemImage: "repeat") { appModel.playback.toggleRepeat() }
                 .labelStyle(.iconOnly).tint(appModel.playback.isRepeatEnabled ? theme.primary : .secondary)
                 .frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
             SleepTimerMenu()
             Spacer()
             Image(systemName: "airplayaudio")
@@ -75,11 +84,12 @@ struct SleepTimerMenu: View {
 #if os(iOS)
 struct MiniPlayerBar: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.aeroTheme) private var theme
     var onExpand: () -> Void = {}
 
     var body: some View {
-        let current = appModel.playback.queue.current
+        let current = appModel.videoTrack ?? appModel.playback.queue.current
         HStack(spacing: 12) {
             ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
                 .frame(width: 42, height: 42)
@@ -90,15 +100,18 @@ struct MiniPlayerBar: View {
                 }
             }.buttonStyle(.plain)
             Spacer(minLength: 8)
-            Button(appModel.playback.isPlaying ? "暫停" : "播放", systemImage: appModel.playback.isPlaying ? "pause.fill" : "play.fill") {
-                if appModel.playback.isPlaying { appModel.playback.pause() } else { try? appModel.playback.play() }
+            Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
+                if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: modelContext) }
             }
             .labelStyle(.iconOnly)
             .frame(width: 44, height: 44)
-            .accessibilityLabel(appModel.playback.isPlaying ? "暫停" : "播放")
+            .disabled(appModel.videoURL != nil)
+            .accessibilityLabel(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"))
+            .accessibilityHint(appModel.videoURL == nil ? "播放目前曲目" : "請使用影片播放控制項")
             Button("下一首", systemImage: "forward.fill") { try? appModel.playback.skipForward() }
                 .labelStyle(.iconOnly).frame(width: 44, height: 44)
                 .accessibilityLabel("下一首")
+                .disabled(appModel.videoURL != nil)
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background(.ultraThinMaterial)

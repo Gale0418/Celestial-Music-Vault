@@ -40,6 +40,9 @@ public final class TrackRecord {
     public var fileSize: Int64
     public var modifiedAt: Date
     public var replayGainDB: Double?
+    /// Raw storage keeps SwiftData migration lightweight; missing legacy
+    /// values are interpreted as audio by `domain`.
+    public var mediaKindRaw: String = MediaKind.audio.rawValue
     public var isFavorite: Bool
     public var rating: Int
     public var analysisVersion: Int?
@@ -61,6 +64,7 @@ public final class TrackRecord {
         self.trackNumber = file.trackNumber; self.discNumber = file.discNumber
         self.duration = file.duration; self.fileSize = file.fileSize; self.modifiedAt = file.modifiedAt
         self.replayGainDB = file.replayGainDB
+        self.mediaKindRaw = file.mediaKind.rawValue
         self.isFavorite = false; self.rating = 0; self.playCount = 0; self.skipCount = 0
         self.lastPlayedAt = nil; self.availabilityRaw = MediaAvailability.available.rawValue
         self.analysisVersion = nil; self.bpm = nil; self.musicalKey = nil
@@ -77,7 +81,8 @@ public final class TrackRecord {
               analysis: analysisVersion.map { AnalysisProfile(version: $0, bpm: bpm, musicalKey: musicalKey,
                                                                integratedLoudnessLUFS: integratedLoudnessLUFS,
                                                                energy: energy, brightness: brightness) },
-              availability: MediaAvailability(rawValue: availabilityRaw) ?? .missing)
+              availability: MediaAvailability(rawValue: availabilityRaw) ?? .missing,
+              mediaKind: MediaKind(rawValue: mediaKindRaw) ?? .audio)
     }
 }
 

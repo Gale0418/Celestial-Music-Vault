@@ -28,6 +28,7 @@ struct AeroMusicApp: App {
         .windowStyle(.hiddenTitleBar)
         WindowGroup("影片", id: "video") {
             VideoWindowView()
+                .environment(appModel)
                 .environment(videoWindowStore)
         }
         .defaultSize(width: 760, height: 520)

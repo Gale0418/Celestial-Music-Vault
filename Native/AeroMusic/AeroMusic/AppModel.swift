@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import SwiftUI
 import SwiftData
 import Observation
@@ -10,6 +11,7 @@ import AeroCache
 
 private actor ScanBatchState {
     private var seenIdentifiers = Set<String>()
+    private var encounteredIssue = false
 
     func accept(_ identifiers: [String]) throws {
         for identifier in identifiers {
@@ -18,6 +20,14 @@ private actor ScanBatchState {
             }
         }
     }
+
+    func registerIssue() -> Bool {
+        let isFirstIssue = !encounteredIssue
+        encounteredIssue = true
+        return isFirstIssue
+    }
+
+    func completedWithoutIssues() -> Bool { !encounteredIssue }
 }
 
 private struct SourceStatusProbeResult: Sendable {
@@ -61,6 +71,9 @@ final class AppModel {
     var isLoadingLibrary = false
     private(set) var pinnedTrackIDs: Set<UUID> = []
     let playback: NativePlaybackEngine
+    /// 非音訊曲目由原生 AVPlayer 表面呈現；URL 存在期間保留來源 lease。
+    private(set) var videoURL: URL?
+    private(set) var videoTrack: Track?
 
     private let sourceProvider = SecurityScopedMediaSourceProvider()
     private let sourceAccess = SourceAccessCoordinator()
@@ -71,6 +84,7 @@ final class AppModel {
     private let cacheStore: FileOfflineCacheStore?
     /// 保持佇列涉及的 security-scoped lease 到目前播放結束，避免 NAS／檔案 App 權限在解碼中途失效。
     private var playbackAccessLeases: [SecurityScopedResourceLease] = []
+    private var videoAccessLeases: [SecurityScopedResourceLease] = []
 
     init() {
         selectedTheme = UserDefaults.standard.string(forKey: Self.themeDefaultsKey)
@@ -217,6 +231,43 @@ final class AppModel {
         play(tracks: [track], context: context)
     }
 
+    /// 關閉目前影片並釋放其 security-scoped 存取權。影片 utility window
+    /// 或 iPad sheet 消失時呼叫，確保 lease 不會提早結束也不會永久佔用。
+    func stopVideoPlayback() {
+        videoURL = nil
+        videoTrack = nil
+        videoAccessLeases.removeAll()
+    }
+
+    /// Transport controls use this entry point so an empty queue still has a
+    /// useful, accessible action instead of silently swallowing an engine
+    /// error.
+    func playOrResume(context: ModelContext) {
+        guard videoURL == nil else { return }
+        if playback.queue.current == nil {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let repository = SwiftDataLibraryRepository(container: context.container)
+                do {
+                    let candidates = try await repository.tracks(matching: "", limit: 200, offset: 0)
+                    guard let first = candidates.first(where: { $0.availability == .available }) else {
+                        errorMessage = "曲庫目前沒有可播放的歌曲。請先加入音樂來源並完成索引。"
+                        return
+                    }
+                    play(track: first, context: context)
+                } catch {
+                    errorMessage = "無法載入曲庫：\(error.localizedDescription)"
+                }
+            }
+            return
+        }
+        do {
+            try playback.play()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// 播放整個佇列（歌單可跨多個來源）；所有來源都在播放生命週期內持有 lease。
     private func play(tracks: [Track], context: ModelContext) {
         Task { @MainActor [weak self] in
@@ -228,7 +279,68 @@ final class AppModel {
                 var roots: [UUID: URL] = [:]
                 var leases: [SecurityScopedResourceLease] = []
                 var resolvedURLs: [UUID: URL] = [:]
-                for track in tracks {
+                guard let selectedTrack = tracks.first else { return }
+                let selectedURL: URL
+                if let cacheStore, let cachedURL = await cacheStore.cachedURL(trackID: selectedTrack.id) {
+                    selectedURL = cachedURL
+                } else {
+                    guard let source = sourcesByID[selectedTrack.sourceID] else {
+                        throw MediaSourceAccessError.accessDenied
+                    }
+                    let root = try resolve(source: source, context: context)
+                    roots[selectedTrack.sourceID] = root
+                    leases.append(try await sourceAccess.lease(for: root))
+                    selectedURL = try Self.safeTrackURL(root: root, relativePath: selectedTrack.relativePath)
+                }
+                resolvedURLs[selectedTrack.id] = selectedURL
+                let selectedAsset = AVURLAsset(url: selectedURL)
+                let selectedAssetTracks: [AVAssetTrack]
+                do {
+                    selectedAssetTracks = try await selectedAsset.load(.tracks)
+                } catch {
+                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
+                }
+                guard !selectedAssetTracks.isEmpty else {
+                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
+                }
+                let selectedAssetIsPlayable: Bool
+                do {
+                    selectedAssetIsPlayable = try await selectedAsset.load(.isPlayable)
+                } catch {
+                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
+                }
+                guard selectedAssetIsPlayable else {
+                    throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
+                }
+                if selectedAssetTracks.contains(where: { $0.mediaType == .video }) {
+                    let selectedVideoTrack = selectedTrack
+                    let url = selectedURL
+                    playback.clearQueue()
+                    playbackAccessLeases.removeAll()
+                    videoAccessLeases = leases
+                    videoTrack = selectedVideoTrack
+                    videoURL = url
+                    let repository = SwiftDataLibraryRepository(container: context.container)
+                    try? await repository.recordPlayback(trackID: selectedVideoTrack.id, skipped: false)
+                    return
+                }
+
+                stopVideoPlayback()
+                // Newly scanned records carry an explicit media kind. Legacy
+                // records default to audio, so movie-container extensions are
+                // kept out of a later audio-only queue unless they are the
+                // selected item that was just probed as audio-only above.
+                let movieContainerExtensions: Set<String> = ["mp4", "mov", "m4v"]
+                let audioTracks = tracks.filter { track in
+                    if track.id == selectedTrack.id { return true }
+                    if track.mediaKind == .video { return false }
+                    let ext = URL(fileURLWithPath: track.relativePath).pathExtension.lowercased()
+                    return !movieContainerExtensions.contains(ext)
+                }
+                guard !audioTracks.isEmpty else {
+                    throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
+                }
+                for track in audioTracks.dropFirst() {
                     if let cacheStore, let cachedURL = await cacheStore.cachedURL(trackID: track.id) {
                         resolvedURLs[track.id] = cachedURL
                         continue
@@ -246,14 +358,14 @@ final class AppModel {
                     }
                     resolvedURLs[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 }
-                try playback.load(PlaybackQueue(tracks: tracks), resolvedURLs: resolvedURLs)
+                try playback.load(PlaybackQueue(tracks: audioTracks), resolvedURLs: resolvedURLs)
                 playbackAccessLeases = leases
                 try playback.play()
                 let repository = SwiftDataLibraryRepository(container: context.container)
                 try? await repository.recordPlayback(trackID: tracks[0].id, skipped: false)
                 if let cacheStore {
                     let policy = CachePolicy()
-                    let prefetchTracks = Array(tracks.dropFirst().prefix(policy.prefetchCount))
+                    let prefetchTracks = Array(audioTracks.dropFirst().prefix(policy.prefetchCount))
                     let prefetchURLs = resolvedURLs
                     Task.detached(priority: .utility) {
                         for track in prefetchTracks {
@@ -323,10 +435,22 @@ final class AppModel {
                 },
                 onProgress: { [weak self] progress in
                     await MainActor.run { self?.scanProgress = progress }
+                },
+                onIssue: { [weak self] issue in
+                    let shouldPresent = await batchState.registerIssue()
+                    guard shouldPresent else { return }
+                    await MainActor.run {
+                        self?.errorMessage = issue.localizedDescription
+                    }
                 }
             )
             _ = accessLease
-            try await repository.finishScan(sourceID: sourceID, scanID: scanID, sourceWasReachable: true)
+            let scanCompletedWithoutIssues = await batchState.completedWithoutIssues()
+            try await repository.finishScan(
+                sourceID: sourceID,
+                scanID: scanID,
+                sourceWasReachable: scanCompletedWithoutIssues
+            )
             libraryTracks = []
             source.status = .available
             source.lastSuccessfulScan = .now
