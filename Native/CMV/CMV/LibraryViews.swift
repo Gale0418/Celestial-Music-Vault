@@ -99,23 +99,18 @@ struct NowPlayingView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
-    @Environment(VideoWindowStore.self) private var videoWindowStore
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
     @State private var showingVideoImporter = false
-    @State private var videoSelection: VideoSelection?
     var body: some View {
         let current = appModel.currentTrack
         ScrollView {
             VStack(spacing: 24) {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 34) {
-                        AlbumWorldView(size: 300, artworkData: current?.artworkData)
+                        mediaWorld(size: 300, artworkData: current?.artworkData)
                         nowPlayingControls
                     }
                     VStack(alignment: .leading, spacing: 18) {
-                        AlbumWorldView(size: 220, artworkData: current?.artworkData)
+                        mediaWorld(size: 220, artworkData: current?.artworkData)
                         nowPlayingControls
                     }
                 }
@@ -128,33 +123,12 @@ struct NowPlayingView: View {
         .navigationTitle("夜航收藏")
         .fileImporter(isPresented: $showingVideoImporter, allowedContentTypes: [.movie]) { result in
             guard case let .success(url) = result else { return }
-            videoWindowStore.present(url: url)
-            #if os(macOS)
-            openWindow(id: "video")
-            #else
-            videoSelection = VideoSelection(url: url)
-            #endif
+            appModel.playStandaloneVideo(url: url)
         }
-        #if !os(macOS)
-        .sheet(item: $videoSelection) { selection in
-            NavigationStack {
-                VideoExperienceView(url: selection.url) {
-                    appModel.advanceAfterVideo(context: context)
-                }
-                    .padding()
-                    .onDisappear {
-                        if appModel.videoURL == selection.url {
-                            appModel.stopVideoPlayback()
-                        }
-                        videoWindowStore.clear()
-                    }
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { videoSelection = nil; videoWindowStore.clear() } } }
-            }
-        }
-        #endif
     }
 
     @ViewBuilder private var nowPlayingControls: some View {
+        @Bindable var model = appModel
         let current = appModel.currentTrack
         VStack(alignment: .leading, spacing: 12) {
             Text("現在收聽").font(.headline).foregroundStyle(theme.metal)
@@ -173,7 +147,26 @@ struct NowPlayingView: View {
                     .disabled(appModel.videoURL != nil)
                 SleepTimerMenu()
                 Button("開啟影片", systemImage: "film") { showingVideoImporter = true }
+                if appModel.videoURL != nil {
+                    Menu("影片顯示", systemImage: appModel.videoPresentationMode.symbol) {
+                        Picker("影片顯示方式", selection: $model.videoPresentationMode) {
+                            ForEach(VideoPresentationMode.allCases) { mode in
+                                Label(mode.title, systemImage: mode.symbol).tag(mode)
+                            }
+                        }
+                    }
+                }
             }.buttonStyle(.borderedProminent).controlSize(.large)
+        }
+    }
+
+    @ViewBuilder
+    private func mediaWorld(size: CGFloat, artworkData: Data?) -> some View {
+        if appModel.videoURL != nil, appModel.videoPresentationMode == .moonPortal {
+            VideoMoonPortalView(size: size)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        } else {
+            AlbumWorldView(size: size, artworkData: artworkData)
         }
     }
 }

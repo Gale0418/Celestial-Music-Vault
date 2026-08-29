@@ -37,32 +37,20 @@ struct RootView: View {
                 if case let .success(urls) = result { appModel.addSources(urls, context: modelContext) }
                 if case let .failure(error) = result { appModel.errorMessage = error.localizedDescription }
             }
-            .onChange(of: appModel.videoURL) { _, url in
-                guard let url else {
-                    videoWindowStore.clear()
-                    #if os(iOS)
-                    videoSelection = nil
-                    #else
-                    dismissWindow(id: "video")
-                    #endif
-                    return
-                }
-                videoWindowStore.present(url: url)
-                #if os(macOS)
-                openWindow(id: "video")
-                #else
-                videoSelection = VideoSelection(url: url)
-                #endif
+            .onChange(of: appModel.videoURL) { _, _ in
+                updateVideoPresentation()
+            }
+            .onChange(of: appModel.videoPresentationMode) { _, _ in
+                updateVideoPresentation()
             }
             #if os(iOS)
             .sheet(item: $videoSelection) { selection in
                 NavigationStack {
-                    VideoExperienceView(url: selection.url) {
-                        appModel.advanceAfterVideo(context: modelContext)
-                    }
+                    VideoExperienceView(player: appModel.videoSession.player)
                         .padding()
                         .onDisappear {
-                            if appModel.videoURL == selection.url {
+                            if appModel.videoURL == selection.url,
+                               appModel.videoPresentationMode == .separatePlayer {
                                 appModel.stopVideoPlayback()
                                 videoWindowStore.clear()
                             }
@@ -80,6 +68,36 @@ struct RootView: View {
             }
             #endif
         }
+    }
+
+    private func updateVideoPresentation() {
+        guard let url = appModel.videoURL else {
+            videoWindowStore.clear()
+            #if os(iOS)
+            videoSelection = nil
+            #else
+            dismissWindow(id: "video")
+            #endif
+            return
+        }
+
+        guard appModel.videoPresentationMode == .separatePlayer else {
+            videoWindowStore.clear()
+            appModel.selection = .nowPlaying
+            #if os(iOS)
+            videoSelection = nil
+            #else
+            dismissWindow(id: "video")
+            #endif
+            return
+        }
+
+        videoWindowStore.present(url: url)
+        #if os(macOS)
+        openWindow(id: "video")
+        #else
+        videoSelection = VideoSelection(url: url)
+        #endif
     }
 }
 
@@ -138,18 +156,24 @@ private struct TransparentNavigationSplitBackground: ViewModifier {
 
 #if os(iOS)
 private struct CompactRootView: View {
+    @Environment(AppModel.self) private var appModel
     @Environment(\.cmvTheme) private var theme
     @State private var showingNowPlaying = false
+    @State private var selectedTab: LibraryDestination = .nowPlaying
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack { NowPlayingView() }
                 .tabItem { Label("聆聽", systemImage: "sparkles") }
+                .tag(LibraryDestination.nowPlaying)
             NavigationStack { CompactLibraryView() }
                 .tabItem { Label("曲庫", systemImage: "music.note") }
+                .tag(LibraryDestination.songs)
             NavigationStack { PlaylistHubView() }
                 .tabItem { Label("歌單", systemImage: "music.note.list") }
+                .tag(LibraryDestination.playlists)
             NavigationStack { SettingsView() }
                 .tabItem { Label("設定", systemImage: "gearshape") }
+                .tag(LibraryDestination.settings)
         }
         .background(CelestialBackground())
         .tint(theme.primary)
@@ -162,6 +186,14 @@ private struct CompactRootView: View {
         .sheet(isPresented: $showingNowPlaying) {
             NavigationStack { NowPlayingView() }
         }
+        .onChange(of: appModel.videoURL) { _, _ in showMoonPortalIfNeeded() }
+        .onChange(of: appModel.videoPresentationMode) { _, _ in showMoonPortalIfNeeded() }
+    }
+
+    private func showMoonPortalIfNeeded() {
+        guard appModel.videoURL != nil, appModel.videoPresentationMode == .moonPortal else { return }
+        showingNowPlaying = false
+        selectedTab = .nowPlaying
     }
 }
 

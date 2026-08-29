@@ -62,6 +62,7 @@ private struct RustCacheEvictionPlanner: CacheEvictionPlanner {
 @Observable
 final class AppModel {
     private static let themeDefaultsKey = "CMV.selectedTheme"
+    private static let videoPresentationDefaultsKey = "CMV.videoPresentationMode"
     var selection: LibraryDestination? = .nowPlaying
     var showingImporter = false
     var showingQueue = true
@@ -69,9 +70,13 @@ final class AppModel {
     var selectedTheme: CMVThemeID {
         didSet { UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeDefaultsKey) }
     }
+    var videoPresentationMode: VideoPresentationMode {
+        didSet { UserDefaults.standard.set(videoPresentationMode.rawValue, forKey: Self.videoPresentationDefaultsKey) }
+    }
     private(set) var backgroundActivities: [UUID: BackgroundActivity] = [:]
     private(set) var pinnedTrackIDs: Set<UUID> = []
     let playback: NativePlaybackEngine
+    let videoSession: VideoPlaybackSession
     /// 非音訊曲目由原生 AVPlayer 表面呈現；URL 存在期間保留來源 lease。
     private(set) var videoURL: URL?
     private(set) var videoTrack: Track?
@@ -104,6 +109,9 @@ final class AppModel {
     init() {
         selectedTheme = UserDefaults.standard.string(forKey: Self.themeDefaultsKey)
             .flatMap(CMVThemeID.init(rawValue:)) ?? .crimsonNebula
+        videoPresentationMode = UserDefaults.standard.string(forKey: Self.videoPresentationDefaultsKey)
+            .flatMap(VideoPresentationMode.init(rawValue:)) ?? .moonPortal
+        videoSession = VideoPlaybackSession()
         let core = CMVCoreRSClient()
         rustCore = core
         cacheStore = try? FileOfflineCacheStore(evictionPlanner: RustCacheEvictionPlanner(client: core))
@@ -126,6 +134,13 @@ final class AppModel {
         }
         playback.onQueueFinished = { [weak self] in
             self?.advanceAfterAudioQueue()
+        }
+        videoSession.onPlaybackEnded = { [weak self] in
+            guard let self, let context = self.activePlaybackContext else {
+                self?.stopVideoPlayback()
+                return
+            }
+            self.advanceAfterVideo(context: context)
         }
     }
 
@@ -292,12 +307,34 @@ final class AppModel {
     /// 或 iPad sheet 消失時呼叫，確保 lease 不會提早結束也不會永久佔用。
     func stopVideoPlayback() {
         let wasVideoPlayback = videoURL != nil || videoTrack != nil
+        videoSession.stop()
         videoURL = nil
         videoTrack = nil
         videoAccessLeases.removeAll()
         if wasVideoPlayback {
             mixedQueue = nil
             if !playback.queue.tracks.isEmpty { playback.clearQueue() }
+        }
+    }
+
+    /// Plays a movie chosen directly from the system picker. The security
+    /// scope is retained by the same session used for indexed library videos.
+    func playStandaloneVideo(url: URL) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let lease = try await sourceAccess.lease(for: url)
+                playback.clearQueue()
+                playbackAccessLeases.removeAll()
+                videoAccessLeases = [lease]
+                mixedQueue = nil
+                activePlaybackContext = nil
+                videoTrack = nil
+                videoURL = url
+                videoSession.load(url: url, autoplay: true)
+            } catch {
+                errorMessage = "無法開啟影片：\(error.localizedDescription)"
+            }
         }
     }
 
@@ -413,6 +450,7 @@ final class AppModel {
                     videoAccessLeases = leases
                     videoTrack = selectedVideoTrack
                     videoURL = url
+                    videoSession.load(url: url, autoplay: true)
                     let repository = SwiftDataLibraryRepository(container: context.container)
                     try? await repository.recordPlayback(trackID: selectedVideoTrack.id, skipped: false)
                     return

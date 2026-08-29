@@ -183,6 +183,65 @@ struct AlbumWorldView: View {
     }
 }
 
+/// A video-as-avatar treatment: the square video is centered, aspect-filled,
+/// and clipped by the same celestial ring as album artwork.
+struct VideoMoonPortalView: View {
+    @Environment(AppModel.self) private var appModel
+    @Environment(\.cmvTheme) private var theme
+    var size: CGFloat = 260
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            VideoExperienceView(
+                player: appModel.videoSession.player,
+                showsPlaybackControls: false
+            )
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+
+            Circle()
+                .stroke(
+                    AngularGradient(
+                        colors: [theme.primary, theme.metal, theme.secondary, theme.primary],
+                        center: .center
+                    ),
+                    lineWidth: 4
+                )
+                .shadow(color: theme.primary, radius: 18)
+                .allowsHitTesting(false)
+
+            HStack {
+                Button {
+                    appModel.videoSession.togglePlayback()
+                } label: {
+                    Image(systemName: "playpause.fill")
+                        .frame(width: 44, height: 44)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("播放或暫停影片")
+
+                Spacer()
+            }
+            .padding(10)
+
+            Button {
+                appModel.videoPresentationMode = .separatePlayer
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(10)
+            .accessibilityLabel("在獨立播放器開啟影片")
+        }
+        .frame(width: size, height: size)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("月環影片播放器")
+    }
+}
+
 struct CloudSurfaceModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.cmvTheme) private var theme

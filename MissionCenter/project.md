@@ -28,5 +28,7 @@
   - 2026-08-29｜修正：AERO-M6 批次工具列可見性與排序 parity｜原因：使用者實測選取後看不到下一步按鈕，並指出舊版可依欄位排序與亂序｜影響：批次操作由易被底部播放器遮蔽的 `safeAreaInset` 移至選取列正下方；排序在資料層維持跨分頁一致，隨機排列使用單一 generation 的穩定 ID 順序，不對五萬首建立常駐 View。
   - 2026-08-29｜研究：建立 AERO-Q12／I13／X14 播放器功能追回路線｜證據：比對 Electron 舊版、現行 SwiftUI 原始碼、Apple Music／Plex／VLC 官方操作與 Antigravity／跨領域審查；採用完整 queue mutation 與還原、歌單內容管理、進階欄位／複合排序、Smart Playlist／歌詞／背景來源更新。Antigravity 對現有 Table、Gapless、NAS、ReplayGain 的部分判讀與原始碼不符，未採用；FFmpeg、內建 SMB 帳密、雲端同步及完整影片工具箱亦因 Apple 原生低維護產品邊界而拒絕。
   - 2026-08-29｜驗證：AERO-M6 排序與批次操作切片通過本機 gate｜證據：Swift 18/18（含 50k 與同值曲目每頁 1 首排序 fixture）、Mac／iPad Debug build、Impeccable detector 0 findings、diff check 皆通過；CodeRabbit 兩輪 2／0 issues，有效問題全數修正。AERO-M6 保留實際窄幅 iPad 多選畫面確認，不以編譯證據偽裝互動驗收。
+  - 2026-08-29｜變更：建立 AERO-U15 雙模式影片呈現｜原因：使用者希望影片可選擇在中央月亮區域播放或跳出既有播放器｜影響：以單一 AVPlayer session 保留播放位置／EOF／security-scoped lease，Mac 與 iPad 只切換原生呈現容器；內嵌 portal 保留月環視覺並提供一鍵展開，不以兩個播放器同步冒險。
+  - 2026-08-29｜完成：AERO-U15 月環動態大頭貼／獨立播放器雙模式｜證據：影片以月環直徑置中 aspect-fill、圓形裁切，提供 44pt 播放／暫停與展開；單一 AVPlayer session 在 Mac utility window、iPad sheet／PiP 與月環間切換而不換 item，EOF 仍銜接混合佇列。Mac／iPad Debug build、Impeccable detector 0 findings、diff check 通過；CodeRabbit 2 issues 全數修正｜後續：回到 AERO-M6 舊版功能 parity，實機 PiP／NAS 仍由 AERO-V3 外部 gate 統一驗收。
 - 開放問題:
   - 無

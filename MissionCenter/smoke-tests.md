@@ -2,6 +2,7 @@
 
 | 日期 | 對應任務 ID | 測試內容 | 測試方式 | 預期結果 | 實際結果 | 通過 / 失敗 | 類型 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-29 | AERO-U15 | 月環內嵌／獨立播放器共用 session 回歸 | macOS 與 generic iOS Simulator Debug `xcodebuild`；Impeccable detector；CodeRabbit uncommitted review；source lifecycle audit | 影片只建立一個 AVPlayer；月環與原生容器切換不換 item；EOF／scoped lease／窄幅 Now Playing 導覽不退步 | 雙平台 `BUILD SUCCEEDED`；detector `[]`；CodeRabbit 1 major＋1 minor已修正；月環模式會導向 Now Playing，容器 onDisappear 僅在仍為獨立模式時停止 | 通過 | automated / ui / video / accessibility / review |
 | 2026-08-12 | AERO-T1 | 維護前安全測試基準 | `npm test` | 兩支安全測試通過 | `security-smoke.cjs` 因寫死 `D:/MyGame/music` 失敗 | 失敗 | automated |
 | 2026-08-12 | AERO-V1 | 維護前 Vite 建置基準 | `npm run build` | 產生 `dist/` | NAS 上 rolldown binding 被 macOS system policy 阻擋 | 失敗 | automated |
 | 2026-08-12 | AERO-T1 | 跨平台安全測試 | `npm test` | 兩支安全測試通過 | 兩支測試皆 PASS | 通過 | automated |

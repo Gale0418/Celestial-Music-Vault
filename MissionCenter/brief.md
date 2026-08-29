@@ -1,9 +1,9 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=7dc356209fb77e489a44bab11ae78ad314a3c688e3afd043e59513a8fad0c121 -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=35d1dca8026bee12d3d620bb972b53e01c42e91a59d919a3a9b17622e6a78f3f -->
 # 任務簡報
 
 - 最後整理: 2026-08-29
-- 來源指紋: `7dc356209fb77e489a44bab11ae78ad314a3c688e3afd043e59513a8fad0c121`
+- 來源指紋: `35d1dca8026bee12d3d620bb972b53e01c42e91a59d919a3a9b17622e6a78f3f`
 - 唯一真實來源: `tasks.md`
 - 專案: 星穹私藏音樂庫 Celestial Music Vault（CMV）維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
