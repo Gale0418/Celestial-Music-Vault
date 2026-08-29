@@ -139,3 +139,13 @@ public enum MediaSourceStatus: String, Codable, Sendable { case available, offli
 /// `.audio` is the migration/default value for records created before video
 /// indexing was introduced.
 public enum MediaKind: String, Codable, Hashable, Sendable { case audio, video }
+
+/// Stable library sort fields that can be applied before SwiftData pagination.
+/// Random ordering is intentionally owned by the UI generation so one shuffle
+/// remains stable while additional pages load.
+public enum LibraryTrackSort: String, CaseIterable, Codable, Hashable, Sendable {
+    case title
+    case artist
+    case album
+    case modifiedAt
+}

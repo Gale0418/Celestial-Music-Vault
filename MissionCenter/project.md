@@ -25,5 +25,8 @@
   - 2026-08-29｜完成：AERO-N10 CMV 全身分更名與 Rust 1.98 基線統一｜證據：專案根目錄、原生／Electron 共用 `com.windsheep.cmv`、Xcode／Swift／Rust 路徑與 ABI 已改為 CMV；舊 DerivedData 與 build cache 清除。Electron test／lint／build、Swift 16/16、Rust fmt／Clippy／20 tests、8 項 Swift bridge、macOS arm64 與 iPad Simulator arm64 Debug build 全部通過；現行來源舊身分稽核無命中｜後續：維持 AERO-V3 的實機／Distribution／TestFlight 外部 gate，不將歷史證據回寫成新名稱。
   - 2026-08-29｜完成：AERO-G11 CodeRabbit 審查與 GitHub main 發布前 gate｜證據：三輪 review 均控制在 145 個狀態項並排除 8 個大型 PNG，依序 raised 3／5／0 issues；所有有效 canonical task ID 問題已修正，migration 與 fingerprint 誤報有明確 disposition。Electron、Rust 1.98、Swift 16/16、8 項 bridge、Mac／iPad Debug build 與 Mission Center Doctor 全部通過｜影響：更名差異可直接提交 main，不建立額外分支。
   - 2026-08-29｜變更：重啟 AERO-M6 舊版曲庫操作 parity｜原因：使用者指出原生 CMV 無法像 Electron 一樣全選後一次移出曲庫，並要求追回既有操作｜影響：已恢復搜尋範圍全選、macOS ⌘A、播放所選、批次加入歌單、批次移出，以及單首右鍵／更多選單的大部分舊版操作。移出採持久 excluded tombstone、同步清除歌單引用，實體 NAS／磁碟檔保留且重新索引不復活；實體垃圾桶失敗會恢復曲目與歌單原順序。影音混合 queue 的下一首／加入目前佇列與歌單內容移除仍須另做不中斷播放的安全實作，因此 AERO-M6 保持 In Progress。
+  - 2026-08-29｜修正：AERO-M6 批次工具列可見性與排序 parity｜原因：使用者實測選取後看不到下一步按鈕，並指出舊版可依欄位排序與亂序｜影響：批次操作由易被底部播放器遮蔽的 `safeAreaInset` 移至選取列正下方；排序在資料層維持跨分頁一致，隨機排列使用單一 generation 的穩定 ID 順序，不對五萬首建立常駐 View。
+  - 2026-08-29｜研究：建立 AERO-Q12／I13／X14 播放器功能追回路線｜證據：比對 Electron 舊版、現行 SwiftUI 原始碼、Apple Music／Plex／VLC 官方操作與 Antigravity／跨領域審查；採用完整 queue mutation 與還原、歌單內容管理、進階欄位／複合排序、Smart Playlist／歌詞／背景來源更新。Antigravity 對現有 Table、Gapless、NAS、ReplayGain 的部分判讀與原始碼不符，未採用；FFmpeg、內建 SMB 帳密、雲端同步及完整影片工具箱亦因 Apple 原生低維護產品邊界而拒絕。
+  - 2026-08-29｜驗證：AERO-M6 排序與批次操作切片通過本機 gate｜證據：Swift 18/18（含 50k 與同值曲目每頁 1 首排序 fixture）、Mac／iPad Debug build、Impeccable detector 0 findings、diff check 皆通過；CodeRabbit 兩輪 2／0 issues，有效問題全數修正。AERO-M6 保留實際窄幅 iPad 多選畫面確認，不以編譯證據偽裝互動驗收。
 - 開放問題:
   - 無

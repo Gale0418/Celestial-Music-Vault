@@ -13,12 +13,22 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         worker = LibraryDataActor(modelContainer: container)
     }
 
-    public func tracks(matching query: String, limit: Int, offset: Int) async throws -> [Track] {
-        try await worker.tracks(matching: query, limit: limit, offset: offset)
+    public func tracks(
+        matching query: String,
+        sort: LibraryTrackSort = .title,
+        ascending: Bool = true,
+        limit: Int,
+        offset: Int
+    ) async throws -> [Track] {
+        try await worker.tracks(matching: query, sort: sort, ascending: ascending, limit: limit, offset: offset)
     }
 
-    public func trackIDs(matching query: String) async throws -> [UUID] {
-        try await worker.trackIDs(matching: query)
+    public func trackIDs(
+        matching query: String,
+        sort: LibraryTrackSort = .title,
+        ascending: Bool = true
+    ) async throws -> [UUID] {
+        try await worker.trackIDs(matching: query, sort: sort, ascending: ascending)
     }
 
     public func tracks(ids: [UUID]) async throws -> [Track] {
@@ -131,6 +141,10 @@ public actor LibraryDataActor {
         let artist: String
         let album: String
         let sortTitle: String
+        let albumArtist: String
+        let discNumber: Int
+        let trackNumber: Int
+        let modifiedAt: Date
     }
 
     private var searchIndex: [UUID: SearchEntry] = [:]
@@ -138,7 +152,13 @@ public actor LibraryDataActor {
     private var searchIDsByToken: [String: Set<UUID>] = [:]
     private var searchIndexLoaded = false
 
-    public func tracks(matching query: String, limit: Int, offset: Int) throws -> [Track] {
+    public func tracks(
+        matching query: String,
+        sort: LibraryTrackSort = .title,
+        ascending: Bool = true,
+        limit: Int,
+        offset: Int
+    ) throws -> [Track] {
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !normalized.isEmpty {
             try ensureSearchIndex()
@@ -157,13 +177,13 @@ public actor LibraryDataActor {
             } else {
                 candidateIDs = nil
             }
-            let matchingIDs = (candidateIDs ?? Set(searchIndex.keys)).compactMap { searchIndex[$0] }
+            let matches = (candidateIDs ?? Set(searchIndex.keys)).compactMap { searchIndex[$0] }
                 .filter { entry in
                     entry.title.contains(needle) ||
                     entry.artist.contains(needle) ||
                     entry.album.contains(needle)
                 }
-                .sorted { $0.sortTitle.localizedStandardCompare($1.sortTitle) == .orderedAscending }
+            let matchingIDs = Self.sorted(matches, by: sort, ascending: ascending)
                 .dropFirst(max(0, offset))
                 .prefix(max(1, limit))
                 .map(\.id)
@@ -177,28 +197,31 @@ public actor LibraryDataActor {
         var descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
         descriptor.fetchLimit = max(1, limit)
         descriptor.fetchOffset = max(0, offset)
-        descriptor.sortBy = [SortDescriptor(\.title)]
+        descriptor.sortBy = Self.sortDescriptors(for: sort, ascending: ascending)
         return try modelContext.fetch(descriptor).map(\.domain)
     }
 
-    public func trackIDs(matching query: String) throws -> [UUID] {
+    public func trackIDs(
+        matching query: String,
+        sort: LibraryTrackSort = .title,
+        ascending: Bool = true
+    ) throws -> [UUID] {
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if normalized.isEmpty {
             let descriptor = FetchDescriptor<TrackRecord>(
                 predicate: #Predicate { !$0.isExcluded },
-                sortBy: [SortDescriptor(\.title)]
+                sortBy: Self.sortDescriptors(for: sort, ascending: ascending)
             )
             return try modelContext.fetch(descriptor).map(\.id)
         }
 
         try ensureSearchIndex()
         let needle = Self.searchValue(normalized)
-        return searchIndex.values
+        let matches = searchIndex.values
             .filter { entry in
                 entry.title.contains(needle) || entry.artist.contains(needle) || entry.album.contains(needle)
             }
-            .sorted { $0.sortTitle.localizedStandardCompare($1.sortTitle) == .orderedAscending }
-            .map(\.id)
+        return Self.sorted(matches, by: sort, ascending: ascending).map(\.id)
     }
 
     public func tracks(sourceID: UUID) throws -> [Track] {
@@ -486,7 +509,11 @@ public actor LibraryDataActor {
             title: title,
             artist: artist,
             album: album,
-            sortTitle: record.title
+            sortTitle: record.title,
+            albumArtist: Self.searchValue(record.albumArtist),
+            discNumber: record.discNumber ?? 0,
+            trackNumber: record.trackNumber ?? 0,
+            modifiedAt: record.modifiedAt
         )
         searchTokensByID[record.id] = tokens
         for token in tokens { searchIDsByToken[token, default: []].insert(record.id) }
@@ -507,5 +534,91 @@ public actor LibraryDataActor {
 
     private static func searchTokens(_ value: String) -> Set<String> {
         Set(value.split { !$0.isLetter && !$0.isNumber }.map(String.init))
+    }
+
+    private static func sortDescriptors(
+        for sort: LibraryTrackSort,
+        ascending: Bool
+    ) -> [SortDescriptor<TrackRecord>] {
+        let order: SortOrder = ascending ? .forward : .reverse
+        switch sort {
+        case .title:
+            return [
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.artist, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .artist:
+            return [
+                SortDescriptor(\.artist, order: order),
+                SortDescriptor(\.album, order: order),
+                SortDescriptor(\.discNumber, order: order),
+                SortDescriptor(\.trackNumber, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .album:
+            return [
+                SortDescriptor(\.album, order: order),
+                SortDescriptor(\.albumArtist, order: order),
+                SortDescriptor(\.discNumber, order: order),
+                SortDescriptor(\.trackNumber, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .modifiedAt:
+            return [
+                SortDescriptor(\.modifiedAt, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        }
+    }
+
+    private static func sorted(
+        _ entries: [SearchEntry],
+        by sort: LibraryTrackSort,
+        ascending: Bool
+    ) -> [SearchEntry] {
+        entries.sorted { lhs, rhs in
+            let comparison: ComparisonResult
+            switch sort {
+            case .title:
+                comparison = lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
+            case .artist:
+                comparison = Self.compare(
+                    [lhs.artist, lhs.album, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                    [rhs.artist, rhs.album, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
+                )
+            case .album:
+                comparison = Self.compare(
+                    [lhs.album, lhs.albumArtist, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                    [rhs.album, rhs.albumArtist, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
+                )
+            case .modifiedAt:
+                if lhs.modifiedAt == rhs.modifiedAt {
+                    comparison = .orderedSame
+                } else {
+                    comparison = lhs.modifiedAt < rhs.modifiedAt ? .orderedAscending : .orderedDescending
+                }
+            }
+            let stableComparison = comparison == .orderedSame
+                ? lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
+                : comparison
+            if stableComparison == .orderedSame {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return ascending
+                ? stableComparison == .orderedAscending
+                : stableComparison == .orderedDescending
+        }
+    }
+
+    private static func compare(_ lhs: [String], _ rhs: [String]) -> ComparisonResult {
+        for (left, right) in zip(lhs, rhs) {
+            let result = left.localizedStandardCompare(right)
+            if result != .orderedSame { return result }
+        }
+        return .orderedSame
     }
 }

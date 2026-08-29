@@ -23,8 +23,8 @@ public protocol MediaSourceProvider: Sendable {
 }
 
 public protocol LibraryRepository: Sendable {
-    func tracks(matching query: String, limit: Int, offset: Int) async throws -> [Track]
-    func trackIDs(matching query: String) async throws -> [UUID]
+    func tracks(matching query: String, sort: LibraryTrackSort, ascending: Bool, limit: Int, offset: Int) async throws -> [Track]
+    func trackIDs(matching query: String, sort: LibraryTrackSort, ascending: Bool) async throws -> [UUID]
     func tracks(ids: [UUID]) async throws -> [Track]
     func excludeTracks(ids: [UUID]) async throws
     func restoreTracks(ids: [UUID]) async throws

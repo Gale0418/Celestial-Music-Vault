@@ -215,6 +215,63 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(updatedTrack?.artworkData, Data([0x89, 0x50, 0x4E, 0x47]))
     }
 
+    func testLibrarySortingIsStableAcrossPagesAndSearch() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let files = [
+            ScannedMediaFile(relativePath: "b-2.flac", fileIdentifier: "b-2", fileSize: 1,
+                             modifiedAt: Date(timeIntervalSince1970: 30), title: "第二首", artist: "乙",
+                             album: "星河", albumArtist: "乙", trackNumber: 2, discNumber: 1),
+            ScannedMediaFile(relativePath: "a.flac", fileIdentifier: "a", fileSize: 1,
+                             modifiedAt: Date(timeIntervalSince1970: 10), title: "晨光", artist: "甲",
+                             album: "雲海", albumArtist: "甲", trackNumber: 1, discNumber: 1),
+            ScannedMediaFile(relativePath: "b-1.flac", fileIdentifier: "b-1", fileSize: 1,
+                             modifiedAt: Date(timeIntervalSince1970: 20), title: "第一首", artist: "乙",
+                             album: "星河", albumArtist: "乙", trackNumber: 1, discNumber: 1)
+        ]
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+
+        let albumFirstPage = try await repository.tracks(
+            matching: "", sort: .album, ascending: true, limit: 2, offset: 0
+        )
+        let albumSecondPage = try await repository.tracks(
+            matching: "", sort: .album, ascending: true, limit: 2, offset: 2
+        )
+        XCTAssertEqual((albumFirstPage + albumSecondPage).map(\.fileIdentifier), ["b-1", "b-2", "a"])
+
+        let newestFirst = try await repository.trackIDs(matching: "", sort: .modifiedAt, ascending: false)
+        let newestTracks = try await repository.tracks(ids: newestFirst)
+        XCTAssertEqual(newestTracks.map(\.fileIdentifier), ["b-2", "b-1", "a"])
+
+        let searched = try await repository.trackIDs(matching: "星河", sort: .title, ascending: true)
+        let searchedTracks = try await repository.tracks(ids: searched)
+        XCTAssertEqual(searchedTracks.map(\.title), ["第一首", "第二首"])
+
+        let identicalTimestamp = Date(timeIntervalSince1970: 40)
+        let identical = (0..<3).map { index in
+            ScannedMediaFile(
+                relativePath: "identical-\(index).flac", fileIdentifier: "identical-\(index)", fileSize: 1,
+                modifiedAt: identicalTimestamp, title: "同名", artist: "同人", album: "同輯",
+                albumArtist: "同人", trackNumber: 1, discNumber: 1
+            )
+        }
+        try await repository.applyReconciliation(upserts: files + identical, missingIdentifiers: [], sourceID: sourceID)
+        let identicalIDs = try await repository.trackIDs(matching: "同名", sort: .album, ascending: true)
+        var pagedIDs: [UUID] = []
+        for offset in identicalIDs.indices {
+            let page = try await repository.tracks(
+                matching: "同名", sort: .album, ascending: true, limit: 1, offset: offset
+            )
+            if let id = page.first?.id { pagedIDs.append(id) }
+        }
+        XCTAssertEqual(pagedIDs, identicalIDs)
+        XCTAssertEqual(Set(pagedIDs).count, identical.count)
+    }
+
     func testMediaKindSurvivesReconciliationAndLegacyDefaultsToAudio() async throws {
         let container = try ModelContainer(
             for: MediaSourceRecord.self, TrackRecord.self,

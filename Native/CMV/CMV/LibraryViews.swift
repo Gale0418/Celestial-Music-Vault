@@ -183,6 +183,46 @@ struct VideoSelection: Identifiable {
     var id: URL { url }
 }
 
+private enum TrackListSortMode: String, CaseIterable, Identifiable {
+    case relevance
+    case title
+    case artist
+    case album
+    case modifiedAt
+    case random
+
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .relevance: "預設／相關度"
+        case .title: "歌名"
+        case .artist: "藝術家"
+        case .album: "專輯"
+        case .modifiedAt: "修改時間"
+        case .random: "隨機排列"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .relevance: "line.3.horizontal.decrease"
+        case .title: "textformat"
+        case .artist: "person"
+        case .album: "square.stack"
+        case .modifiedAt: "clock"
+        case .random: "shuffle"
+        }
+    }
+    var repositorySort: LibraryTrackSort? {
+        switch self {
+        case .relevance, .random: nil
+        case .title: .title
+        case .artist: .artist
+        case .album: .album
+        case .modifiedAt: .modifiedAt
+        }
+    }
+}
+
 struct TrackListView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
@@ -198,6 +238,9 @@ struct TrackListView: View {
     @State private var selectedTrackIDs = Set<UUID>()
     @State private var isSelectingAll = false
     @State private var showingRemoveConfirmation = false
+    @State private var sortMode: TrackListSortMode = .relevance
+    @State private var sortAscending = true
+    @State private var randomTrackIDs: [UUID]?
     #if os(macOS)
     @State private var trackPendingTrash: Track?
     #endif
@@ -223,9 +266,31 @@ struct TrackListView: View {
                         Button("取消全選") { selectedTrackIDs.removeAll() }
                     }
                     Spacer()
+                    Menu {
+                        ForEach(TrackListSortMode.allCases) { mode in
+                            Button {
+                                sortMode = mode
+                            } label: {
+                                Label(mode.title, systemImage: mode.symbol)
+                            }
+                        }
+                    } label: {
+                        Label("排序：\(sortMode.title)", systemImage: sortMode.symbol)
+                    }
+                    .accessibilityLabel("排序方式，目前為\(sortMode.title)")
+                    Button {
+                        sortAscending.toggle()
+                    } label: {
+                        Label(sortAscending ? "升冪" : "降冪",
+                              systemImage: sortAscending ? "arrow.up" : "arrow.down")
+                    }
+                    .disabled(sortMode == .random || sortMode == .relevance)
                 }
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
+            }
+            if !selectedTrackIDs.isEmpty {
+                batchActionBar
             }
             ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                 let isCurrent = track.id == appModel.currentTrackID
@@ -300,35 +365,8 @@ struct TrackListView: View {
         .padding(12)
         .cloudSurface()
         .searchable(text: $search, prompt: "搜尋歌曲、歌手或專輯")
-        .task(id: search) { await fetchPage() }
+        .task(id: "\(search)|\(sortMode.rawValue)|\(sortAscending)") { await fetchPage() }
         .task { playlists = await appModel.playlists(context: context) }
-        .safeAreaInset(edge: .bottom) {
-            if !selectedTrackIDs.isEmpty {
-                HStack(spacing: 14) {
-                    Text("已選擇 \(selectedTrackIDs.count) 首")
-                        .font(.headline)
-                    Spacer()
-                    Button("播放所選", systemImage: "play.fill") { playSelectedTracks() }
-                    if !playlists.isEmpty {
-                        Menu("加入歌單", systemImage: "text.badge.plus") {
-                            ForEach(playlists) { playlist in
-                                Button(playlist.name) { addSelectedTracks(to: playlist) }
-                            }
-                        }
-                    }
-                    Button("取消") { selectedTrackIDs.removeAll() }
-                    Button("移出 CMV", systemImage: "rectangle.portrait.and.arrow.right") {
-                        showingRemoveConfirmation = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                }
-                .padding(.horizontal, 18)
-                .frame(minHeight: 56)
-                .background(.ultraThinMaterial)
-                .overlay(alignment: .top) { Divider() }
-            }
-        }
         .alert("從 CMV 移出 \(selectedTrackIDs.count) 首曲目？", isPresented: $showingRemoveConfirmation) {
             Button("取消", role: .cancel) {}
             Button("移出但保留原始檔案", role: .destructive) { removeSelectedTracks() }
@@ -350,13 +388,53 @@ struct TrackListView: View {
         #endif
     }
 
+    private var batchActionBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                Button("播放所選", systemImage: "play.fill") { playSelectedTracks() }
+                    .buttonStyle(.borderedProminent)
+                Menu("加入歌單", systemImage: "text.badge.plus") {
+                    if playlists.isEmpty {
+                        Text("尚未建立歌單")
+                    } else {
+                        ForEach(playlists) { playlist in
+                            Button(playlist.name) { addSelectedTracks(to: playlist) }
+                        }
+                    }
+                }
+                .disabled(playlists.isEmpty)
+                Button("取消選取", systemImage: "xmark") { selectedTrackIDs.removeAll() }
+                Button("移出 CMV", systemImage: "rectangle.portrait.and.arrow.right") {
+                    showingRemoveConfirmation = true
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 52)
+        }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(theme.primary.opacity(0.28)) }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("已選取 \(selectedTrackIDs.count) 首的批次操作")
+    }
+
     @MainActor private func fetchPage() async {
         selectedTrackIDs.removeAll()
         if !search.isEmpty { try? await Task.sleep(for: .milliseconds(120)) }
         guard !Task.isCancelled else { return }
         searchGeneration &+= 1
         let generation = searchGeneration
+        displayedGeneration = -1
+        randomTrackIDs = nil
         hasMore = true
+        if sortMode == .random {
+            let query = search
+            let ids = await appModel.trackIDs(matching: query, context: context)
+            let shuffled = await Task.detached(priority: .userInitiated) { ids.shuffled() }.value
+            guard !Task.isCancelled, generation == searchGeneration, query == search else { return }
+            randomTrackIDs = shuffled
+        }
         await loadNextPage(generation: generation)
     }
 
@@ -366,7 +444,17 @@ struct TrackListView: View {
         let query = search
         let generation = searchGeneration
         Task { @MainActor in
-            let ids = await appModel.trackIDs(matching: query, context: context)
+            let ids: [UUID]
+            if sortMode == .random, let randomTrackIDs {
+                ids = randomTrackIDs
+            } else {
+                ids = await appModel.trackIDs(
+                    matching: query,
+                    context: context,
+                    sort: sortMode.repositorySort ?? .title,
+                    ascending: sortAscending
+                )
+            }
             guard search == query, searchGeneration == generation else {
                 isSelectingAll = false
                 return
@@ -381,17 +469,23 @@ struct TrackListView: View {
         Task { @MainActor in
             guard await appModel.excludeTracks(ids: ids, context: context) else { return }
             selectedTrackIDs.removeAll()
-            searchGeneration &+= 1
-            let generation = searchGeneration
-            displayedGeneration = -1
-            hasMore = true
-            await loadNextPage(generation: generation)
+            await fetchPage()
         }
     }
 
     @MainActor private func orderedSelectedTracks() async -> [Track] {
-        let orderedIDs = await appModel.trackIDs(matching: search, context: context)
-            .filter { selectedTrackIDs.contains($0) }
+        let allIDs: [UUID]
+        if sortMode == .random, let randomTrackIDs {
+            allIDs = randomTrackIDs
+        } else {
+            allIDs = await appModel.trackIDs(
+                matching: search,
+                context: context,
+                sort: sortMode.repositorySort ?? .title,
+                ascending: sortAscending
+            )
+        }
+        let orderedIDs = allIDs.filter { selectedTrackIDs.contains($0) }
         return await appModel.tracks(ids: orderedIDs, context: context)
     }
 
@@ -472,11 +566,7 @@ struct TrackListView: View {
         Task { @MainActor in
             guard await appModel.moveToTrash(track, context: context) else { return }
             selectedTrackIDs.remove(track.id)
-            searchGeneration &+= 1
-            let generation = searchGeneration
-            displayedGeneration = -1
-            hasMore = true
-            await loadNextPage(generation: generation)
+            await fetchPage()
         }
     }
     #endif
@@ -499,12 +589,22 @@ struct TrackListView: View {
             }
         }
         let replacesVisiblePage = displayedGeneration != generation
-        let page = await appModel.searchTracks(
-            query: search,
-            context: context,
-            limit: pageSize,
-            offset: replacesVisiblePage ? 0 : tracks.count
-        )
+        let pageOffset = replacesVisiblePage ? 0 : tracks.count
+        let page: [Track]
+        if sortMode == .random, let randomTrackIDs {
+            let end = min(pageOffset + pageSize, randomTrackIDs.count)
+            let pageIDs = pageOffset < end ? Array(randomTrackIDs[pageOffset..<end]) : []
+            page = await appModel.tracks(ids: pageIDs, context: context)
+        } else {
+            page = await appModel.searchTracks(
+                query: search,
+                context: context,
+                sort: sortMode.repositorySort,
+                ascending: sortAscending,
+                limit: pageSize,
+                offset: pageOffset
+            )
+        }
         guard !Task.isCancelled, generation == searchGeneration else { return }
         guard !page.isEmpty else {
             if replacesVisiblePage {
@@ -520,7 +620,9 @@ struct TrackListView: View {
         } else {
             tracks.append(contentsOf: page)
         }
-        hasMore = page.count == pageSize
+        hasMore = sortMode == .random
+            ? tracks.count < (randomTrackIDs?.count ?? 0)
+            : page.count == pageSize
         await appModel.refreshPinnedStatus(for: page)
     }
 }

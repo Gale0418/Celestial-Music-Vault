@@ -588,11 +588,27 @@ final class AppModel {
         }
     }
 
-    func searchTracks(query: String, context: ModelContext, limit: Int = 200, offset: Int = 0) async -> [Track] {
+    func searchTracks(
+        query: String,
+        context: ModelContext,
+        sort: LibraryTrackSort? = nil,
+        ascending: Bool = true,
+        limit: Int = 200,
+        offset: Int = 0
+    ) async -> [Track] {
         let repository = SwiftDataLibraryRepository(container: context.container)
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let safeLimit = max(1, limit)
         let safeOffset = max(0, offset)
+        if let sort {
+            return (try? await repository.tracks(
+                matching: normalizedQuery,
+                sort: sort,
+                ascending: ascending,
+                limit: safeLimit,
+                offset: safeOffset
+            )) ?? []
+        }
         if normalizedQuery.isEmpty {
             return (try? await repository.tracks(matching: "", limit: safeLimit, offset: safeOffset)) ?? []
         }
@@ -619,10 +635,15 @@ final class AppModel {
         return ranked.dropFirst(safeOffset).prefix(safeLimit).compactMap { byID[$0.identifier] }
     }
 
-    func trackIDs(matching query: String, context: ModelContext) async -> [UUID] {
+    func trackIDs(
+        matching query: String,
+        context: ModelContext,
+        sort: LibraryTrackSort = .title,
+        ascending: Bool = true
+    ) async -> [UUID] {
         let repository = SwiftDataLibraryRepository(container: context.container)
         do {
-            return try await repository.trackIDs(matching: query)
+            return try await repository.trackIDs(matching: query, sort: sort, ascending: ascending)
         } catch {
             errorMessage = error.localizedDescription
             return []
