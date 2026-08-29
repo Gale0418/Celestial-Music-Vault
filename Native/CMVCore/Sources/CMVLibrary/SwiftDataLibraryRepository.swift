@@ -17,8 +17,24 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         try await worker.tracks(matching: query, limit: limit, offset: offset)
     }
 
+    public func trackIDs(matching query: String) async throws -> [UUID] {
+        try await worker.trackIDs(matching: query)
+    }
+
     public func tracks(ids: [UUID]) async throws -> [Track] {
         try await worker.tracks(ids: ids)
+    }
+
+    public func excludeTracks(ids: [UUID]) async throws {
+        try await worker.excludeTracks(ids: ids)
+    }
+
+    public func restoreTracks(ids: [UUID]) async throws {
+        try await worker.restoreTracks(ids: ids)
+    }
+
+    public func restoreTracks(ids: [UUID], playlistTrackIDs: [UUID: [UUID]]) async throws {
+        try await worker.restoreTracks(ids: ids, playlistTrackIDs: playlistTrackIDs)
     }
 
     public func tracks(sourceID: UUID) async throws -> [Track] {
@@ -98,6 +114,10 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         try await worker.addTrack(trackID: trackID, toPlaylist: id)
     }
 
+    public func addTracks(trackIDs: [UUID], toPlaylist id: UUID) async throws {
+        try await worker.addTracks(trackIDs: trackIDs, toPlaylist: id)
+    }
+
     public func removeTrack(trackID: UUID, fromPlaylist id: UUID) async throws {
         try await worker.removeTrack(trackID: trackID, fromPlaylist: id)
     }
@@ -154,11 +174,31 @@ public actor LibraryDataActor {
             return matchingIDs.compactMap { byID[$0] }
         }
 
-        var descriptor = FetchDescriptor<TrackRecord>()
+        var descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
         descriptor.fetchLimit = max(1, limit)
         descriptor.fetchOffset = max(0, offset)
         descriptor.sortBy = [SortDescriptor(\.title)]
         return try modelContext.fetch(descriptor).map(\.domain)
+    }
+
+    public func trackIDs(matching query: String) throws -> [UUID] {
+        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty {
+            let descriptor = FetchDescriptor<TrackRecord>(
+                predicate: #Predicate { !$0.isExcluded },
+                sortBy: [SortDescriptor(\.title)]
+            )
+            return try modelContext.fetch(descriptor).map(\.id)
+        }
+
+        try ensureSearchIndex()
+        let needle = Self.searchValue(normalized)
+        return searchIndex.values
+            .filter { entry in
+                entry.title.contains(needle) || entry.artist.contains(needle) || entry.album.contains(needle)
+            }
+            .sorted { $0.sortTitle.localizedStandardCompare($1.sortTitle) == .orderedAscending }
+            .map(\.id)
     }
 
     public func tracks(sourceID: UUID) throws -> [Track] {
@@ -171,7 +211,7 @@ public actor LibraryDataActor {
     public func tracks(ids: [UUID]) throws -> [Track] {
         guard !ids.isEmpty else { return [] }
         let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
-            ids.contains(record.id)
+            ids.contains(record.id) && !record.isExcluded
         })
         let byID = Dictionary(uniqueKeysWithValues: try modelContext.fetch(descriptor).map { ($0.id, $0.domain) })
         return ids.compactMap { byID[$0] }
@@ -179,12 +219,69 @@ public actor LibraryDataActor {
 
     public func favoriteTracks(limit: Int, offset: Int) throws -> [Track] {
         var descriptor = FetchDescriptor<TrackRecord>(
-            predicate: #Predicate { $0.isFavorite },
+            predicate: #Predicate { $0.isFavorite && !$0.isExcluded },
             sortBy: [SortDescriptor(\.title)]
         )
         descriptor.fetchLimit = max(1, limit)
         descriptor.fetchOffset = max(0, offset)
         return try modelContext.fetch(descriptor).map(\.domain)
+    }
+
+    public func excludeTracks(ids: [UUID]) throws {
+        guard !ids.isEmpty else { return }
+        do {
+            for start in stride(from: 0, to: ids.count, by: 400) {
+                let batch = Array(ids[start..<min(start + 400, ids.count)])
+                let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { batch.contains($0.id) })
+                for record in try modelContext.fetch(descriptor) { record.isExcluded = true }
+            }
+
+            let selected = Set(ids)
+            for playlist in try modelContext.fetch(FetchDescriptor<PlaylistRecord>()) {
+                let original = playlist.trackIDs
+                let filtered = original.filter { !selected.contains($0) }
+                guard filtered.count != original.count else { continue }
+                playlist.trackIDs = filtered
+                playlist.modifiedAt = .now
+            }
+            try modelContext.save()
+            if searchIndexLoaded { ids.forEach(removeFromSearchIndex) }
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    public func restoreTracks(ids: [UUID]) throws {
+        try restoreTracks(ids: ids, playlistTrackIDs: [:])
+    }
+
+    public func restoreTracks(ids: [UUID], playlistTrackIDs: [UUID: [UUID]]) throws {
+        guard !ids.isEmpty else { return }
+        do {
+            var restoredRecords: [TrackRecord] = []
+            for start in stride(from: 0, to: ids.count, by: 400) {
+                let batch = Array(ids[start..<min(start + 400, ids.count)])
+                let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { batch.contains($0.id) })
+                let records = try modelContext.fetch(descriptor)
+                records.forEach { $0.isExcluded = false }
+                restoredRecords.append(contentsOf: records)
+            }
+            if !playlistTrackIDs.isEmpty {
+                let playlistIDs = Array(playlistTrackIDs.keys)
+                let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { playlistIDs.contains($0.id) })
+                for playlist in try modelContext.fetch(descriptor) {
+                    guard let originalTrackIDs = playlistTrackIDs[playlist.id] else { continue }
+                    playlist.trackIDs = originalTrackIDs
+                    playlist.modifiedAt = .now
+                }
+            }
+            try modelContext.save()
+            if searchIndexLoaded { restoredRecords.forEach(index) }
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     public func applyReconciliation(
@@ -345,10 +442,16 @@ public actor LibraryDataActor {
     }
 
     public func addTrack(trackID: UUID, toPlaylist id: UUID) throws {
+        try addTracks(trackIDs: [trackID], toPlaylist: id)
+    }
+
+    public func addTracks(trackIDs: [UUID], toPlaylist id: UUID) throws {
         let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
         guard let record = try modelContext.fetch(descriptor).first else { return }
-        guard !record.trackIDs.contains(trackID) else { return }
-        record.trackIDs.append(trackID)
+        var existing = Set(record.trackIDs)
+        let uniqueNewIDs = trackIDs.filter { existing.insert($0).inserted }
+        guard !uniqueNewIDs.isEmpty else { return }
+        record.trackIDs.append(contentsOf: uniqueNewIDs)
         record.modifiedAt = .now
         try modelContext.save()
     }
@@ -372,12 +475,8 @@ public actor LibraryDataActor {
     }
 
     private func index(_ record: TrackRecord) {
-        if let oldTokens = searchTokensByID[record.id] {
-            for token in oldTokens {
-                searchIDsByToken[token]?.remove(record.id)
-                if searchIDsByToken[token]?.isEmpty == true { searchIDsByToken.removeValue(forKey: token) }
-            }
-        }
+        removeFromSearchIndex(record.id)
+        guard !record.isExcluded else { return }
         let title = Self.searchValue(record.title)
         let artist = Self.searchValue(record.artist)
         let album = Self.searchValue(record.album)
@@ -391,6 +490,15 @@ public actor LibraryDataActor {
         )
         searchTokensByID[record.id] = tokens
         for token in tokens { searchIDsByToken[token, default: []].insert(record.id) }
+    }
+
+    private func removeFromSearchIndex(_ id: UUID) {
+        searchIndex.removeValue(forKey: id)
+        guard let oldTokens = searchTokensByID.removeValue(forKey: id) else { return }
+        for token in oldTokens {
+            searchIDsByToken[token]?.remove(id)
+            if searchIDsByToken[token]?.isEmpty == true { searchIDsByToken.removeValue(forKey: token) }
+        }
     }
 
     private static func searchValue(_ value: String) -> String {

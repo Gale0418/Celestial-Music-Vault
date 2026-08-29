@@ -56,6 +56,9 @@ public final class TrackRecord {
     public var lastPlayedAt: Date?
     public var availabilityRaw: String
     public var lastSeenScanID: UUID?
+    /// A user-initiated library removal. The source file is preserved and
+    /// later scans must not silently add the item back to the visible library.
+    public var isExcluded: Bool = false
 
     public init(id: UUID = UUID(), sourceID: UUID, file: ScannedMediaFile) {
         self.id = id; self.sourceID = sourceID; self.relativePath = file.relativePath

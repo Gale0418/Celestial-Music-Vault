@@ -8,6 +8,9 @@ import CMVLibrary
 import CMVPlayback
 import CMVThemes
 import CMVCache
+#if os(macOS)
+import AppKit
+#endif
 
 private actor ScanBatchState {
     private var seenIdentifiers = Set<String>()
@@ -616,6 +619,45 @@ final class AppModel {
         return ranked.dropFirst(safeOffset).prefix(safeLimit).compactMap { byID[$0.identifier] }
     }
 
+    func trackIDs(matching query: String, context: ModelContext) async -> [UUID] {
+        let repository = SwiftDataLibraryRepository(container: context.container)
+        do {
+            return try await repository.trackIDs(matching: query)
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
+
+    func tracks(ids: [UUID], context: ModelContext) async -> [Track] {
+        let repository = SwiftDataLibraryRepository(container: context.container)
+        do {
+            return try await repository.tracks(ids: ids)
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
+
+    func excludeTracks(ids: Set<UUID>, context: ModelContext) async -> Bool {
+        guard !ids.isEmpty else { return true }
+        let activityID = beginBackgroundActivity(
+            kind: .library,
+            title: "正在從 CMV 移出曲目",
+            detail: "保留原始檔案 · \(ids.count) 首"
+        )
+        defer { endBackgroundActivity(activityID) }
+        do {
+            let repository = SwiftDataLibraryRepository(container: context.container)
+            try await repository.excludeTracks(ids: Array(ids))
+            pinnedTrackIDs.subtract(ids)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func favoriteTracks(context: ModelContext, limit: Int = 200, offset: Int = 0) async -> [Track] {
         let repository = SwiftDataLibraryRepository(container: context.container)
         return (try? await repository.favoriteTracks(limit: limit, offset: max(0, offset))) ?? []
@@ -720,6 +762,84 @@ final class AppModel {
             try? await repository.addTrack(trackID: track.id, toPlaylist: playlist.id)
         }
     }
+
+    func addTracks(_ tracks: [Track], to playlist: Playlist, context: ModelContext) async -> Bool {
+        guard !tracks.isEmpty else { return true }
+        let activityID = beginBackgroundActivity(
+            kind: .library,
+            title: "正在加入歌單",
+            detail: "\(tracks.count) 首 · \(playlist.name)"
+        )
+        defer { endBackgroundActivity(activityID) }
+        do {
+            let repository = SwiftDataLibraryRepository(container: context.container)
+            try await repository.addTracks(trackIDs: tracks.map(\.id), toPlaylist: playlist.id)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    #if os(macOS)
+    func revealInFinder(_ track: Track, context: ModelContext) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { $0.id == track.sourceID })
+                guard let source = try context.fetch(descriptor).first else {
+                    throw MediaSourceAccessError.accessDenied
+                }
+                let root = try resolve(source: source, context: context)
+                let lease = try await sourceAccess.lease(for: root)
+                let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+                _ = lease
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func moveToTrash(_ track: Track, context: ModelContext) async -> Bool {
+        let activityID = beginBackgroundActivity(
+            kind: .library,
+            title: "正在移至垃圾桶",
+            detail: track.title
+        )
+        defer { endBackgroundActivity(activityID) }
+        let repository = SwiftDataLibraryRepository(container: context.container)
+        let containingPlaylists = ((try? await repository.playlists()) ?? [])
+            .filter { $0.trackIDs.contains(track.id) }
+        let playlistSnapshot = Dictionary(uniqueKeysWithValues: containingPlaylists.map { ($0.id, $0.trackIDs) })
+        do {
+            let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { $0.id == track.sourceID })
+            guard let source = try context.fetch(descriptor).first else {
+                throw MediaSourceAccessError.accessDenied
+            }
+            let root = try resolve(source: source, context: context)
+            let lease = try await sourceAccess.lease(for: root)
+            let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
+            // Persist the CMV-side removal before moving the physical file. A
+            // database failure therefore cannot leave a deleted file visible.
+            try await repository.excludeTracks(ids: [track.id])
+            var trashedURL: NSURL?
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: &trashedURL)
+            } catch {
+                try await repository.restoreTracks(ids: [track.id], playlistTrackIDs: playlistSnapshot)
+                throw error
+            }
+            _ = lease
+            if let cacheStore { try? await cacheStore.unpin(trackID: track.id) }
+            pinnedTrackIDs.remove(track.id)
+            return true
+        } catch {
+            errorMessage = "無法將「\(track.title)」移至垃圾桶：\(error.localizedDescription)"
+            return false
+        }
+    }
+    #endif
 
     func analyze(trackID: UUID, url: URL) async throws -> AnalysisProfile {
         let activityID = beginBackgroundActivity(kind: .analysis, title: "正在分析音訊", detail: url.lastPathComponent)

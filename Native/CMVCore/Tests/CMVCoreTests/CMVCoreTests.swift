@@ -238,6 +238,52 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(legacy.domain.mediaKind, .audio)
     }
 
+    func testExcludedTracksStayHiddenAfterRescanAndLeavePlaylists() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self, PlaylistRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let files = [
+            ScannedMediaFile(relativePath: "keep.flac", fileIdentifier: "keep", fileSize: 1,
+                             modifiedAt: .now, title: "保留"),
+            ScannedMediaFile(relativePath: "remove.flac", fileIdentifier: "remove", fileSize: 1,
+                             modifiedAt: .now, title: "移出")
+        ]
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+        let imported = try await repository.tracks(matching: "", limit: 10, offset: 0)
+        let removed = try XCTUnwrap(imported.first(where: { $0.fileIdentifier == "remove" }))
+        let playlist = try await repository.createPlaylist(name: "測試")
+        let kept = try XCTUnwrap(imported.first(where: { $0.fileIdentifier == "keep" }))
+        try await repository.addTracks(trackIDs: [removed.id, kept.id, removed.id], toPlaylist: playlist.id)
+        let playlistAfterBatchAdd = try await repository.playlists()
+        XCTAssertEqual(playlistAfterBatchAdd.first?.trackIDs, [removed.id, kept.id])
+
+        try await repository.excludeTracks(ids: [removed.id])
+        let visibleIDs = try await repository.trackIDs(matching: "")
+        let playlistsAfterRemoval = try await repository.playlists()
+        XCTAssertEqual(visibleIDs, [kept.id])
+        XCTAssertEqual(playlistsAfterRemoval.first?.trackIDs, [kept.id])
+
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+        let rescanned = try await repository.tracks(matching: "", limit: 10, offset: 0)
+        let matchingRemoved = try await repository.trackIDs(matching: "移出")
+        let sourceTracks = try await repository.tracks(sourceID: sourceID)
+        XCTAssertEqual(rescanned.map(\.fileIdentifier), ["keep"])
+        XCTAssertTrue(matchingRemoved.isEmpty)
+        XCTAssertEqual(sourceTracks.count, 2)
+
+        try await repository.restoreTracks(
+            ids: [removed.id],
+            playlistTrackIDs: [playlist.id: [removed.id, kept.id]]
+        )
+        let restored = try await repository.trackIDs(matching: "移出")
+        let playlistsAfterRestore = try await repository.playlists()
+        XCTAssertEqual(restored, [removed.id])
+        XCTAssertEqual(playlistsAfterRestore.first?.trackIDs, [removed.id, kept.id])
+    }
+
     func testSearchSnapshotReflectsTrackMutations() async throws {
         let container = try ModelContainer(
             for: MediaSourceRecord.self, TrackRecord.self,

@@ -4,6 +4,9 @@ import CMVDomain
 import CMVLibrary
 import CMVThemes
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 struct SidebarView: View {
     @Environment(AppModel.self) private var appModel
@@ -192,13 +195,51 @@ struct TrackListView: View {
     @State private var searchGeneration = 0
     @State private var displayedGeneration = -1
     @State private var loadingGeneration: Int?
+    @State private var selectedTrackIDs = Set<UUID>()
+    @State private var isSelectingAll = false
+    @State private var showingRemoveConfirmation = false
+    #if os(macOS)
+    @State private var trackPendingTrash: Track?
+    #endif
     private let pageSize = 200
 
     var body: some View {
         LazyVStack(spacing: 2) {
+            if !tracks.isEmpty {
+                HStack(spacing: 10) {
+                    Button {
+                        selectAllMatchingTracks()
+                    } label: {
+                        Label(
+                            selectedTrackIDs.isEmpty ? "全選" : "重新全選",
+                            systemImage: selectedTrackIDs.isEmpty ? "checklist.unchecked" : "checklist.checked"
+                        )
+                    }
+                    .disabled(isSelectingAll)
+                    if !selectedTrackIDs.isEmpty {
+                        Text("已選 \(selectedTrackIDs.count) 首")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(theme.primary)
+                        Button("取消全選") { selectedTrackIDs.removeAll() }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+            }
             ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                 let isCurrent = track.id == appModel.currentTrackID
+                let isSelected = selectedTrackIDs.contains(track.id)
                 HStack(spacing: 14) {
+                    Button {
+                        if isSelected { selectedTrackIDs.remove(track.id) } else { selectedTrackIDs.insert(track.id) }
+                    } label: {
+                        Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                            .foregroundStyle(isSelected ? theme.primary : .secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .frame(width: 44, height: 44)
+                    .accessibilityLabel(isSelected ? "取消選取\(track.title)" : "選取\(track.title)")
                     Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
                     Image(systemName: track.mediaKind == .video ? "film" : (isCurrent ? "waveform" : "music.note"))
                         .foregroundStyle(isCurrent ? theme.primary : .secondary)
@@ -218,31 +259,7 @@ struct TrackListView: View {
                     .frame(width: 44, height: 44)
                     .accessibilityLabel("播放\(track.title)")
                     Menu {
-                        Section("評分") {
-                            ForEach(1...5, id: \.self) { rating in
-                                Button { appModel.setRating(track, rating: rating, context: context) } label: {
-                                    Label("\(rating) 顆星", systemImage: rating <= track.rating ? "star.fill" : "star")
-                                }
-                            }
-                            if track.rating > 0 {
-                                Button("清除評分", systemImage: "star.slash") {
-                                    appModel.setRating(track, rating: 0, context: context)
-                                }
-                            }
-                        }
-                        if !playlists.isEmpty {
-                            Section("加入歌單") {
-                                ForEach(playlists) { playlist in
-                                    Button(playlist.name) { appModel.addTrack(track, to: playlist, context: context) }
-                                }
-                            }
-                        }
-                        Button {
-                            appModel.togglePinned(track, context: context)
-                        } label: {
-                            Label(appModel.pinnedTrackIDs.contains(track.id) ? "取消釘選離線" : "釘選離線",
-                                  systemImage: appModel.pinnedTrackIDs.contains(track.id) ? "pin.slash" : "pin")
-                        }
+                        trackActions(for: track, at: index)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .accessibilityLabel("歌曲操作")
@@ -262,7 +279,11 @@ struct TrackListView: View {
                 }
                 .frame(minHeight: 48)
                 .padding(.horizontal, 12)
-                .background(isCurrent ? theme.primary.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 12))
+                .background(
+                    isSelected ? theme.primary.opacity(0.22) : (isCurrent ? theme.primary.opacity(0.15) : .clear),
+                    in: RoundedRectangle(cornerRadius: 12)
+                )
+                .contextMenu { trackActions(for: track, at: index) }
                 .task {
                     if index == tracks.count - 1 { await loadNextPage(generation: searchGeneration) }
                 }
@@ -281,9 +302,56 @@ struct TrackListView: View {
         .searchable(text: $search, prompt: "搜尋歌曲、歌手或專輯")
         .task(id: search) { await fetchPage() }
         .task { playlists = await appModel.playlists(context: context) }
+        .safeAreaInset(edge: .bottom) {
+            if !selectedTrackIDs.isEmpty {
+                HStack(spacing: 14) {
+                    Text("已選擇 \(selectedTrackIDs.count) 首")
+                        .font(.headline)
+                    Spacer()
+                    Button("播放所選", systemImage: "play.fill") { playSelectedTracks() }
+                    if !playlists.isEmpty {
+                        Menu("加入歌單", systemImage: "text.badge.plus") {
+                            ForEach(playlists) { playlist in
+                                Button(playlist.name) { addSelectedTracks(to: playlist) }
+                            }
+                        }
+                    }
+                    Button("取消") { selectedTrackIDs.removeAll() }
+                    Button("移出 CMV", systemImage: "rectangle.portrait.and.arrow.right") {
+                        showingRemoveConfirmation = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                }
+                .padding(.horizontal, 18)
+                .frame(minHeight: 56)
+                .background(.ultraThinMaterial)
+                .overlay(alignment: .top) { Divider() }
+            }
+        }
+        .alert("從 CMV 移出 \(selectedTrackIDs.count) 首曲目？", isPresented: $showingRemoveConfirmation) {
+            Button("取消", role: .cancel) {}
+            Button("移出但保留原始檔案", role: .destructive) { removeSelectedTracks() }
+        } message: {
+            Text("曲目會從 CMV 曲庫與歌單隱藏，NAS／磁碟上的原始音樂與影片不會刪除；重新索引也不會自動加回。")
+        }
+        #if os(macOS)
+        .alert(item: $trackPendingTrash) { track in
+            Alert(
+                title: Text("將「\(track.title)」移至垃圾桶？"),
+                message: Text("這會移動實體檔案，並將曲目從 CMV 與歌單移出。若來源不支援系統垃圾桶，操作會取消且保留曲目。"),
+                primaryButton: .destructive(Text("移至垃圾桶")) { moveTrackToTrash(track) },
+                secondaryButton: .cancel()
+            )
+        }
+        .onCommand(#selector(NSStandardKeyBindingResponding.selectAll(_:))) {
+            selectAllMatchingTracks()
+        }
+        #endif
     }
 
     @MainActor private func fetchPage() async {
+        selectedTrackIDs.removeAll()
         if !search.isEmpty { try? await Task.sleep(for: .milliseconds(120)) }
         guard !Task.isCancelled else { return }
         searchGeneration &+= 1
@@ -291,6 +359,127 @@ struct TrackListView: View {
         hasMore = true
         await loadNextPage(generation: generation)
     }
+
+    @MainActor private func selectAllMatchingTracks() {
+        guard !isSelectingAll else { return }
+        isSelectingAll = true
+        let query = search
+        let generation = searchGeneration
+        Task { @MainActor in
+            let ids = await appModel.trackIDs(matching: query, context: context)
+            guard search == query, searchGeneration == generation else {
+                isSelectingAll = false
+                return
+            }
+            selectedTrackIDs = Set(ids)
+            isSelectingAll = false
+        }
+    }
+
+    @MainActor private func removeSelectedTracks() {
+        let ids = selectedTrackIDs
+        Task { @MainActor in
+            guard await appModel.excludeTracks(ids: ids, context: context) else { return }
+            selectedTrackIDs.removeAll()
+            searchGeneration &+= 1
+            let generation = searchGeneration
+            displayedGeneration = -1
+            hasMore = true
+            await loadNextPage(generation: generation)
+        }
+    }
+
+    @MainActor private func orderedSelectedTracks() async -> [Track] {
+        let orderedIDs = await appModel.trackIDs(matching: search, context: context)
+            .filter { selectedTrackIDs.contains($0) }
+        return await appModel.tracks(ids: orderedIDs, context: context)
+    }
+
+    @MainActor private func playSelectedTracks() {
+        Task { @MainActor in
+            let selected = await orderedSelectedTracks()
+            guard !selected.isEmpty else { return }
+            appModel.play(tracks: selected, context: context)
+            selectedTrackIDs.removeAll()
+        }
+    }
+
+    @MainActor private func addSelectedTracks(to playlist: Playlist) {
+        Task { @MainActor in
+            let selected = await orderedSelectedTracks()
+            guard await appModel.addTracks(selected, to: playlist, context: context) else { return }
+            selectedTrackIDs.removeAll()
+        }
+    }
+
+    @ViewBuilder private func trackActions(for track: Track, at index: Int) -> some View {
+        Button("立即播放", systemImage: "play.fill") {
+            appModel.play(tracks: tracks, startingAt: index, context: context)
+        }
+        Button(track.isFavorite ? "移除最愛" : "加入最愛",
+               systemImage: track.isFavorite ? "heart.slash" : "heart") {
+            appModel.setFavorite(track, context: context)
+            if let localIndex = tracks.firstIndex(where: { $0.id == track.id }) {
+                tracks[localIndex].isFavorite.toggle()
+            }
+        }
+        Section("評分") {
+            ForEach(1...5, id: \.self) { rating in
+                Button { appModel.setRating(track, rating: rating, context: context) } label: {
+                    Label("\(rating) 顆星", systemImage: rating <= track.rating ? "star.fill" : "star")
+                }
+            }
+            if track.rating > 0 {
+                Button("清除評分", systemImage: "star.slash") {
+                    appModel.setRating(track, rating: 0, context: context)
+                }
+            }
+        }
+        if !playlists.isEmpty {
+            Section("加入歌單") {
+                ForEach(playlists) { playlist in
+                    Button(playlist.name) { appModel.addTrack(track, to: playlist, context: context) }
+                }
+            }
+        }
+        Button {
+            appModel.togglePinned(track, context: context)
+        } label: {
+            Label(appModel.pinnedTrackIDs.contains(track.id) ? "取消釘選離線" : "釘選離線",
+                  systemImage: appModel.pinnedTrackIDs.contains(track.id) ? "pin.slash" : "pin")
+        }
+        #if os(macOS)
+        Button("在 Finder 中顯示", systemImage: "folder") {
+            appModel.revealInFinder(track, context: context)
+        }
+        Button("複製相對路徑", systemImage: "doc.on.doc") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(track.relativePath, forType: .string)
+        }
+        Button("將實體檔案移至垃圾桶", systemImage: "trash", role: .destructive) {
+            trackPendingTrash = track
+        }
+        #endif
+        Divider()
+        Button("移出 CMV（保留原檔）", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+            selectedTrackIDs = [track.id]
+            showingRemoveConfirmation = true
+        }
+    }
+
+    #if os(macOS)
+    @MainActor private func moveTrackToTrash(_ track: Track) {
+        Task { @MainActor in
+            guard await appModel.moveToTrash(track, context: context) else { return }
+            selectedTrackIDs.remove(track.id)
+            searchGeneration &+= 1
+            let generation = searchGeneration
+            displayedGeneration = -1
+            hasMore = true
+            await loadNextPage(generation: generation)
+        }
+    }
+    #endif
 
     @MainActor private func loadNextPage(generation: Int) async {
         guard hasMore else { return }

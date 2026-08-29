@@ -1,9 +1,9 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=54ed242a48693d51aa76dc39a5040634dcf413578c7fdd1b6d087ece4dd35f0c -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=704e110ff815981456c9dc5896e0404698a98f4001560f61f25487b3884b4949 -->
 # 任務簡報
 
 - 最後整理: 2026-08-29
-- 來源指紋: `54ed242a48693d51aa76dc39a5040634dcf413578c7fdd1b6d087ece4dd35f0c`
+- 來源指紋: `704e110ff815981456c9dc5896e0404698a98f4001560f61f25487b3884b4949`
 - 唯一真實來源: `tasks.md`
 - 專案: 星穹私藏音樂庫 Celestial Music Vault（CMV）維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
@@ -18,7 +18,7 @@
 - GR-001
 
 ## 需要時再讀
-- 目前工作（2 項）→ `working-set.md`
+- 目前工作（3 項）→ `working-set.md`
 - 修改任務生命週期／順序 → `tasks.md`
 - 查閱理由／證據 → `decisions.md`、`notes.md`、`smoke-tests.md`
 - 簡報／工作集過期或截斷 → 執行 `mission_maintenance.py sync` 後再讀 canonical files

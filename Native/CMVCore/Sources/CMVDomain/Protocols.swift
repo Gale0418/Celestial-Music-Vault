@@ -24,7 +24,11 @@ public protocol MediaSourceProvider: Sendable {
 
 public protocol LibraryRepository: Sendable {
     func tracks(matching query: String, limit: Int, offset: Int) async throws -> [Track]
+    func trackIDs(matching query: String) async throws -> [UUID]
     func tracks(ids: [UUID]) async throws -> [Track]
+    func excludeTracks(ids: [UUID]) async throws
+    func restoreTracks(ids: [UUID]) async throws
+    func restoreTracks(ids: [UUID], playlistTrackIDs: [UUID: [UUID]]) async throws
     func applyScan(_ files: [ScannedMediaFile], sourceID: UUID, sourceWasReachable: Bool) async throws
     func setFavorite(trackID: UUID, isFavorite: Bool) async throws
     func setRating(trackID: UUID, rating: Int) async throws
@@ -35,6 +39,7 @@ public protocol LibraryRepository: Sendable {
     func renamePlaylist(id: UUID, name: String) async throws
     func deletePlaylist(id: UUID) async throws
     func addTrack(trackID: UUID, toPlaylist id: UUID) async throws
+    func addTracks(trackIDs: [UUID], toPlaylist id: UUID) async throws
     func removeTrack(trackID: UUID, fromPlaylist id: UUID) async throws
 }
 
