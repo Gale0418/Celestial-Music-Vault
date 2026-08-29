@@ -62,13 +62,11 @@ final class AppModel {
     var selection: LibraryDestination? = .nowPlaying
     var showingImporter = false
     var showingQueue = true
-    var scanProgress: ScanProgress?
     var errorMessage: String?
     var selectedTheme: AeroThemeID {
         didSet { UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeDefaultsKey) }
     }
-    var libraryTracks: [Track] = []
-    var isLoadingLibrary = false
+    private(set) var backgroundActivities: [UUID: BackgroundActivity] = [:]
     private(set) var pinnedTrackIDs: Set<UUID> = []
     let playback: NativePlaybackEngine
     /// 非音訊曲目由原生 AVPlayer 表面呈現；URL 存在期間保留來源 lease。
@@ -77,6 +75,15 @@ final class AppModel {
     private(set) var currentTrackID: UUID?
 
     var currentTrack: Track? { videoTrack ?? playback.queue.current }
+
+    var primaryBackgroundActivity: BackgroundActivity? {
+        backgroundActivities.values.sorted {
+            if $0.kind.priority != $1.kind.priority { return $0.kind.priority > $1.kind.priority }
+            return $0.startedAt < $1.startedAt
+        }.first
+    }
+
+    var additionalBackgroundActivityCount: Int { max(0, backgroundActivities.count - 1) }
 
     private let sourceProvider = SecurityScopedMediaSourceProvider()
     private let sourceAccess = SourceAccessCoordinator()
@@ -117,6 +124,29 @@ final class AppModel {
         playback.onQueueFinished = { [weak self] in
             self?.advanceAfterAudioQueue()
         }
+    }
+
+    @discardableResult
+    func beginBackgroundActivity(kind: BackgroundActivityKind, title: String, detail: String? = nil) -> UUID {
+        let id = UUID()
+        backgroundActivities[id] = BackgroundActivity(
+            id: id,
+            kind: kind,
+            title: title,
+            detail: detail,
+            startedAt: .now
+        )
+        return id
+    }
+
+    func updateBackgroundActivity(_ id: UUID, detail: String?) {
+        guard var activity = backgroundActivities[id] else { return }
+        activity.detail = detail
+        backgroundActivities[id] = activity
+    }
+
+    func endBackgroundActivity(_ id: UUID) {
+        backgroundActivities[id] = nil
     }
 
     func addSource(_ url: URL, context: ModelContext) {
@@ -188,6 +218,9 @@ final class AppModel {
     /// was unavailable during the previous session is never removed, and a
     /// stale bookmark is refreshed in place when Apple can still resolve it.
     func refreshSourceStatuses(_ sources: [MediaSourceRecord], context: ModelContext) async {
+        guard !sources.isEmpty else { return }
+        let activityID = beginBackgroundActivity(kind: .scanning, title: "正在確認音樂來源")
+        defer { endBackgroundActivity(activityID) }
         let probes = sources.map { (id: $0.id, bookmark: $0.bookmarkData) }
         let provider = sourceProvider
         let results = await Task.detached(priority: .utility) {
@@ -313,6 +346,8 @@ final class AppModel {
     func play(tracks: [Track], startingAt: Int = 0, context: ModelContext) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let activityID = beginBackgroundActivity(kind: .playback, title: "正在準備播放")
+            defer { endBackgroundActivity(activityID) }
             do {
                 guard !tracks.isEmpty else { return }
                 let sources = try context.fetch(FetchDescriptor<MediaSourceRecord>())
@@ -418,7 +453,17 @@ final class AppModel {
                     let policy = CachePolicy()
                     let prefetchTracks = Array(audioTracks.dropFirst().prefix(policy.prefetchCount))
                     let prefetchURLs = resolvedURLs
-                    Task.detached(priority: .utility) {
+                    let cacheActivityID = beginBackgroundActivity(
+                        kind: .cache,
+                        title: "正在更新智慧快取",
+                        detail: "預取接下來的歌曲"
+                    )
+                    Task.detached(priority: .utility) { [weak self] in
+                        defer {
+                            Task { @MainActor [weak self] in
+                                self?.endBackgroundActivity(cacheActivityID)
+                            }
+                        }
                         for track in prefetchTracks {
                             guard let url = prefetchURLs[track.id] else { continue }
                             _ = try? await cacheStore.prefetch(trackID: track.id, sourceURL: url)
@@ -453,6 +498,12 @@ final class AppModel {
     }
 
     private func scan(source: MediaSourceRecord, context: ModelContext) async {
+        let activityID = beginBackgroundActivity(
+            kind: .scanning,
+            title: "正在索引「\(source.displayName)」",
+            detail: "準備讀取來源"
+        )
+        defer { endBackgroundActivity(activityID) }
         do {
             let url = try resolve(source: source, context: context)
             let accessLease = try await sourceAccess.lease(for: url)
@@ -485,7 +536,14 @@ final class AppModel {
                     try await repository.applyScanBatch(upserts, sourceID: sourceID, scanID: scanID)
                 },
                 onProgress: { [weak self] progress in
-                    await MainActor.run { self?.scanProgress = progress }
+                    await MainActor.run {
+                        let path = progress.currentPath.isEmpty ? nil : progress.currentPath
+                        self?.updateBackgroundActivity(
+                            activityID,
+                            detail: path.map { "已處理 \(progress.processed) 首 · \($0)" }
+                                ?? "已處理 \(progress.processed) 首"
+                        )
+                    }
                 },
                 onIssue: { [weak self] issue in
                     let shouldPresent = await batchState.registerIssue()
@@ -502,11 +560,9 @@ final class AppModel {
                 scanID: scanID,
                 sourceWasReachable: scanCompletedWithoutIssues
             )
-            libraryTracks = []
             source.status = .available
             source.lastSuccessfulScan = .now
             source.updatedAt = .now
-            scanProgress = nil
             try context.save()
         } catch {
             if case MediaSourceAccessError.staleBookmark = error {
@@ -514,7 +570,6 @@ final class AppModel {
             } else {
                 source.status = .offline
             }
-            scanProgress = nil
             errorMessage = error.localizedDescription
             try? context.save()
         }
@@ -597,6 +652,12 @@ final class AppModel {
         }
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let activityID = beginBackgroundActivity(
+                kind: .cache,
+                title: pinnedTrackIDs.contains(track.id) ? "正在取消離線釘選" : "正在儲存離線內容",
+                detail: track.title
+            )
+            defer { endBackgroundActivity(activityID) }
             do {
                 if pinnedTrackIDs.contains(track.id) {
                     try await cacheStore.unpin(trackID: track.id)
@@ -651,10 +712,14 @@ final class AppModel {
     }
 
     func analyze(trackID: UUID, url: URL) async throws -> AnalysisProfile {
-        try await analyzer.analyze(trackID: trackID, url: url)
+        let activityID = beginBackgroundActivity(kind: .analysis, title: "正在分析音訊", detail: url.lastPathComponent)
+        defer { endBackgroundActivity(activityID) }
+        return try await analyzer.analyze(trackID: trackID, url: url)
     }
 
     func analyzeAndPersist(trackID: UUID, url: URL, context: ModelContext) async throws -> AnalysisProfile {
+        let activityID = beginBackgroundActivity(kind: .analysis, title: "正在分析音訊", detail: url.lastPathComponent)
+        defer { endBackgroundActivity(activityID) }
         let profile = try await analyzer.analyze(trackID: trackID, url: url)
         let repository = SwiftDataLibraryRepository(container: context.container)
         try await repository.setAnalysis(trackID: trackID, profile: profile)
@@ -663,7 +728,9 @@ final class AppModel {
 
     func makeSmartQueue(tracks: [Track], profiles: [UUID: AnalysisProfile],
                         history: [UUID: ListeningSignal], limit: Int = 25) async -> [DJSelection] {
-        await smartDJ.makeQueue(from: tracks, profiles: profiles, history: history, limit: limit)
+        let activityID = beginBackgroundActivity(kind: .analysis, title: "智慧 DJ 正在選歌")
+        defer { endBackgroundActivity(activityID) }
+        return await smartDJ.makeQueue(from: tracks, profiles: profiles, history: history, limit: limit)
     }
 }
 

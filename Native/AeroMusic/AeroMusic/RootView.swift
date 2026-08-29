@@ -28,6 +28,7 @@ struct RootView: View {
             }
             .environment(\.aeroTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
+            .safeAreaInset(edge: .top, spacing: 0) { ErrorStatusBanner() }
             .fileImporter(
                 isPresented: $appModel.showingImporter,
                 allowedContentTypes: [.folder],
@@ -36,9 +37,6 @@ struct RootView: View {
                 if case let .success(urls) = result { appModel.addSources(urls, context: modelContext) }
                 if case let .failure(error) = result { appModel.errorMessage = error.localizedDescription }
             }
-            .alert("AeroMusic", isPresented: Binding(get: { appModel.errorMessage != nil }, set: { if !$0 { appModel.errorMessage = nil } })) {
-                Button("好") { appModel.errorMessage = nil }
-            } message: { Text(appModel.errorMessage ?? "") }
             .onChange(of: appModel.videoURL) { _, url in
                 guard let url else {
                     videoWindowStore.clear()
@@ -114,7 +112,12 @@ private struct WideRootView: View {
             return !directories.isEmpty
         }
         #endif
-        .safeAreaInset(edge: .bottom, spacing: 0) { PlayerBar() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                BackgroundActivityRail()
+                PlayerBar()
+            }
+        }
         .tint(theme.primary)
     }
 }
@@ -136,7 +139,12 @@ private struct CompactRootView: View {
         }
         .background(CelestialBackground())
         .tint(theme.primary)
-        .safeAreaInset(edge: .bottom, spacing: 0) { MiniPlayerBar { showingNowPlaying = true } }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                BackgroundActivityRail()
+                MiniPlayerBar { showingNowPlaying = true }
+            }
+        }
         .sheet(isPresented: $showingNowPlaying) {
             NavigationStack { NowPlayingView() }
         }

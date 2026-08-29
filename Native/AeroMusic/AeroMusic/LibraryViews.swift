@@ -53,15 +53,6 @@ struct SidebarView: View {
         .scrollContentBackground(.hidden)
         .background(.ultraThinMaterial.opacity(0.55))
         .navigationTitle("AeroMusic")
-        .safeAreaInset(edge: .bottom) {
-            if let progress = appModel.scanProgress {
-                VStack(alignment: .leading, spacing: 6) {
-                    ProgressView()
-                    Text("正在索引 \(progress.processed) 首").font(.caption)
-                    Text(progress.currentPath).font(.caption2).lineLimit(1).foregroundStyle(.secondary)
-                }.padding().cloudSurface().padding(8)
-            }
-        }
         .tint(theme.primary)
         .task { await appModel.refreshSourceStatuses(sources, context: context) }
         .fileImporter(
@@ -198,6 +189,7 @@ struct TrackListView: View {
     @State private var isLoading = false
     @State private var hasMore = true
     @State private var searchGeneration = 0
+    @State private var displayedGeneration = -1
     @State private var loadingGeneration: Int?
     private let pageSize = 200
 
@@ -274,14 +266,9 @@ struct TrackListView: View {
                     if index == tracks.count - 1 { await loadNextPage(generation: searchGeneration) }
                 }
             }
-            if isLoading && !tracks.isEmpty {
-                ProgressView("載入更多歌曲…")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
             if tracks.isEmpty {
                 if isLoading {
-                    ProgressView("讀取曲庫…").frame(maxWidth: .infinity).padding(.vertical, 80)
+                    Color.clear.frame(minHeight: 220).accessibilityHidden(true)
                 } else {
                     ContentUnavailableView("尚未加入音樂", systemImage: "cloud.moon", description: Text("從側邊欄加入本機或 NAS 資料夾。"))
                         .frame(minHeight: 220)
@@ -300,7 +287,6 @@ struct TrackListView: View {
         guard !Task.isCancelled else { return }
         searchGeneration &+= 1
         let generation = searchGeneration
-        tracks = []
         hasMore = true
         await loadNextPage(generation: generation)
     }
@@ -310,20 +296,40 @@ struct TrackListView: View {
         guard loadingGeneration == nil || loadingGeneration == generation else { return }
         loadingGeneration = generation
         isLoading = true
+        let activityID = appModel.beginBackgroundActivity(
+            kind: .library,
+            title: search.isEmpty ? "正在讀取曲庫" : "正在搜尋曲庫",
+            detail: search.isEmpty ? nil : search
+        )
         defer {
+            appModel.endBackgroundActivity(activityID)
             if loadingGeneration == generation {
                 loadingGeneration = nil
                 isLoading = false
             }
         }
-        let page = await appModel.searchTracks(query: search, context: context,
-                                               limit: pageSize, offset: tracks.count)
+        let replacesVisiblePage = displayedGeneration != generation
+        let page = await appModel.searchTracks(
+            query: search,
+            context: context,
+            limit: pageSize,
+            offset: replacesVisiblePage ? 0 : tracks.count
+        )
         guard !Task.isCancelled, generation == searchGeneration else { return }
         guard !page.isEmpty else {
+            if replacesVisiblePage {
+                tracks = []
+                displayedGeneration = generation
+            }
             hasMore = false
             return
         }
-        tracks.append(contentsOf: page)
+        if replacesVisiblePage {
+            tracks = page
+            displayedGeneration = generation
+        } else {
+            tracks.append(contentsOf: page)
+        }
         hasMore = page.count == pageSize
         await appModel.refreshPinnedStatus(for: page)
     }
@@ -337,6 +343,7 @@ struct CatalogView: View {
     @Environment(\.aeroTheme) private var theme
     let kind: CatalogKind
     @State private var tracks: [Track] = []
+    @State private var groups: [(key: String, value: [Track])] = []
     @State private var isLoading = false
     @State private var hasMore = true
     private let pageSize = 500
@@ -366,10 +373,12 @@ struct CatalogView: View {
                     }
                 }
                 if hasMore {
-                    ProgressView("載入更多…")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .task(id: tracks.count) { await loadNextPage() }
+                    LazyVStack {
+                        Color.clear
+                            .frame(height: 1)
+                            .accessibilityHidden(true)
+                            .task(id: tracks.count) { await loadNextPage() }
+                    }
                 }
             }
             .padding(24)
@@ -385,19 +394,29 @@ struct CatalogView: View {
     @MainActor private func loadNextPage() async {
         guard !isLoading, hasMore else { return }
         isLoading = true
-        defer { isLoading = false }
+        let activityID = appModel.beginBackgroundActivity(
+            kind: .library,
+            title: kind == .artist ? "正在整理歌手" : "正在整理專輯"
+        )
+        defer {
+            appModel.endBackgroundActivity(activityID)
+            isLoading = false
+        }
         let page = await appModel.searchTracks(query: "", context: context,
                                                limit: pageSize, offset: tracks.count)
         guard !Task.isCancelled else { return }
         tracks.append(contentsOf: page)
         hasMore = page.count == pageSize
-    }
-
-    private var groups: [(key: String, value: [Track])] {
-        let grouped = Dictionary(grouping: tracks) { track in
-            kind == .artist ? track.artist : "\(track.album) · \(track.albumArtist.isEmpty ? track.artist : track.albumArtist)"
-        }
-        return grouped.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
+        let snapshot = tracks
+        let catalogKind = kind
+        groups = await Task.detached(priority: .utility) {
+            let grouped = Dictionary(grouping: snapshot) { track in
+                catalogKind == .artist
+                    ? track.artist
+                    : "\(track.album) · \(track.albumArtist.isEmpty ? track.artist : track.albumArtist)"
+            }
+            return grouped.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
+        }.value
     }
 }
 
@@ -412,19 +431,12 @@ struct FavoriteTracksView: View {
     var body: some View {
         ScrollView {
             TrackRows(tracks: tracks, onLast: { await loadNextPage() }).padding(24)
-            if isLoading && !tracks.isEmpty {
-                ProgressView("載入更多最愛…").frame(maxWidth: .infinity).padding(.vertical, 12)
-            }
         }
             .navigationTitle("最愛")
             .task { await loadNextPage() }
             .overlay {
-                if tracks.isEmpty {
-                    if isLoading {
-                        ProgressView("讀取最愛…")
-                    } else {
-                        ContentUnavailableView("還沒有最愛歌曲", systemImage: "heart", description: Text("在歌曲清單裡點選愛心即可收藏。"))
-                    }
+                if tracks.isEmpty && !isLoading {
+                    ContentUnavailableView("還沒有最愛歌曲", systemImage: "heart", description: Text("在歌曲清單裡點選愛心即可收藏。"))
                 }
             }
         }
@@ -432,7 +444,11 @@ struct FavoriteTracksView: View {
     @MainActor private func loadNextPage() async {
         guard !isLoading, hasMore else { return }
         isLoading = true
-        defer { isLoading = false }
+        let activityID = appModel.beginBackgroundActivity(kind: .library, title: "正在讀取最愛")
+        defer {
+            appModel.endBackgroundActivity(activityID)
+            isLoading = false
+        }
         let page = await appModel.favoriteTracks(context: context, limit: pageSize, offset: tracks.count)
         guard !Task.isCancelled else { return }
         tracks.append(contentsOf: page)
