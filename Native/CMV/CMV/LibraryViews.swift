@@ -13,8 +13,7 @@ struct SidebarView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
     @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
-    @State private var reauthorizationSource: MediaSourceRecord?
-    @State private var isReauthorizationPickerPresented = false
+    @State private var trackCount = 0
 
     var body: some View {
         @Bindable var appModel = appModel
@@ -24,32 +23,12 @@ struct SidebarView: View {
                     Label(destination.title, systemImage: destination.symbol).tag(destination)
                 }
             }
-            Section("音樂來源") {
-                ForEach(sources) { source in
-                    HStack {
-                        Circle().fill(statusColor(source.status)).frame(width: 8, height: 8)
-                        VStack(alignment: .leading) {
-                            Text(source.displayName).lineLimit(1)
-                            Text(statusText(source.status)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        HStack(spacing: 4) {
-                            if source.status == .permissionRequired {
-                                Button("重新授權") {
-                                    reauthorizationSource = source
-                                    isReauthorizationPickerPresented = true
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                            Button(source.status == .available ? "重新索引" : "重試") {
-                                appModel.restoreAndScan(source, context: context)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                        .frame(minWidth: 44, minHeight: 44)
-                    }
+            Section("曲庫") {
+                Label("\(trackCount.formatted()) 首收藏", systemImage: "music.note.house")
+                    .foregroundStyle(.secondary)
+                Button { appModel.showingImporter = true } label: {
+                    Label("加入音樂", systemImage: "plus.circle")
                 }
-                Button { appModel.showingImporter = true } label: { Label("加入音樂來源", systemImage: "plus.circle") }
             }
             Section { Label("設定", systemImage: "gearshape").tag(LibraryDestination.settings) }
         }
@@ -58,23 +37,13 @@ struct SidebarView: View {
         .background(theme.surface.opacity(0.10))
         .navigationTitle("星穹私藏音樂庫")
         .tint(theme.primary)
-        .task { await appModel.refreshSourceStatuses(sources, context: context) }
-        .fileImporter(
-            isPresented: $isReauthorizationPickerPresented,
-            allowedContentTypes: [.folder]
-        ) { result in
-            guard let source = reauthorizationSource else { return }
-            reauthorizationSource = nil
-            guard case let .success(url) = result else { return }
-            appModel.reauthorizeSource(source, with: url, context: context)
-        }
+        .defaultScrollAnchor(.top)
+        .task(id: sources.map(\.updatedAt)) { refreshTrackCount() }
     }
 
-    private func statusColor(_ status: MediaSourceStatus) -> Color {
-        switch status { case .available: .green; case .scanning: .yellow; case .offline: .orange; case .permissionRequired: .red }
-    }
-    private func statusText(_ status: MediaSourceStatus) -> String {
-        switch status { case .available: "可使用"; case .scanning: "正在索引"; case .offline: "來源離線"; case .permissionRequired: "需要重新授權" }
+    private func refreshTrackCount() {
+        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
+        trackCount = (try? context.fetchCount(descriptor)) ?? 0
     }
 }
 
@@ -103,7 +72,7 @@ struct NowPlayingView: View {
     var body: some View {
         let current = appModel.currentTrack
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 28) {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 34) {
                         mediaWorld(size: 300, artworkData: current?.artworkData)
@@ -114,10 +83,15 @@ struct NowPlayingView: View {
                         nowPlayingControls
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 28)
+                Text("曲庫")
+                    .font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
                 TrackListView()
-            }.padding(24)
+            }
+            .frame(maxWidth: 1_100, alignment: .leading)
+            .padding(24)
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("夜航收藏")
@@ -128,7 +102,6 @@ struct NowPlayingView: View {
     }
 
     @ViewBuilder private var nowPlayingControls: some View {
-        @Bindable var model = appModel
         let current = appModel.currentTrack
         VStack(alignment: .leading, spacing: 12) {
             Text("現在收聽").font(.headline).foregroundStyle(theme.metal)
@@ -137,7 +110,16 @@ struct NowPlayingView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.75)
             Text(current?.artist ?? "私人曲庫").font(.title3).foregroundStyle(.secondary).lineLimit(1)
-            HStack {
+            ViewThatFits(in: .horizontal) {
+                playbackActions
+                ScrollView(.horizontal, showsIndicators: false) { playbackActions }
+            }
+        }
+    }
+
+    private var playbackActions: some View {
+        @Bindable var model = appModel
+        return HStack(spacing: 10) {
                 Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
                     if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: context) }
                 }
@@ -156,8 +138,9 @@ struct NowPlayingView: View {
                         }
                     }
                 }
-            }.buttonStyle(.borderedProminent).controlSize(.large)
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
     }
 
     @ViewBuilder
@@ -350,7 +333,7 @@ struct TrackListView: View {
                 if isLoading {
                     Color.clear.frame(minHeight: 220).accessibilityHidden(true)
                 } else {
-                    ContentUnavailableView("尚未加入音樂", systemImage: "cloud.moon", description: Text("從側邊欄加入本機或 NAS 資料夾。"))
+                    ContentUnavailableView("尚未加入音樂", systemImage: "cloud.moon", description: Text("前往設定加入本機或 NAS 資料夾。"))
                         .frame(minHeight: 220)
                 }
             }
@@ -863,18 +846,34 @@ struct QueueView: View {
             }
             if appModel.playback.queue.tracks.isEmpty {
                 ContentUnavailableView("佇列是空的", systemImage: "music.note.list", description: Text("從曲庫選擇歌曲開始播放。"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(appModel.playback.queue.tracks) { track in
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle().fill(theme.secondary)
+                                    Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal)
+                                }
+                                .frame(width: 48, height: 48)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(track.title).lineLimit(1)
+                                    Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
+                            }
+                            .frame(minHeight: 52)
+                            .padding(8)
+                            .background(
+                                track.id == appModel.currentTrackID ? theme.primary.opacity(0.16) : .clear,
+                                in: RoundedRectangle(cornerRadius: 14)
+                            )
+                        }
+                    }
+                }
             }
-            ForEach(Array(appModel.playback.queue.tracks.enumerated()), id: \.element.id) { index, track in
-                HStack(spacing: 12) {
-                    ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
-                        .frame(width: 48, height: 48)
-                    VStack(alignment: .leading) { Text(track.title); Text(track.artist).font(.caption).foregroundStyle(.secondary) }
-                    Spacer(); Image(systemName: "line.3.horizontal")
-                }.frame(minHeight: 52).padding(8)
-                .background(track.id == appModel.currentTrackID ? theme.primary.opacity(0.16) : .clear,
-                            in: RoundedRectangle(cornerRadius: 14))
-            }
-            Spacer()
         }
         .padding(18)
         .background(.clear)
@@ -884,17 +883,148 @@ struct QueueView: View {
 struct SettingsView: View {
     @Environment(AppModel.self) private var appModel
     var body: some View {
+        #if os(macOS)
+        NavigationStack { settingsForm }
+        #else
+        settingsForm
+        #endif
+    }
+
+    private var settingsForm: some View {
         @Bindable var appModel = appModel
-        Form {
+        return Form {
             Picker("天空主題", selection: $appModel.selectedTheme) {
                 ForEach(CMVThemeID.allCases) { Text($0.name).tag($0) }
+            }
+            Section("曲庫") {
+                NavigationLink {
+                    MusicSourcesSettingsView()
+                } label: {
+                    Label("音樂來源", systemImage: "externaldrive.connected.to.line.below")
+                }
+                Text("加入、重新授權與重新索引都集中在這裡，不占用日常導覽。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("智慧快取") {
                 LabeledContent("預設上限", value: "10 GB")
                 Text("釘選內容不會被智慧快取淘汰。")
             }
             Section("隱私") { Text("聲學分析與 Smart DJ 全部在裝置上完成。") }
-        }.formStyle(.grouped).navigationTitle("設定")
+        }
+        .formStyle(.grouped)
+        .navigationTitle("設定")
+    }
+}
+
+struct MusicSourcesSettingsView: View {
+    @Environment(AppModel.self) private var appModel
+    @Environment(\.modelContext) private var context
+    @Environment(\.cmvTheme) private var theme
+    @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
+    @State private var reauthorizationSource: MediaSourceRecord?
+    @State private var isReauthorizationPickerPresented = false
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("來源", value: "\(sources.count)")
+                LabeledContent("可使用", value: "\(sources.count { $0.status == .available })")
+                if issueCount > 0 {
+                    LabeledContent("需要處理", value: "\(issueCount)")
+                        .foregroundStyle(.orange)
+                }
+            } header: {
+                Text("曲庫連線")
+            } footer: {
+                Text("NAS 暫時離線不會清除曲庫；重新授權也會保留既有歌曲與歌單。")
+            }
+
+            Section {
+                Button {
+                    appModel.showingImporter = true
+                } label: {
+                    Label("加入音樂來源", systemImage: "plus.circle.fill")
+                }
+
+                if !sources.isEmpty {
+                    Button("重試所有來源", systemImage: "arrow.clockwise") {
+                        for source in sources { appModel.restoreAndScan(source, context: context) }
+                    }
+                }
+            }
+
+            Section("來源明細") {
+                if sources.isEmpty {
+                    ContentUnavailableView(
+                        "尚未加入來源",
+                        systemImage: "externaldrive.badge.plus",
+                        description: Text("加入本機資料夾，或先在 Finder／檔案 App 連接 NAS。")
+                    )
+                } else {
+                    ForEach(sources) { source in
+                        sourceRow(source)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("音樂來源")
+        .tint(theme.primary)
+        .fileImporter(isPresented: $isReauthorizationPickerPresented, allowedContentTypes: [.folder]) { result in
+            guard let source = reauthorizationSource else { return }
+            reauthorizationSource = nil
+            guard case let .success(url) = result else { return }
+            appModel.reauthorizeSource(source, with: url, context: context)
+        }
+    }
+
+    @ViewBuilder
+    private func sourceRow(_ source: MediaSourceRecord) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: statusSymbol(source.status))
+                .foregroundStyle(statusColor(source.status))
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(source.displayName).lineLimit(1)
+                Text(statusText(source.status))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 12)
+            if source.status == .permissionRequired {
+                Button("重新授權") {
+                    reauthorizationSource = source
+                    isReauthorizationPickerPresented = true
+                }
+            } else {
+                Button(source.status == .available ? "重新索引" : "重試") {
+                    appModel.restoreAndScan(source, context: context)
+                }
+            }
+        }
+        .frame(minHeight: 44)
+    }
+
+    private var issueCount: Int {
+        sources.count { $0.status == .permissionRequired || $0.status == .offline }
+    }
+
+    private func statusColor(_ status: MediaSourceStatus) -> Color {
+        switch status { case .available: .green; case .scanning: .yellow; case .offline: .orange; case .permissionRequired: .red }
+    }
+
+    private func statusSymbol(_ status: MediaSourceStatus) -> String {
+        switch status {
+        case .available: "checkmark.circle.fill"
+        case .scanning: "arrow.trianglehead.2.clockwise.rotate.90"
+        case .offline: "externaldrive.badge.exclamationmark"
+        case .permissionRequired: "lock.trianglebadge.exclamationmark"
+        }
+    }
+
+    private func statusText(_ status: MediaSourceStatus) -> String {
+        switch status { case .available: "可使用"; case .scanning: "正在索引"; case .offline: "來源離線"; case .permissionRequired: "需要重新授權" }
     }
 }
 

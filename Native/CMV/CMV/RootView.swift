@@ -9,6 +9,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
     @Environment(VideoWindowStore.self) private var videoWindowStore
+    @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -28,7 +29,12 @@ struct RootView: View {
             }
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
-            .safeAreaInset(edge: .top, spacing: 0) { ErrorStatusBanner() }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    ErrorStatusBanner()
+                    SourceStatusBanner()
+                }
+            }
             .fileImporter(
                 isPresented: $appModel.showingImporter,
                 allowedContentTypes: [.folder],
@@ -43,6 +49,7 @@ struct RootView: View {
             .onChange(of: appModel.videoPresentationMode) { _, _ in
                 updateVideoPresentation()
             }
+            .task { await appModel.refreshSourceStatuses(sources, context: modelContext) }
             #if os(iOS)
             .sheet(item: $videoSelection) { selection in
                 NavigationStack {
@@ -188,6 +195,15 @@ private struct CompactRootView: View {
         }
         .onChange(of: appModel.videoURL) { _, _ in showMoonPortalIfNeeded() }
         .onChange(of: appModel.videoPresentationMode) { _, _ in showMoonPortalIfNeeded() }
+        .onChange(of: appModel.selection) { _, destination in
+            guard let destination else { return }
+            switch destination {
+            case .nowPlaying: selectedTab = .nowPlaying
+            case .playlists: selectedTab = .playlists
+            case .settings: selectedTab = .settings
+            default: selectedTab = .songs
+            }
+        }
     }
 
     private func showMoonPortalIfNeeded() {
@@ -199,11 +215,7 @@ private struct CompactRootView: View {
 
 private struct CompactLibraryView: View {
     @Environment(AppModel.self) private var appModel
-    @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
-    @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
-    @State private var reauthorizationSource: MediaSourceRecord?
-    @State private var isReauthorizationPickerPresented = false
 
     var body: some View {
         List {
@@ -213,50 +225,53 @@ private struct CompactLibraryView: View {
                 NavigationLink { CatalogView(kind: .artist) } label: { Label("歌手", systemImage: "person.2") }
                 NavigationLink { FavoriteTracksView() } label: { Label("最愛", systemImage: "heart.fill") }
             }
-            Section("音樂來源") {
-                ForEach(sources) { source in
-                    HStack {
-                        Circle().fill(statusColor(source.status)).frame(width: 8, height: 8)
-                        VStack(alignment: .leading) {
-                            Text(source.displayName).lineLimit(1)
-                            Text(statusText(source.status)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if source.status == .permissionRequired {
-                            Button("重新授權") {
-                                reauthorizationSource = source
-                                isReauthorizationPickerPresented = true
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                        Button(source.status == .available ? "重新索引" : "重試") {
-                            appModel.restoreAndScan(source, context: context)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
+            Section("曲庫") {
                 Button { appModel.showingImporter = true } label: {
-                    Label("加入音樂來源", systemImage: "plus.circle")
+                    Label("加入音樂", systemImage: "plus.circle")
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("曲庫")
         .tint(theme.primary)
-        .fileImporter(isPresented: $isReauthorizationPickerPresented, allowedContentTypes: [.folder]) { result in
-            guard let source = reauthorizationSource else { return }
-            reauthorizationSource = nil
-            guard case let .success(url) = result else { return }
-            appModel.reauthorizeSource(source, with: url, context: context)
-        }
-    }
-
-    private func statusColor(_ status: MediaSourceStatus) -> Color {
-        switch status { case .available: .green; case .scanning: .yellow; case .offline: .orange; case .permissionRequired: .red }
-    }
-
-    private func statusText(_ status: MediaSourceStatus) -> String {
-        switch status { case .available: "可使用"; case .scanning: "正在索引"; case .offline: "來源離線"; case .permissionRequired: "需要重新授權" }
     }
 }
 #endif
+
+private struct SourceStatusBanner: View {
+    @Environment(AppModel.self) private var appModel
+    @Environment(\.cmvTheme) private var theme
+    @Query private var sources: [MediaSourceRecord]
+
+    var body: some View {
+        if issueCount > 0 {
+            HStack(spacing: 12) {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+                    .foregroundStyle(.orange)
+                Text(summary)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(2)
+                Spacer(minLength: 12)
+                Button("前往設定") { appModel.selection = .settings }
+                    .buttonStyle(.bordered)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(theme.primary.opacity(0.35)).frame(height: 1)
+            }
+            .accessibilityElement(children: .contain)
+        }
+    }
+
+    private var issueCount: Int { permissionCount + offlineCount }
+    private var permissionCount: Int { sources.count { $0.status == .permissionRequired } }
+    private var offlineCount: Int { sources.count { $0.status == .offline } }
+    private var summary: String {
+        var parts: [String] = []
+        if permissionCount > 0 { parts.append("\(permissionCount) 個來源需要重新授權") }
+        if offlineCount > 0 { parts.append("\(offlineCount) 個來源目前離線") }
+        return parts.joined(separator: "，")
+    }
+}

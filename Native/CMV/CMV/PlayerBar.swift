@@ -8,31 +8,26 @@ struct PlayerBar: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
-        let current = appModel.currentTrack
-        HStack(spacing: 18) {
-            ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
-                .frame(width: 56, height: 56)
-            VStack(alignment: .leading) {
-                Text(current?.title ?? "尚未播放").font(.headline).lineLimit(1)
-                Text(current?.artist ?? "選擇歌曲開始聆聽").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-            Spacer()
+        ViewThatFits(in: .horizontal) {
+            fullLayout.frame(minWidth: 920)
+            compactLayout
+        }
+        .padding(.horizontal, 20).padding(.vertical, 12)
+        .background(reduceTransparency ? AnyShapeStyle(theme.background.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial))
+        .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
+        .controlSize(.large)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var fullLayout: some View {
+        HStack(spacing: 16) {
+            currentTrackSummary
+            Spacer(minLength: 12)
             Button("隨機", systemImage: "shuffle") { appModel.playback.toggleShuffle() }
                 .labelStyle(.iconOnly).tint(appModel.playback.isShuffleEnabled ? theme.primary : .secondary)
                 .frame(width: 44, height: 44)
                 .disabled(appModel.videoURL != nil)
-            Button("上一首", systemImage: "backward.fill") { try? appModel.playback.skipBackward() }
-                .labelStyle(.iconOnly).frame(width: 44, height: 44)
-                .disabled(appModel.videoURL != nil)
-            Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
-                if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: modelContext) }
-            }
-            .labelStyle(.iconOnly).buttonStyle(.borderedProminent).controlSize(.large).frame(width: 44, height: 44)
-            .disabled(appModel.videoURL != nil)
-            .accessibilityHint(appModel.videoURL == nil ? "播放目前曲目" : "請使用影片播放控制項")
-            Button("下一首", systemImage: "forward.fill") { try? appModel.playback.skipForward() }
-                .labelStyle(.iconOnly).frame(width: 44, height: 44)
-                .disabled(appModel.videoURL != nil)
+            transportControls
             Button("重複", systemImage: "repeat") { appModel.playback.toggleRepeat() }
                 .labelStyle(.iconOnly).tint(appModel.playback.isRepeatEnabled ? theme.primary : .secondary)
                 .frame(width: 44, height: 44)
@@ -41,14 +36,61 @@ struct PlayerBar: View {
             Spacer()
             Image(systemName: "airplayaudio")
             Slider(value: Binding(get: { Double(appModel.playback.outputVolume) }, set: { appModel.playback.setVolume(Float($0)) }), in: 0...1)
-                .frame(maxWidth: 220).accessibilityLabel("音量")
+                .frame(minWidth: 120, maxWidth: 220).accessibilityLabel("音量")
             Image(systemName: "speaker.wave.2.fill")
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
-        .background(reduceTransparency ? AnyShapeStyle(theme.background.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial))
-        .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
-        .controlSize(.large)
-        .accessibilityElement(children: .contain)
+    }
+
+    private var compactLayout: some View {
+        HStack(spacing: 10) {
+            currentTrackSummary
+            Spacer(minLength: 8)
+            transportControls
+            Menu {
+                Button("隨機播放", systemImage: "shuffle") { appModel.playback.toggleShuffle() }
+                Button("重複播放", systemImage: "repeat") { appModel.playback.toggleRepeat() }
+            } label: {
+                Label("更多播放控制", systemImage: "ellipsis.circle")
+                    .labelStyle(.iconOnly)
+            }
+            .frame(width: 44, height: 44)
+            SleepTimerMenu()
+        }
+    }
+
+    private var currentTrackSummary: some View {
+        let current = appModel.currentTrack
+        return HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(theme.secondary)
+                Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal)
+            }
+            .frame(width: 52, height: 52)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(current?.title ?? "尚未播放").font(.headline).lineLimit(1)
+                Text(current?.artist ?? "選擇歌曲開始聆聽").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
+        .frame(minWidth: 180, maxWidth: 300, alignment: .leading)
+    }
+
+    private var transportControls: some View {
+        HStack(spacing: 4) {
+            Button("上一首", systemImage: "backward.fill") { try? appModel.playback.skipBackward() }
+                .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
+            Button(appModel.playback.isPlaying ? "暫停" : (appModel.videoURL == nil ? "播放" : "影片播放中"), systemImage: appModel.playback.isPlaying ? "pause.fill" : (appModel.videoURL == nil ? "play.fill" : "film")) {
+                if appModel.playback.isPlaying { appModel.playback.pause() } else { appModel.playOrResume(context: modelContext) }
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderedProminent)
+            .frame(width: 44, height: 44)
+            .disabled(appModel.videoURL != nil)
+            .accessibilityHint(appModel.videoURL == nil ? "播放目前曲目" : "請使用影片播放控制項")
+            Button("下一首", systemImage: "forward.fill") { try? appModel.playback.skipForward() }
+                .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .disabled(appModel.videoURL != nil)
+        }
     }
 }
 

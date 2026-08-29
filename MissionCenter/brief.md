@@ -1,18 +1,16 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=35d1dca8026bee12d3d620bb972b53e01c42e91a59d919a3a9b17622e6a78f3f -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=2ac067f16b227988deb475c7a97ac7943622b62b6c8fc8f190372c632f4715f4 -->
 # 任務簡報
 
-- 最後整理: 2026-08-29
-- 來源指紋: `35d1dca8026bee12d3d620bb972b53e01c42e91a59d919a3a9b17622e6a78f3f`
+- 最後整理: 2026-08-30
+- 來源指紋: `2ac067f16b227988deb475c7a97ac7943622b62b6c8fc8f190372c632f4715f4`
 - 唯一真實來源: `tasks.md`
 - 專案: 星穹私藏音樂庫 Celestial Music Vault（CMV）維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
 - 週期: CMV 2.0 原生重建
 
-## 今日摘要 · 2026-08-29
-- 2026-08-29 14:45 +08:00｜變更：完成 AERO-F9 多資料夾 security-scoped bookmark 修復｜原因：SwiftUI fileImporter 回傳的 security-scoped URL 未先呼叫 `startAccessingSecurityScopedResource()`，且批次去重曾用新建的 standardized URL 鑄造 bookmark，導致 NAS 資料夾整批回報 NSCocoaErrorDomain 256｜影響：原始 picker URL 現先開啟 scope、建立 bookmark 後立即平衡釋放；標準化 URL 僅用於路徑去重。真實 NAS `mardoka` 已成功加入、背景遞迴索引、重啟保留並可重新索引；available 文案更正為「可使用」。Mac／iPad Debug build 通過，CodeRabbit 全差異審查 0 issues。
-- 2026-08-29 10:42 +08:00｜變更：完成 AERO-U8 四主題視覺分化與低耗能星光閃爍｜原因：四套主題原先被 NavigationSplitView 的實心欄面蓋成近似黑色，且星空缺乏細微生命感｜影響：四套天空分別採酒紅星雲、冷藍月蝕、青綠極光與紫橘晨曦；欄面改為顯露主題天空，三欄共享固定 58 顆錯峰呼吸星光並限制最高 12 fps。靜態大氣與動態星點分離，Reduce Motion 或非前景自動暫停。四套 iPad Simulator 截圖比對、Swift 16/16、Mac／iPad Debug build 均通過。
-- 2026-08-29 10:14 +08:00｜變更：完成 AERO-P7 非阻塞背景工作與全域狀態列｜原因：使用者要求任何 loading 都在背景運作，畫面持續可操作，狀態只出現在最上方或最下方｜影響：掃描、來源確認、搜尋／分頁、播放準備、分析、Smart DJ、離線釘選與智慧快取統一顯示於底部優先級工作列；錯誤改為頂部非模態橫幅。移除中央／側欄 spinner，搜尋保留舊結果直到新頁完成；專輯／歌手分組移出 MainActor，分頁只在 lazy 頁尾觸發。Swift 16/16、Mac／iPad Debug build 通過；CodeRabbit 三輪有效問題全數修正，最終 0 issues。工程目標為主執行緒無長工作，不誤宣稱硬體／OS 絕對永不掉幀。
+## 今日摘要 · 2026-08-30
+- 無
 
 ## 重要護欄 (1)
 - GR-001
