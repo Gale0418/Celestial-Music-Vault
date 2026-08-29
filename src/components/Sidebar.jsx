@@ -104,7 +104,7 @@ const Sidebar = ({ activeTab, setActiveTab, themeId, onThemeChange }) => {
           letterSpacing: '-0.5px',
           color: 'var(--text-primary)'
         }}>
-          AeroMusic
+          CMV
         </span>
       </div>
 

@@ -9,7 +9,7 @@ const helperEnd = mainText.indexOf('// IPC: Native multi-folder selection dialog
 const filterStart = mainText.indexOf('function getApprovedRootsRegistryPath');
 const filterEnd = mainText.indexOf('// IPC: User Data Persistence');
 const helperText = mainText.slice(0, helperEnd) + mainText.slice(filterStart, filterEnd);
-const registryUserData = path.join(os.tmpdir(), `aeromusic-registry-${process.pid}`);
+const registryUserData = path.join(os.tmpdir(), `cmv-registry-${process.pid}`);
 let capturedFetch;
 const sandboxRequire = (id) => {
   if (id === 'electron') return {
@@ -29,7 +29,7 @@ const sandbox = { require: sandboxRequire, console, process, URL, Response, Head
 vm.runInNewContext(`${helperText}\nmodule.exports = { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile, handleAppProtocol };`, sandbox, { filename: 'main.cjs' });
 const { approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, ensureApprovedDirectory, ensureApprovedFile, filterPersistedUserData, scanAudioFiles, toMediaUrl, ensureApprovedRemoteMediaUrl, resolveBundleFile, handleAppProtocol } = sandbox.module.exports;
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aeromusic-security-'));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cmv-security-'));
 const approvedRoot = path.join(tempRoot, 'approved');
 const outsideRoot = path.join(tempRoot, 'outside');
 fs.mkdirSync(approvedRoot);
@@ -43,7 +43,7 @@ const resolvedOutsideSong = fs.realpathSync(outsideSong);
 rememberApprovedRoots([approvedRoot]);
 assert.equal(ensureApprovedDirectory(approvedRoot), fs.realpathSync(approvedRoot));
 assert.equal(ensureApprovedFile(song), fs.realpathSync(song));
-assert.equal(toMediaUrl(song), `aeromusic://app/media/${encodeURIComponent(song)}`);
+assert.equal(toMediaUrl(song), `cmv://app/media/${encodeURIComponent(song)}`);
 assert.equal(ensureApprovedRemoteMediaUrl('https://www.soundhelix.com/examples/mp3/song.mp3'), 'https://www.soundhelix.com/examples/mp3/song.mp3');
 assert.throws(() => ensureApprovedRemoteMediaUrl('http://www.soundhelix.com/song.mp3'));
 assert.throws(() => ensureApprovedRemoteMediaUrl('https://example.com/song.mp3'));
@@ -80,7 +80,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   assert.throws(() => ensureApprovedFile(outsideSong));
 
   const mediaResponse = await handleAppProtocol({
-    url: `aeromusic://app/media/${encodeURIComponent(outsideSong)}`,
+    url: `cmv://app/media/${encodeURIComponent(outsideSong)}`,
     headers: new Headers({ Range: 'bytes=1-3' })
   });
   assert.equal(mediaResponse.status, 404, 'unapproved media must remain blocked');
@@ -88,7 +88,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   rememberApprovedRoots([approvedRoot]);
   fs.writeFileSync(song, '0123456789');
   const rangedResponse = await handleAppProtocol({
-    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    url: `cmv://app/media/${encodeURIComponent(song)}`,
     headers: new Headers({ Range: 'bytes=2-5', Authorization: 'Bearer should-not-forward' })
   });
   assert.equal(rangedResponse.status, 206);
@@ -98,7 +98,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
 
   const headResponse = await handleAppProtocol({
     method: 'HEAD',
-    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    url: `cmv://app/media/${encodeURIComponent(song)}`,
     headers: new Headers()
   });
   assert.equal(headResponse.status, 200);
@@ -107,7 +107,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
 
   const headRangeResponse = await handleAppProtocol({
     method: 'HEAD',
-    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    url: `cmv://app/media/${encodeURIComponent(song)}`,
     headers: new Headers({ Range: 'bytes=2-5' })
   });
   assert.equal(headRangeResponse.status, 206);
@@ -116,7 +116,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   assert.equal(headRangeResponse.body, null, 'HEAD range response must not read or expose a body');
 
   const invalidRangeResponse = await handleAppProtocol({
-    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    url: `cmv://app/media/${encodeURIComponent(song)}`,
     headers: new Headers({ Range: 'bytes=99-100' })
   });
   assert.equal(invalidRangeResponse.status, 416);
@@ -124,7 +124,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
 
   const headInvalidRangeResponse = await handleAppProtocol({
     method: 'HEAD',
-    url: `aeromusic://app/media/${encodeURIComponent(song)}`,
+    url: `cmv://app/media/${encodeURIComponent(song)}`,
     headers: new Headers({ Range: 'bytes=99-100' })
   });
   assert.equal(headInvalidRangeResponse.status, 416);
@@ -132,7 +132,7 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   assert.equal(headInvalidRangeResponse.body, null, 'HEAD invalid range response must not expose a body');
 
   await handleAppProtocol({
-    url: 'aeromusic://app/remote/https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2Fsong.mp3',
+    url: 'cmv://app/remote/https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2Fsong.mp3',
     headers: new Headers({ Range: 'bytes=0-10', Authorization: 'Bearer should-not-forward' })
   });
   assert.equal(capturedFetch[1].headers.Range, 'bytes=0-10');
@@ -147,5 +147,5 @@ return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (fil
   fs.rmSync(tempRoot, { recursive: true, force: true });
   fs.rmSync(registryUserData, { recursive: true, force: true });
   approvedScanRoots.clear();
-  console.log('PASS: AeroMusic temporary-directory security behavior');
+  console.log('PASS: CMV temporary-directory security behavior');
 });

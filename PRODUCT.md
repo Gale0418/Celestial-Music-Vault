@@ -1,11 +1,11 @@
-# AeroMusic 2.0 Product Authority
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0 Product Authority
 
 ## Product
 
-- **Product:** AeroMusic 2.0
+- **Product:** 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0
 - **Promise:** A private, dependable native music library for people who keep a very large local or NAS collection and expect it to remain usable when the network is not.
 - **Primary audience:** One owner of a carefully maintained personal collection, using a Mac or iPad at home, at a desk, or connected to a NAS on the local network.
-- **Unique mechanism:** AeroMusic turns a user-authorized folder into a durable offline-first library, then combines local acoustic analysis with transparent listening history to create explainable queues without uploading audio.
+- **Unique mechanism:** CMV turns a user-authorized folder into a durable offline-first library, then combines local acoustic analysis with transparent listening history to create explainable queues without uploading audio.
 - **Cultural home:** Dream atlases, blue-hour skies, luminous clouds, constellations, auroras, and the childhood feeling of finding whole worlds inside music.
 
 ## Platforms and distribution
@@ -28,7 +28,7 @@
 
 ## Product truths and constraints
 
-- The user connects a NAS in Finder or the Files app first. AeroMusic never implements SMB login and never stores NAS credentials.
+- The user connects a NAS in Finder or the Files app first. CMV never implements SMB login and never stores NAS credentials.
 - Persist access with security-scoped bookmarks. A temporarily unavailable source is not deletion.
 - Pinned media lives in Application Support and is never evicted by LRU. Smart cache lives in Caches, defaults to 10 GB, and may evict only unpinned content.
 - The legacy Electron app and its data stay untouched until the native release passes acceptance. No legacy migration is provided.

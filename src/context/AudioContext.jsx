@@ -15,7 +15,7 @@ const resolveMediaUrl = (url) => {
 const DEFAULT_PLAYLIST = [
   {
     id: 'lofi-1',
-    title: 'Aero Space Chill',
+    title: 'CMV Space Chill',
     artist: 'Lofi Dreamer',
     album: 'Cosmic Beats Vol. 1',
     cover: defaultCover,
@@ -1188,7 +1188,7 @@ export const AudioProvider = ({ children }) => {
             WebkitAppRegion: 'no-drag',
           }}
         >
-          <span>AeroPlayer - 影片播放視窗 (拖曳移動)</span>
+          <span>CMVPlayer - 影片播放視窗 (拖曳移動)</span>
           {/* Close button */}
           <button 
             onClick={() => setShowVideo(false)}

@@ -1,5 +1,0 @@
-module AeroCoreFFI {
-  header "aero_core_ffi.h"
-  export *
-  link "aero_core_ffi"
-}

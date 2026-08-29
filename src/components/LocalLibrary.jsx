@@ -77,7 +77,7 @@ const LocalLibrary = () => {
   const [sortDirection, setSortDirection] = useState('asc');
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem('aeromusic-columns'));
+      const saved = JSON.parse(localStorage.getItem('cmv-columns'));
       if (Array.isArray(saved)) return normalizeVisibleColumns(saved);
     } catch {
       // Ignore invalid saved column preferences and use the defaults below.
@@ -92,7 +92,7 @@ const LocalLibrary = () => {
       ? visibleColumns.filter(c => c !== colId)
       : [...visibleColumns, colId];
     setVisibleColumns(next);
-    localStorage.setItem('aeromusic-columns', JSON.stringify(next));
+    localStorage.setItem('cmv-columns', JSON.stringify(next));
   };
 
   const col = (id) => visibleColumns.includes(id);

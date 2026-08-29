@@ -1,4 +1,4 @@
-# AeroMusic 2.0｜送審前 gate
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜送審前 gate
 
 更新：2026-08-27
 
@@ -7,11 +7,11 @@
 ## 已完成的靜態 gate
 
 - deployment target：macOS 15.0、iPadOS 18.0；只啟用 `iphoneos`、`iphonesimulator`、`macosx`。
-- macOS App Sandbox、user-selected read-only、app-scope bookmark 與 network client entitlement 已列在 `AeroMusic.entitlements`。
+- macOS App Sandbox、user-selected read-only、app-scope bookmark 與 network client entitlement 已列在 `CMV.entitlements`。
 - App 不保存 NAS 帳密、不建立帳號、不送出音樂、PCM、Metadata 或 Smart DJ 結果。
 - `PrivacyInfo.xcprivacy` 宣告不追蹤、不收集資料；檔案修改時間只用於使用者明確授權的資料夾差異掃描（`3B52.1`）。
 - `Info.plist` 僅宣告音訊背景模式與 Music 類別；沒有任意網路載入或第三方追蹤 SDK。
-- 已完成本機 universal Release archive：`/tmp/AeroMusic-macOS-universal.xcarchive`；
+- 已完成本機 universal Release archive：`/tmp/CMV-macOS-universal.xcarchive`；
   App binary 同時含 `arm64`／`x86_64`，`codesign --verify --deep --strict` 通過，
   embedded entitlements 與 `PrivacyInfo.xcprivacy` 均可解析。此 archive 使用
   Apple Development 憑證，僅代表本機封裝與沙盒驗證，不等同 App Store
@@ -39,24 +39,24 @@
 Native/scripts/qualify-app-store.sh
 
 # 未簽章的 Simulator／generic device 編譯輸出
-AEROMUSIC_APP_PATH=/tmp/aeromusic-derived-ios-universal-t4/Build/Products/Release-iphonesimulator/AeroMusic.app \
-  AEROMUSIC_EXPECTED_ARCHES='arm64 x86_64' \
+CMV_APP_PATH=/tmp/cmv-derived-ios-universal-t4/Build/Products/Release-iphonesimulator/CMV.app \
+  CMV_EXPECTED_ARCHES='arm64 x86_64' \
   Native/scripts/qualify-app-store.sh --skip-codesign
 ```
 
 ```sh
-xcodebuild -project Native/AeroMusic/AeroMusic.xcodeproj -scheme AeroMusic \
+xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV \
   -configuration Release -sdk macosx \
   -destination 'platform=macOS,arch=arm64' \
   ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
 
-xcodebuild -project Native/AeroMusic/AeroMusic.xcodeproj -scheme AeroMusic \
+xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV \
   -configuration Release -destination 'generic/platform=macOS' \
-  -archivePath /tmp/AeroMusic-macOS-universal.xcarchive \
+  -archivePath /tmp/CMV-macOS-universal.xcarchive \
   DEVELOPMENT_TEAM=<TEAM_ID> CODE_SIGN_STYLE=Manual \
   CODE_SIGN_IDENTITY=<DISTRIBUTION_IDENTITY> archive
 
-xcodebuild -project Native/AeroMusic/AeroMusic.xcodeproj -scheme AeroMusic \
+xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV \
   -configuration Release -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPad Air 11-inch (M4),OS=26.5' \
   ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build

@@ -1,0 +1,5 @@
+module CMVCoreFFI {
+  header "cmv_core_ffi.h"
+  export *
+  link "cmv_core_ffi"
+}

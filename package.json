@@ -1,7 +1,7 @@
 {
-  "name": "music",
-  "description": "AeroMusic 是為 macOS 設計的本機與 NAS 音樂播放器。",
-  "author": "AeroMusic Contributors",
+  "name": "celestial-music-vault",
+  "description": "星穹私藏音樂庫 Celestial Music Vault（CMV）是為 macOS 設計的本機與 NAS 音樂播放器。",
+  "author": "CMV Contributors",
   "private": true,
   "version": "1.3.2",
   "main": "main.cjs",
@@ -17,8 +17,8 @@
     "dist": "electron-builder"
   },
   "build": {
-    "appId": "com.antigravity.aeromusic",
-    "productName": "AeroMusic",
+    "appId": "com.windsheep.cmv",
+    "productName": "CMV",
     "files": [
       "dist/**/*",
       "lib/**/*",

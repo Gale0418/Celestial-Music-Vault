@@ -1,6 +1,6 @@
-# AeroMusic
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）
 
-AeroMusic 是以 Electron、React 與 Vite 製作的 macOS 音樂播放器，支援本機與 NAS 音樂資料夾、播放清單、迷你播放器、影片播放及音效等化器。
+星穹私藏音樂庫 Celestial Music Vault（CMV）是以 Electron、React 與 Vite 製作的 macOS 音樂播放器，支援本機與 NAS 音樂資料夾、播放清單、迷你播放器、影片播放及音效等化器。
 
 ## 系統需求
 
@@ -31,22 +31,22 @@ npm start
 若要直接輸出至指定位置：
 
 ```bash
-AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
+CMV_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 ```
 
 若鑰匙圈已有 macOS 簽章憑證，可明確指定憑證名稱；腳本不會把 Apple 帳密寫入專案：
 
 ```bash
-AEROMUSIC_SIGNING_IDENTITY="Developer ID Application: ..." \
-  AEROMUSIC_OUTPUT_DIR="/path/to/output" \
+CMV_SIGNING_IDENTITY="Developer ID Application: ..." \
+  CMV_OUTPUT_DIR="/path/to/output" \
   ./scripts/build-macos.sh
 ```
 
 正式對外分發還需要 Developer ID Application 憑證與已預先存入鑰匙圈的 notarytool profile：
 
 ```bash
-AEROMUSIC_SIGNING_IDENTITY="Developer ID Application: ..." \
-  AEROMUSIC_NOTARY_KEYCHAIN_PROFILE="aeromusic-notary" \
+CMV_SIGNING_IDENTITY="Developer ID Application: ..." \
+  CMV_NOTARY_KEYCHAIN_PROFILE="cmv-notary" \
   ./scripts/build-macos.sh
 ```
 
@@ -71,7 +71,7 @@ MissionCenter/  本次維護任務與驗證紀錄
 
 - Renderer 不啟用 Node.js integration，並啟用 context isolation。
 - Renderer 啟用 Chromium sandbox，主程序會拒絕非 App origin 的 IPC 與導覽。
-- App 與本機媒體透過 `aeromusic://` 安全協定載入。
+- App 與本機媒體透過 `cmv://` 安全協定載入。
 - 本機媒體只允許來自使用者經原生資料夾選擇器核准的根目錄。
 - 移至垃圾桶、掃描資料夾與持久化資料均由主程序重新驗證路徑。
 - 使用者資料採序列化原子寫入與上一版備份；NAS 暫時離線不會清空已核准曲目。

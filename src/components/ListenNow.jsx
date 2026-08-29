@@ -86,7 +86,7 @@ const ListenNow = () => {
     <section className="listen-now" aria-labelledby="main-heading">
       <header className="listen-header">
         <div>
-          <p className="eyebrow">AEROMUSIC / LISTENING ROOM</p>
+          <p className="eyebrow">CMVMUSIC / LISTENING ROOM</p>
           <h1 id="main-heading">現在收聽</h1>
         </div>
         <label className="listen-search">
@@ -127,7 +127,7 @@ const ListenNow = () => {
             alt={currentTrack?.title ? `${currentTrack.title} 封面` : '預設唱片封面'}
           />
           <div className="hero-sleeve-label">
-            <span>{currentTrack ? 'NOW SPINNING' : 'AEROMUSIC'}</span>
+            <span>{currentTrack ? 'NOW SPINNING' : 'CMVMUSIC'}</span>
             <strong>{currentTrack?.title || '深夜選曲'}</strong>
           </div>
         </div>

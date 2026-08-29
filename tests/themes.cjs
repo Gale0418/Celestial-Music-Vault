@@ -41,7 +41,7 @@ const { pathToFileURL } = require('node:url');
   assert.match(audioContext, /\}, \[favorites, library, playlists, trackRatings\]\);/, 'saveAllData must only depend on collection data');
   assert.match(audioContext, /setInterval\(\(\) => \{\s*saveAllData\(\);\s*\}, 10000\);[\s\S]*\}, \[isPlaying, saveAllData\]\);/, 'playback autosave must retain a stable interval contract');
 
-  console.log(`PASS: AeroMusic theme registry (${ids.length} themes)`);
+  console.log(`PASS: CMV theme registry (${ids.length} themes)`);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

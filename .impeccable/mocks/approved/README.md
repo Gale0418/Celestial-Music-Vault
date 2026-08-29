@@ -1,10 +1,10 @@
-# AeroMusic 2.0 approved composition set
+# CMV 2.0 approved composition set
 
 These three images are the comp-led north stars for the first native surface:
 
-- `aeromusic-macos-celestial.png` — three-column Celestial Cloud Atlas.
-- `aeromusic-ipad-landscape-celestial.png` — touch-first sky archive with a dismissible queue.
-- `aeromusic-ipad-portrait-celestial.png` — a hand-held music world with a starlight playback route.
+- `cmv-macos-celestial.png` — three-column Celestial Cloud Atlas.
+- `cmv-ipad-landscape-celestial.png` — touch-first sky archive with a dismissible queue.
+- `cmv-ipad-portrait-celestial.png` — a hand-held music world with a starlight playback route.
 
 The earlier `*-crimson.png` images are rejected exploration retained only as design history; they are not implementation authority.
 

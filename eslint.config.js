@@ -18,7 +18,7 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      // AeroMusic directly controls HTMLMediaElement/Web Audio refs. The React
+      // CMV directly controls HTMLMediaElement/Web Audio refs. The React
       // Compiler-oriented rules report those intentional imperative writes.
       'react-hooks/immutability': 'off',
       'react-hooks/purity': 'off',

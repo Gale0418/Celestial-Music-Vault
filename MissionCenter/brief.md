@@ -1,13 +1,13 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=6d23a2ce64d81a5562fe123d67f2ac84b0a796cf14084b4cfe70a33c8a8ac4c4 -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=54ed242a48693d51aa76dc39a5040634dcf413578c7fdd1b6d087ece4dd35f0c -->
 # 任務簡報
 
 - 最後整理: 2026-08-29
-- 來源指紋: `6d23a2ce64d81a5562fe123d67f2ac84b0a796cf14084b4cfe70a33c8a8ac4c4`
+- 來源指紋: `54ed242a48693d51aa76dc39a5040634dcf413578c7fdd1b6d087ece4dd35f0c`
 - 唯一真實來源: `tasks.md`
-- 專案: AeroMusic 維護與交付
+- 專案: 星穹私藏音樂庫 Celestial Music Vault（CMV）維護與交付
 - 北極星: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
-- 週期: AeroMusic 2.0 原生重建
+- 週期: CMV 2.0 原生重建
 
 ## 今日摘要 · 2026-08-29
 - 2026-08-29 14:45 +08:00｜變更：完成 AERO-F9 多資料夾 security-scoped bookmark 修復｜原因：SwiftUI fileImporter 回傳的 security-scoped URL 未先呼叫 `startAccessingSecurityScopedResource()`，且批次去重曾用新建的 standardized URL 鑄造 bookmark，導致 NAS 資料夾整批回報 NSCocoaErrorDomain 256｜影響：原始 picker URL 現先開啟 scope、建立 bookmark 後立即平衡釋放；標準化 URL 僅用於路徑去重。真實 NAS `mardoka` 已成功加入、背景遞迴索引、重啟保留並可重新索引；available 文案更正為「可使用」。Mac／iPad Debug build 通過，CodeRabbit 全差異審查 0 issues。

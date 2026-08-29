@@ -1,4 +1,4 @@
-# AeroMusic Native
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）Native
 
 This directory contains the Swift 6 / SwiftUI rebuild for macOS 15+ and iPadOS
 18+. The legacy Electron application remains untouched until native acceptance is
@@ -6,25 +6,25 @@ complete.
 
 ## Structure
 
-- `AeroCore/`: first-party Swift package containing domain, library, playback,
+- `CMVCore/`: first-party Swift package containing domain, library, playback,
   analysis, cache, and theme modules.
-- `AeroMusic/`: shared multi-platform Xcode application target.
+- `CMV/`: shared multi-platform Xcode application target.
 
 ## Verify
 
 Keep build products on the workspace volume when the system disk is constrained:
 
 ```sh
-cd Native/AeroCore
+cd Native/CMVCore
 swift test --scratch-path .swiftpm-build --disable-index-store -j 1
 
-cd ../AeroMusic
-xcodebuild -project AeroMusic.xcodeproj -scheme AeroMusic \
+cd ../CMV
+xcodebuild -project CMV.xcodeproj -scheme CMV \
   -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath ../.DerivedData-mac CODE_SIGNING_ALLOWED=NO \
   COMPILER_INDEX_STORE_ENABLE=NO -jobs 1 build
 
-xcodebuild -project AeroMusic.xcodeproj -scheme AeroMusic \
+xcodebuild -project CMV.xcodeproj -scheme CMV \
   -configuration Debug -sdk iphonesimulator \
   -derivedDataPath ../.DerivedData-ios CODE_SIGNING_ALLOWED=NO \
   COMPILER_INDEX_STORE_ENABLE=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \

@@ -1,4 +1,4 @@
-# AeroMusic — 打包指南 & 全方位優化分析
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）— 打包指南與全方位優化分析
 
 > 🤖 由 Antigravity（天才青梅竹馬工程師）親筆撰寫，供未來的自己（以及其他的我）參考。
 > 最後更新：2026-08-12
@@ -10,7 +10,7 @@
 ## 一、專案架構概覽
 
 ```
-music/
+CMV/
 ├── main.cjs           # Electron 主進程 (Node.js)
 ├── preload.cjs        # Context Bridge — 安全的 IPC 橋樑
 ├── vite.config.js     # Vite 前端構建設定
@@ -51,10 +51,10 @@ music/
 ./scripts/build-macos.sh
 
 # 或指定輸出位置：
-AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
+CMV_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 ```
 
-腳本會先把必要原始碼複製到 `/tmp/aeromusic-build.*`，再執行 `npm ci`、測試、Lint、Vite build 與 electron-builder。這比直接在 SMB 上執行更穩定，亦可避開 macOS 對 NAS 原生 Node binding 的載入限制。
+腳本會先把必要原始碼複製到 `/tmp/cmv-build.*`，再執行 `npm ci`、測試、Lint、Vite build 與 electron-builder。這比直接在 SMB 上執行更穩定，亦可避開 macOS 對 NAS 原生 Node binding 的載入限制。
 
 **各環境變數說明：**
 
@@ -62,8 +62,8 @@ AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
 |------|------|
 | `ELECTRON_BUILDER_CACHE=/tmp/...` | 把 Electron 框架下載快取強制寫在本機 SSD，不碰 NAS |
 | `TMPDIR=/tmp` | 所有解壓縮暫存檔案也寫在本機 |
-| `AEROMUSIC_SIGNING_IDENTITY` | 可選；明確指定鑰匙圈中的簽章憑證，不把身分寫死在 repository |
-| `AEROMUSIC_NOTARY_KEYCHAIN_PROFILE` | 可選；提交 Apple 公證時使用已存在的 notarytool 鑰匙圈 profile |
+| `CMV_SIGNING_IDENTITY` | 可選；明確指定鑰匙圈中的簽章憑證，不把身分寫死在 repository |
+| `CMV_NOTARY_KEYCHAIN_PROFILE` | 可選；提交 Apple 公證時使用已存在的 notarytool 鑰匙圈 profile |
 
 ### 🔁 完整流程說明
 
@@ -80,10 +80,10 @@ AEROMUSIC_OUTPUT_DIR="/path/to/output" ./scripts/build-macos.sh
    ├─ 預設產生 ad-hoc 本機簽章；設定簽章環境變數時使用鑰匙圈憑證
    ├─ 深度簽章與驗證 App 後，以 hdiutil 產生 DMG 並簽章
    ├─ 設定公證 profile 時提交 notarytool、staple 並驗證 ticket
-   └─ 輸出 dist-app/mac-arm64/AeroMusic.app
-         + dist-app/AeroMusic-x.x.x-arm64.dmg
+   └─ 輸出 dist-app/mac-arm64/CMV.app
+         + dist-app/CMV-x.x.x-arm64.dmg
 
-[Step 3] cp -a dist-app/mac-arm64/AeroMusic.app ~/Desktop/
+[Step 3] cp -a dist-app/mac-arm64/CMV.app ~/Desktop/
    └─ 複製 .app 到桌面，可直接點開
 ```
 
@@ -146,7 +146,7 @@ src/
 webSecurity: false, // Allow file:// protocol for local/NAS audio files
 ```
 
-目前 App 與已核准的本機媒體改由 `aeromusic://` secure/standard/stream 協定提供，主程序會再次驗證 approved roots，且 `webSecurity` 維持預設開啟。
+目前 App 與已核准的本機媒體改由 `cmv://` secure/standard/stream 協定提供，主程序會再次驗證 approved roots，且 `webSecurity` 維持預設開啟。
 
 #### 問題二：`trash-item` 沒有路徑白名單驗證（已修正）
 
@@ -329,7 +329,7 @@ tests/
 
 ```bash
 cd <VOLUME_PATH>
-AEROMUSIC_OUTPUT_DIR="$HOME/Desktop/AeroMusic" ./scripts/build-macos.sh
+CMV_OUTPUT_DIR="$HOME/Desktop/CMV" ./scripts/build-macos.sh
 ```
 
 ---

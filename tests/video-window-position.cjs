@@ -45,7 +45,7 @@ const { pathToFileURL } = require('node:url');
   assert.ok(floatingLayer > titlebarLayer, 'the floating video handle must stay above the native titlebar drag region');
   assert.match(audioContextSource, /translate3d\(var\(--video-position-x\), var\(--video-position-y\), 0\)/, 'dragging must use a compositor transform instead of left/top updates');
 
-  console.log('PASS: AeroMusic floating video position and drag throttling');
+  console.log('PASS: CMV floating video position and drag throttling');
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

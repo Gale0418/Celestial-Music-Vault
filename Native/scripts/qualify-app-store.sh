@@ -6,17 +6,17 @@ usage() {
 用法：
   qualify-app-store.sh [--app PATH] [--expected-arches "arm64 x86_64"] [--skip-codesign]
 
-預設檢查 /tmp/AeroMusic-macOS-universal.xcarchive 內的 AeroMusic.app。
+預設檢查 /tmp/CMV-macOS-universal.xcarchive 內的 CMV.app。
 --skip-codesign 適用於未簽章的 iOS Simulator bundle；正式 archive 不應使用。
 USAGE
 }
 
 script_dir="${0:A:h}"
 native_root="${script_dir:h}"
-archive_path="${AEROMUSIC_ARCHIVE_PATH:-/tmp/AeroMusic-macOS-universal.xcarchive}"
-app_path="${AEROMUSIC_APP_PATH:-$archive_path/Products/Applications/AeroMusic.app}"
-expected_arches="${AEROMUSIC_EXPECTED_ARCHES:-arm64 x86_64}"
-skip_codesign="${AEROMUSIC_SKIP_CODESIGN:-0}"
+archive_path="${CMV_ARCHIVE_PATH:-/tmp/CMV-macOS-universal.xcarchive}"
+app_path="${CMV_APP_PATH:-$archive_path/Products/Applications/CMV.app}"
+expected_arches="${CMV_EXPECTED_ARCHES:-arm64 x86_64}"
+skip_codesign="${CMV_SKIP_CODESIGN:-0}"
 
 while (( $# > 0 )); do
   case "$1" in
@@ -53,27 +53,27 @@ for required_tool in plutil lipo; do
   }
 done
 
-source_info="$native_root/AeroMusic/AeroMusic/Info.plist"
-source_privacy="$native_root/AeroMusic/AeroMusic/PrivacyInfo.xcprivacy"
+source_info="$native_root/CMV/CMV/Info.plist"
+source_privacy="$native_root/CMV/CMV/PrivacyInfo.xcprivacy"
 [[ -f "$source_info" ]] || { print -u2 -- "error: 找不到 source Info.plist：$source_info"; exit 1; }
 [[ -f "$source_privacy" ]] || { print -u2 -- "error: 找不到 source privacy manifest：$source_privacy"; exit 1; }
 plutil -lint "$source_info" "$source_privacy" >/dev/null
 
 [[ -d "$app_path" ]] || {
   print -u2 -- "error: 找不到 App bundle：$app_path"
-  print -u2 -- "提示：先建立 archive，或設定 AEROMUSIC_APP_PATH"
+  print -u2 -- "提示：先建立 archive，或設定 CMV_APP_PATH"
   exit 1
 }
 
 if [[ -d "$app_path/Contents" ]]; then
   info_path="$app_path/Contents/Info.plist"
   privacy_path="$app_path/Contents/Resources/PrivacyInfo.xcprivacy"
-  binary_path="$app_path/Contents/MacOS/AeroMusic"
+  binary_path="$app_path/Contents/MacOS/CMV"
   icon_name=$(plutil -extract CFBundleIconName raw "$info_path" 2>/dev/null || true)
 else
   info_path="$app_path/Info.plist"
   privacy_path="$app_path/PrivacyInfo.xcprivacy"
-  binary_path="$app_path/AeroMusic"
+  binary_path="$app_path/CMV"
   icon_name=$(plutil -extract 'CFBundleIcons~ipad.CFBundlePrimaryIcon.CFBundleIconName' raw "$info_path" 2>/dev/null || true)
 fi
 [[ -f "$info_path" ]] || { print -u2 -- "error: bundle 缺少 Info.plist"; exit 1; }
@@ -113,7 +113,7 @@ if [[ "$skip_codesign" != 1 ]]; then
   codesign --verify --deep --strict "$app_path"
 fi
 
-print -- "AeroMusic App Store preflight PASS"
+print -- "CMV App Store preflight PASS"
 print -- "  app: $app_path"
 print -- "  architectures: ${(j: :)actual_arches}"
 print -- "  app icon: $icon_name"

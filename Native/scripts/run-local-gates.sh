@@ -6,16 +6,16 @@ usage() {
 用法：
   run-local-gates.sh
 
-執行 AeroMusic 2.0 的本機完整 gate：Rust／Swift 測試、雙平台 Release
+執行 CMV 2.0 的本機完整 gate：Rust／Swift 測試、雙平台 Release
 build、bundle／AppIcon／privacy preflight、artifact manifest、MissionCenter
 Doctor。建置輸出預設放在 /tmp，不會刪除既有產物。
 
 可用環境變數：
-  AEROMUSIC_CARGO_TARGET_DIR   Rust target 路徑
-  AEROMUSIC_SWIFT_SCRATCH_PATH Swift scratch 路徑
-  AEROMUSIC_DERIVED_ROOT       兩個 Xcode DerivedData 子目錄的根路徑
-  AEROMUSIC_ARCHIVE_PATH       要驗證的 macOS archive（預設 canonical archive）
-  AEROMUSIC_MISSION_CENTER_SCRIPTS  MissionCenter scripts 目錄（可選）
+  CMV_CARGO_TARGET_DIR   Rust target 路徑
+  CMV_SWIFT_SCRATCH_PATH Swift scratch 路徑
+  CMV_DERIVED_ROOT       兩個 Xcode DerivedData 子目錄的根路徑
+  CMV_ARCHIVE_PATH       要驗證的 macOS archive（預設 canonical archive）
+  CMV_MISSION_CENTER_SCRIPTS  MissionCenter scripts 目錄（可選）
 USAGE
 }
 
@@ -29,12 +29,12 @@ fi
 script_dir="${0:A:h}"
 native_root="${script_dir:h}"
 workspace="${native_root:h}"
-cargo_target="${AEROMUSIC_CARGO_TARGET_DIR:-/tmp/aeromusic-cargo-local-gates}"
-swift_scratch="${AEROMUSIC_SWIFT_SCRATCH_PATH:-/tmp/aeromusic-swift-local-gates}"
-derived_root="${AEROMUSIC_DERIVED_ROOT:-$(mktemp -d /tmp/aeromusic-derived-local-gates.XXXXXX)}"
+cargo_target="${CMV_CARGO_TARGET_DIR:-/tmp/cmv-cargo-local-gates}"
+swift_scratch="${CMV_SWIFT_SCRATCH_PATH:-/tmp/cmv-swift-local-gates}"
+derived_root="${CMV_DERIVED_ROOT:-$(mktemp -d /tmp/cmv-derived-local-gates.XXXXXX)}"
 mac_derived="$derived_root/mac"
 ipad_derived="$derived_root/ipad"
-archive_path="${AEROMUSIC_ARCHIVE_PATH:-/tmp/AeroMusic-macOS-universal.xcarchive}"
+archive_path="${CMV_ARCHIVE_PATH:-/tmp/CMV-macOS-universal.xcarchive}"
 
 for required_tool in cargo swift xcodebuild plutil lipo shasum python3; do
   command -v "$required_tool" >/dev/null || {
@@ -50,19 +50,19 @@ run_step() {
 cd "$workspace"
 run_step "Rust fmt／Clippy／workspace tests"
 (
-  cd Native/AeroCoreRS
+  cd Native/CMVCoreRS
   CARGO_TARGET_DIR="$cargo_target" CARGO_INCREMENTAL=0 cargo fmt --check
   CARGO_TARGET_DIR="$cargo_target" CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets -- -D warnings
   CARGO_TARGET_DIR="$cargo_target" CARGO_INCREMENTAL=0 cargo test --workspace
 )
 
 run_step "Swift package tests"
-swift test --package-path Native/AeroCore --scratch-path "$swift_scratch"
+swift test --package-path Native/CMVCore --scratch-path "$swift_scratch"
 
 run_step "macOS universal Release build"
 xcodebuild -quiet \
-  -project Native/AeroMusic/AeroMusic.xcodeproj \
-  -scheme AeroMusic \
+  -project Native/CMV/CMV.xcodeproj \
+  -scheme CMV \
   -configuration Release \
   -destination 'generic/platform=macOS' \
   -derivedDataPath "$mac_derived" \
@@ -74,8 +74,8 @@ xcodebuild -quiet \
 
 run_step "iPad Simulator universal Release build"
 xcodebuild -quiet \
-  -project Native/AeroMusic/AeroMusic.xcodeproj \
-  -scheme AeroMusic \
+  -project Native/CMV/CMV.xcodeproj \
+  -scheme CMV \
   -configuration Release \
   -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPad Air 11-inch (M4),OS=26.5' \
@@ -88,17 +88,17 @@ xcodebuild -quiet \
 
 run_step "App bundle／AppIcon／privacy preflight"
 Native/scripts/qualify-app-store.sh \
-  --app "$mac_derived/Build/Products/Release/AeroMusic.app" \
+  --app "$mac_derived/Build/Products/Release/CMV.app" \
   --expected-arches 'x86_64 arm64' \
   --skip-codesign
 Native/scripts/qualify-app-store.sh \
-  --app "$ipad_derived/Build/Products/Release-iphonesimulator/AeroMusic.app" \
+  --app "$ipad_derived/Build/Products/Release-iphonesimulator/CMV.app" \
   --expected-arches 'arm64 x86_64' \
   --skip-codesign
 
 run_step "canonical macOS archive strict preflight"
 Native/scripts/qualify-app-store.sh \
-  --app "$archive_path/Products/Applications/AeroMusic.app" \
+  --app "$archive_path/Products/Applications/CMV.app" \
   --expected-arches 'x86_64 arm64'
 
 run_step "artifact manifest and whitespace checks"
@@ -118,7 +118,7 @@ done < <(sed -n 's/^| `\([^`]*\)` | `\([0-9a-f]*\)` |$/\1\t\2/p' Native/ARTIFACT
 git diff --check
 
 run_step "MissionCenter sync／Doctor"
-mc_scripts="${AEROMUSIC_MISSION_CENTER_SCRIPTS:-}"
+mc_scripts="${CMV_MISSION_CENTER_SCRIPTS:-}"
 if [[ -z "$mc_scripts" && -d "$workspace/MissionCenter/scripts" ]]; then
   mc_scripts="$workspace/MissionCenter/scripts"
 fi
@@ -126,7 +126,7 @@ if [[ -z "$mc_scripts" ]] && command -v mission_maintenance.py >/dev/null; then
   mc_scripts="${commands[mission_maintenance.py]:h}"
 fi
 [[ -n "$mc_scripts" && -f "$mc_scripts/mission_maintenance.py" && -f "$mc_scripts/doctor_mission_center.py" ]] || {
-  print -u2 -- "error: 找不到 MissionCenter scripts；請設定 AEROMUSIC_MISSION_CENTER_SCRIPTS"
+  print -u2 -- "error: 找不到 MissionCenter scripts；請設定 CMV_MISSION_CENTER_SCRIPTS"
   exit 1
 }
 python3 "$mc_scripts/mission_maintenance.py" "$workspace" sync

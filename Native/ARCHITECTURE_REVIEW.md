@@ -1,12 +1,12 @@
-# AeroMusic 2.0 跨領域架構審查
+# CMV 2.0 跨領域架構審查
 
 - 日期：2026-08-26
 - Mission Center：`AERO-R4`
 - 範圍：Swift 6／SwiftUI、SwiftData、NAS 掛載來源、AVFoundation 音訊與影片、離線分析／快取、macOS 15+、iPadOS 18+
 - 結論：現況是可建置的垂直骨架，不是可供五萬首曲庫驗收的 2.0。先修正資料、來源授權與播放三條核心邊界，再擴充 Metadata、Smart DJ、快取與夢幻介面，總返工最低。
-- 2026-08-27 蟹化增補：使用者核准 SwiftUI 原生外殼＋`AeroCoreRS` Rust 靜態核心。Rust 以 shadow implementation 起步，只接管可用 value DTO 差分驗證的純邏輯；不採 Tauri、React 或 WebView。
+- 2026-08-27 蟹化增補：使用者核准 SwiftUI 原生外殼＋`CMVCoreRS` Rust 靜態核心。Rust 以 shadow implementation 起步，只接管可用 value DTO 差分驗證的純邏輯；不採 Tauri、React 或 WebView。
 - 2026-08-27 蟹化補強：釘選／智慧快取現在以 checksum-verified `cachedURL` 支援離線播放；TrackList、專輯與歌手畫面改為 offset 分頁；Mac Wide shell 接受資料夾拖放；啟動時會重新檢查持久來源並在可解析時刷新 stale bookmark。這些變更已由 Swift／Rust 測試與雙平台 Debug build 驗證。
-- 2026-08-27 Rust 邊界補強：cache eviction policy 已透過 `aero_core_eviction_plan_v1` 接入 `FileOfflineCacheStore`；Rust 回傳需淘汰的 value-only IDs，Swift 仍負責檔案刪除、manifest 與 checksum。至此掃描差分、播放時間軸／增益、搜尋排序、PCM／DJ 與快取淘汰均有 runtime bridge；AVFoundation／SwiftData／sandbox／UI 仍刻意保留在 Swift。
+- 2026-08-27 Rust 邊界補強：cache eviction policy 已透過 `cmv_core_eviction_plan_v1` 接入 `FileOfflineCacheStore`；Rust 回傳需淘汰的 value-only IDs，Swift 仍負責檔案刪除、manifest 與 checksum。至此掃描差分、播放時間軸／增益、搜尋排序、PCM／DJ 與快取淘汰均有 runtime bridge；AVFoundation／SwiftData／sandbox／UI 仍刻意保留在 Swift。
 
 ## 證據規則
 
@@ -82,7 +82,7 @@
 | [AudioKit](https://github.com/AudioKit/AudioKit) | 活躍；Swift；MIT | Learn / Reject | 學 audio graph 可測試性與 DSP 封裝；功能面過廣且違反 runtime 第一方-only，故不採依賴 |
 | [fooyin](https://github.com/fooyin/fooyin) | 活躍；2026-08 有 0.12.5 release；GPL-3.0；Qt/C++ | Learn / Reject | 學大型曲庫 stable identity、metadata 失敗仍保留評分／playcount、watcher 失敗可觀測性；拒絕程式碼、平台與依賴 |
 
-結論不是 NIH：這些成熟專案證明播放器真正困難在 seek 邊界、buffer 狀態、route/config change、資料 identity 與故障恢復。AeroMusic 保持 Apple-first-party，但應把相同問題製成 fixture 與狀態機，而不是複製依賴。
+結論不是 NIH：這些成熟專案證明播放器真正困難在 seek 邊界、buffer 狀態、route/config change、資料 identity 與故障恢復。CMV 保持 Apple-first-party，但應把相同問題製成 fixture 與狀態機，而不是複製依賴。
 
 ## Adopt／Adapt／Learn／Reject
 

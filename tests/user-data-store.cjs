@@ -12,7 +12,7 @@ const {
 } = require('../lib/user-data-store.cjs');
 
 async function run() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aeromusic-user-data-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cmv-user-data-'));
   const dataPath = path.join(root, 'user-data.json');
   const approvedRoot = path.join(root, 'offline-nas');
   const offlineTrack = path.join(approvedRoot, 'album', 'missing.mp3');
@@ -69,7 +69,7 @@ async function run() {
 
     const leftovers = fs.readdirSync(root).filter((name) => name.endsWith('.tmp'));
     assert.deepEqual(leftovers, []);
-    console.log('PASS: AeroMusic user data persistence and recovery');
+    console.log('PASS: CMV user data persistence and recovery');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

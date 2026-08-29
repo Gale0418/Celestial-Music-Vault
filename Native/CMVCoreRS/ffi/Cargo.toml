@@ -1,0 +1,16 @@
+[package]
+name = "cmv-core-ffi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+description = "Versioned C ABI for CMVCoreRS"
+license = "Proprietary"
+publish = false
+
+[lib]
+name = "cmv_core_ffi"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+cmv-core-rs = { path = ".." }

@@ -24,7 +24,7 @@ const MEDIA_CONTENT_TYPES = new Map([
   ['.wma', 'audio/x-ms-wma']
 ]);
 const REMOTE_MEDIA_HOSTS = new Set(['www.soundhelix.com']);
-const APP_SCHEME = 'aeromusic';
+const APP_SCHEME = 'cmv';
 const approvedScanRoots = new Set();
 const APPROVED_ROOTS_REGISTRY = 'approved-roots.json';
 
@@ -207,7 +207,7 @@ async function handleAppProtocol(request) {
     const bundlePath = resolveBundleFile(requestUrl.pathname);
     return net.fetch(pathToFileURL(bundlePath).toString());
   } catch (error) {
-    console.warn('Blocked AeroMusic protocol request:', error.message);
+    console.warn('Blocked CMV protocol request:', error.message);
     return new Response('Not found', { status: 404 });
   }
 }

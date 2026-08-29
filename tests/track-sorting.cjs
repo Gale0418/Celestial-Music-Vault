@@ -23,7 +23,7 @@ async function run() {
     sortTracksWithOriginalIndex(tracks.slice(0, 3), 'default', 'desc').map((track) => track.originalIndex),
     [2, 1, 0]
   );
-  console.log(`PASS: AeroMusic 20,000-track sorting (${elapsedMs.toFixed(1)}ms)`);
+  console.log(`PASS: CMV 20,000-track sorting (${elapsedMs.toFixed(1)}ms)`);
 }
 
 run().catch((error) => {

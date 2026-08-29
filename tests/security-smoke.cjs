@@ -54,4 +54,4 @@ assert.match(localLibraryText, /useMemo\([\s\S]*sortTracksWithOriginalIndex\(vie
 assert.doesNotMatch(indexText, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
 assert.doesNotMatch(indexText, /img-src[^;]*https:/);
 
-console.log('PASS: AeroMusic main process hardening checks look correct');
+console.log('PASS: CMV main process hardening checks look correct');

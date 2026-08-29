@@ -1,4 +1,4 @@
-# AeroMusic 2.0｜V3 本機證據審查
+# CMV 2.0｜V3 本機證據審查
 
 日期：2026-08-27
 
@@ -9,7 +9,7 @@
 - Swift↔Rust bridge：reconciliation、50k、playback、search、paged search、PCM analysis、Smart DJ smoke 全部通過；paged search 於 500 candidates 為約 2.5 ms。
 - Xcode：macOS arm64 與 arm64 iPad Simulator（iPad Air 11-inch M4、OS 26.5）均 `BUILD SUCCEEDED`。
 - Release app bundle 已驗證包含 `PrivacyInfo.xcprivacy`；Mac utility window source/build 回歸通過。
-- universal Release archive `/tmp/AeroMusic-macOS-universal.xcarchive` 已完成；App binary
+- universal Release archive `/tmp/CMV-macOS-universal.xcarchive` 已完成；App binary
   含 `arm64`／`x86_64`，Apple Development 簽章、`codesign --verify --deep --strict`、
   embedded entitlements 與 privacy manifest 均通過。Distribution 憑證／TestFlight
   仍未宣稱完成。
@@ -54,7 +54,7 @@
 - Mission Center Doctor：OK；既有歷史 Done 驗證債仍為 warning，沒有被改寫成通過。
 - 最新 iPad Air 11-inch M4 Simulator Release bundle 已安裝並啟動（PID 98685）；等待首幀後視覺截圖正常，空佇列／mini player／夢幻深色表面可讀。
 - 重新授權修補版亦已在同一 iPad Air 11-inch M4 Simulator 安裝／啟動（PID 23225）；等待 8 秒截圖
-  `/tmp/aeromusic-ipad-reauthorize.png` 可讀，確認新 UI bundle 沒有啟動回歸。
+  `/tmp/cmv-ipad-reauthorize.png` 可讀，確認新 UI bundle 沒有啟動回歸。
 
 ## 已處理的 P1
 

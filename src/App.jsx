@@ -8,7 +8,7 @@ import MiniPlayer from './components/MiniPlayer';
 import ImmersionView from './components/ImmersionView';
 import { DEFAULT_THEME, getTheme, normalizeThemeId } from './theme';
 
-const THEME_STORAGE_KEY = 'aeromusic-theme';
+const THEME_STORAGE_KEY = 'cmv-theme';
 
 const getInitialTheme = () => {
   try {

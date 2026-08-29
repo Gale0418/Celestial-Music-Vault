@@ -18,4 +18,4 @@ assert.match(listenCss, /\.listen-hero\s*\{[^}]*height:\s*400px/s, 'hero frame h
 assert.doesNotMatch(indexCss, /data-theme="[^"]+"[^{}]*\.playback-dock\s*\{[^}]*\bmargin\s*:/s, 'themes must not move playback dock');
 assert.doesNotMatch(indexCss, /data-theme="[^"]+"[^{}]*\.app-sidebar\s*\{[^}]*\bmargin\s*:/s, 'themes must not move sidebar');
 
-console.log('PASS: AeroMusic theme frame contract');
+console.log('PASS: CMV theme frame contract');

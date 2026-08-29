@@ -1,17 +1,17 @@
-# AeroMusic 2.0 Design System
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0 Design System
 
 ## Direction: Celestial Cloud Atlas
 
-AeroMusic is a calm, luminous atlas of a private music universe. Stars, clouds,
+CMV is a calm, luminous atlas of a private music universe. Stars, clouds,
 auroras, and prismatic light create wonder; the library remains unmistakably an
 Apple-native productivity surface. Vinyl, turntables, lacquer, and mastering
 hardware are not part of this visual language.
 
 The approved visual references are:
 
-- `.impeccable/mocks/approved/aeromusic-macos-celestial.png`
-- `.impeccable/mocks/approved/aeromusic-ipad-landscape-celestial.png`
-- `.impeccable/mocks/approved/aeromusic-ipad-portrait-celestial.png`
+- `.impeccable/mocks/approved/cmv-macos-celestial.png`
+- `.impeccable/mocks/approved/cmv-ipad-landscape-celestial.png`
+- `.impeccable/mocks/approved/cmv-ipad-portrait-celestial.png`
 
 ## Semantic visual grammar
 

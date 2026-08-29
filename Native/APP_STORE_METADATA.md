@@ -1,4 +1,4 @@
-# AeroMusic 2.0｜App Store Connect metadata gate
+# 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜App Store Connect metadata gate
 
 更新：2026-08-27
 
@@ -7,7 +7,7 @@
 
 ## 已可由專案固定的內容
 
-- App 名稱：`AeroMusic`
+- App 名稱：`星穹私藏音樂庫 Celestial Music Vault`
 - 版本：`2.0`（build `1`）
 - 類別：Music
 - 支援平台：macOS 15+、iPadOS 18+
