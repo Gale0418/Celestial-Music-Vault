@@ -30,20 +30,20 @@ struct SidebarView: View {
                             Text(statusText(source.status)).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if source.status != .available {
-                            HStack(spacing: 4) {
-                                if source.status == .permissionRequired {
-                                    Button("重新授權") {
-                                        reauthorizationSource = source
-                                        isReauthorizationPickerPresented = true
-                                    }
-                                    .buttonStyle(.borderless)
+                        HStack(spacing: 4) {
+                            if source.status == .permissionRequired {
+                                Button("重新授權") {
+                                    reauthorizationSource = source
+                                    isReauthorizationPickerPresented = true
                                 }
-                                Button("重試") { appModel.restoreAndScan(source, context: context) }
-                                    .buttonStyle(.borderless)
+                                .buttonStyle(.borderless)
                             }
-                            .frame(minWidth: 44, minHeight: 44)
+                            Button(source.status == .available ? "重新索引" : "重試") {
+                                appModel.restoreAndScan(source, context: context)
+                            }
+                            .buttonStyle(.borderless)
                         }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
                 }
                 Button { appModel.showingImporter = true } label: { Label("加入音樂來源", systemImage: "plus.circle") }
@@ -71,7 +71,7 @@ struct SidebarView: View {
         switch status { case .available: .green; case .scanning: .yellow; case .offline: .orange; case .permissionRequired: .red }
     }
     private func statusText(_ status: MediaSourceStatus) -> String {
-        switch status { case .available: "離線可瀏覽"; case .scanning: "正在索引"; case .offline: "來源離線"; case .permissionRequired: "需要重新授權" }
+        switch status { case .available: "可使用"; case .scanning: "正在索引"; case .offline: "來源離線"; case .permissionRequired: "需要重新授權" }
     }
 }
 

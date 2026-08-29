@@ -170,7 +170,14 @@ final class AppModel {
             let normalizedURL = url.standardizedFileURL
             guard seenPaths.insert(normalizedURL.path).inserted else { continue }
             do {
-                let bookmark = try sourceProvider.makeBookmark(for: normalizedURL)
+                let ownsAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if ownsAccess { url.stopAccessingSecurityScopedResource() }
+                }
+                // The URL returned by the system picker carries the sandbox
+                // grant. A newly standardized URL has the same path but can
+                // no longer be used to mint a security-scoped bookmark.
+                let bookmark = try sourceProvider.makeBookmark(for: url)
                 let source = MediaSourceRecord(
                     displayName: normalizedURL.lastPathComponent,
                     bookmarkData: bookmark,
@@ -179,7 +186,10 @@ final class AppModel {
                 context.insert(source)
                 pendingSources.append(source)
             } catch {
-                failures.append(normalizedURL.lastPathComponent)
+                let cocoaError = error as NSError
+                failures.append(
+                    "\(normalizedURL.lastPathComponent)（\(cocoaError.domain) \(cocoaError.code)：\(error.localizedDescription)）"
+                )
             }
         }
 

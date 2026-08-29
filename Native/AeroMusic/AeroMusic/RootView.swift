@@ -197,10 +197,10 @@ private struct CompactLibraryView: View {
                             }
                             .buttonStyle(.borderless)
                         }
-                        if source.status != .available {
-                            Button("重試") { appModel.restoreAndScan(source, context: context) }
-                                .buttonStyle(.borderless)
+                        Button(source.status == .available ? "重新索引" : "重試") {
+                            appModel.restoreAndScan(source, context: context)
                         }
+                        .buttonStyle(.borderless)
                     }
                 }
                 Button { appModel.showingImporter = true } label: {
