@@ -51,7 +51,8 @@ struct SidebarView: View {
             Section { Label("設定", systemImage: "gearshape").tag(LibraryDestination.settings) }
         }
         .scrollContentBackground(.hidden)
-        .background(.ultraThinMaterial.opacity(0.55))
+        .background(.ultraThinMaterial.opacity(0.34))
+        .background(theme.surface.opacity(0.10))
         .navigationTitle("AeroMusic")
         .tint(theme.primary)
         .task { await appModel.refreshSourceStatuses(sources, context: context) }
@@ -590,7 +591,9 @@ struct QueueView: View {
                             in: RoundedRectangle(cornerRadius: 14))
             }
             Spacer()
-        }.padding(18).background(.ultraThinMaterial.opacity(0.55))
+        }
+        .padding(18)
+        .background(.clear)
     }
 }
 

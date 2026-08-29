@@ -14,6 +14,13 @@ public enum AeroThemeID: String, CaseIterable, Codable, Sendable, Identifiable {
     }
 }
 
+public enum AeroSkyStyle: Sendable {
+    case nebula
+    case eclipse
+    case aurora
+    case dawn
+}
+
 public struct AeroTheme: Sendable {
     public let id: AeroThemeID
     public let background: Color
@@ -23,26 +30,93 @@ public struct AeroTheme: Sendable {
     public let text: Color
     public let mutedText: Color
     public let metal: Color
+    public let skyZenith: Color
+    public let skyMidpoint: Color
+    public let skyHorizon: Color
+    public let atmospherePrimary: Color
+    public let atmosphereSecondary: Color
+    public let starPrimary: Color
+    public let starSecondary: Color
+    public let skyStyle: AeroSkyStyle
 
     public static func palette(_ id: AeroThemeID) -> AeroTheme {
         switch id {
         case .crimsonNebula:
-            AeroTheme(id: id, background: Color(red: 0.025, green: 0.06, blue: 0.22),
-                      surface: Color(red: 0.18, green: 0.27, blue: 0.58), primary: Color(red: 1.0, green: 0.42, blue: 0.65),
-                      secondary: Color(red: 0.55, green: 0.36, blue: 0.86), text: .white,
-                      mutedText: Color(red: 0.77, green: 0.84, blue: 1.0), metal: Color(red: 0.52, green: 0.91, blue: 1.0))
+            AeroTheme(
+                id: id,
+                background: Color(red: 0.055, green: 0.012, blue: 0.10),
+                surface: Color(red: 0.25, green: 0.055, blue: 0.19),
+                primary: Color(red: 1.0, green: 0.38, blue: 0.54),
+                secondary: Color(red: 0.70, green: 0.16, blue: 0.48),
+                text: .white,
+                mutedText: Color(red: 1.0, green: 0.78, blue: 0.84),
+                metal: Color(red: 1.0, green: 0.72, blue: 0.76),
+                skyZenith: Color(red: 0.035, green: 0.006, blue: 0.075),
+                skyMidpoint: Color(red: 0.20, green: 0.018, blue: 0.14),
+                skyHorizon: Color(red: 0.40, green: 0.055, blue: 0.20),
+                atmospherePrimary: Color(red: 1.0, green: 0.18, blue: 0.43),
+                atmosphereSecondary: Color(red: 0.66, green: 0.16, blue: 0.76),
+                starPrimary: Color(red: 1.0, green: 0.86, blue: 0.75),
+                starSecondary: Color(red: 1.0, green: 0.48, blue: 0.66),
+                skyStyle: .nebula
+            )
         case .titaniumEclipse:
-            AeroTheme(id: id, background: Color(red: 0.015, green: 0.035, blue: 0.12), surface: Color(red: 0.08, green: 0.16, blue: 0.34),
-                      primary: Color(red: 0.58, green: 0.88, blue: 1.0), secondary: Color(red: 0.30, green: 0.40, blue: 0.68),
-                      text: .white, mutedText: Color(red: 0.72, green: 0.82, blue: 0.96), metal: Color(red: 0.80, green: 0.90, blue: 1.0))
+            AeroTheme(
+                id: id,
+                background: Color(red: 0.008, green: 0.018, blue: 0.050),
+                surface: Color(red: 0.045, green: 0.090, blue: 0.17),
+                primary: Color(red: 0.49, green: 0.88, blue: 1.0),
+                secondary: Color(red: 0.20, green: 0.31, blue: 0.52),
+                text: .white,
+                mutedText: Color(red: 0.76, green: 0.84, blue: 0.94),
+                metal: Color(red: 0.88, green: 0.94, blue: 1.0),
+                skyZenith: Color(red: 0.003, green: 0.008, blue: 0.025),
+                skyMidpoint: Color(red: 0.018, green: 0.055, blue: 0.13),
+                skyHorizon: Color(red: 0.095, green: 0.15, blue: 0.27),
+                atmospherePrimary: Color(red: 0.72, green: 0.90, blue: 1.0),
+                atmosphereSecondary: Color(red: 0.22, green: 0.50, blue: 0.78),
+                starPrimary: Color(red: 0.92, green: 0.97, blue: 1.0),
+                starSecondary: Color(red: 0.46, green: 0.84, blue: 1.0),
+                skyStyle: .eclipse
+            )
         case .emeraldAurora:
-            AeroTheme(id: id, background: Color(red: 0.01, green: 0.08, blue: 0.18), surface: Color(red: 0.03, green: 0.28, blue: 0.36),
-                      primary: Color(red: 0.22, green: 1.0, blue: 0.64), secondary: Color(red: 0.20, green: 0.50, blue: 0.80),
-                      text: .white, mutedText: Color(red: 0.68, green: 0.92, blue: 0.90), metal: Color(red: 0.60, green: 0.95, blue: 0.92))
+            AeroTheme(
+                id: id,
+                background: Color(red: 0.003, green: 0.045, blue: 0.050),
+                surface: Color(red: 0.018, green: 0.20, blue: 0.18),
+                primary: Color(red: 0.25, green: 1.0, blue: 0.61),
+                secondary: Color(red: 0.08, green: 0.48, blue: 0.49),
+                text: .white,
+                mutedText: Color(red: 0.72, green: 0.96, blue: 0.88),
+                metal: Color(red: 0.68, green: 1.0, blue: 0.91),
+                skyZenith: Color(red: 0.002, green: 0.024, blue: 0.035),
+                skyMidpoint: Color(red: 0.002, green: 0.13, blue: 0.12),
+                skyHorizon: Color(red: 0.016, green: 0.31, blue: 0.24),
+                atmospherePrimary: Color(red: 0.20, green: 1.0, blue: 0.58),
+                atmosphereSecondary: Color(red: 0.17, green: 0.69, blue: 0.92),
+                starPrimary: Color(red: 0.81, green: 1.0, blue: 0.89),
+                starSecondary: Color(red: 0.38, green: 1.0, blue: 0.72),
+                skyStyle: .aurora
+            )
         case .amberDawn:
-            AeroTheme(id: id, background: Color(red: 0.14, green: 0.08, blue: 0.28), surface: Color(red: 0.48, green: 0.24, blue: 0.44),
-                      primary: Color(red: 1.0, green: 0.76, blue: 0.30), secondary: Color(red: 0.96, green: 0.45, blue: 0.52),
-                      text: .white, mutedText: Color(red: 1.0, green: 0.84, blue: 0.74), metal: Color(red: 1.0, green: 0.90, blue: 0.68))
+            AeroTheme(
+                id: id,
+                background: Color(red: 0.12, green: 0.050, blue: 0.20),
+                surface: Color(red: 0.38, green: 0.16, blue: 0.31),
+                primary: Color(red: 1.0, green: 0.74, blue: 0.25),
+                secondary: Color(red: 0.96, green: 0.39, blue: 0.42),
+                text: .white,
+                mutedText: Color(red: 1.0, green: 0.86, blue: 0.72),
+                metal: Color(red: 1.0, green: 0.92, blue: 0.69),
+                skyZenith: Color(red: 0.075, green: 0.030, blue: 0.16),
+                skyMidpoint: Color(red: 0.30, green: 0.11, blue: 0.28),
+                skyHorizon: Color(red: 0.62, green: 0.25, blue: 0.22),
+                atmospherePrimary: Color(red: 1.0, green: 0.64, blue: 0.22),
+                atmosphereSecondary: Color(red: 1.0, green: 0.38, blue: 0.48),
+                starPrimary: Color(red: 1.0, green: 0.94, blue: 0.72),
+                starSecondary: Color(red: 1.0, green: 0.68, blue: 0.45),
+                skyStyle: .dawn
+            )
         }
     }
 }

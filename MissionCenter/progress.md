@@ -3,7 +3,7 @@
 
 - 專案: AeroMusic 維護與交付
 - 目標: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
-- 目前狀態: 91/98 estimated
+- 目前狀態: 92/99 estimated
 - 里程碑: SwiftData 來源授權、五萬首增量掃描與首個可驗證流程
 - 進度條: [#########-] 93%
 - 進行中任務:

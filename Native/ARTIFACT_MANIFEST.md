@@ -16,9 +16,9 @@ Support 或任何 NAS 憑證。
 | `Native/AeroMusic/AeroMusic/AppModel.swift` | `964af397c7eb6a40251cc13a9754f78cffb93326ec0ba2e1da9a38ca7f0a6f66` |
 | `Native/AeroMusic/AeroMusic/BackgroundStatusViews.swift` | `8d9d437c0e6399433b8aec4611e2f11731adde9fc53de4e8c25fee6ea8aaae4a` |
 | `Native/AeroMusic/AeroMusic.xcodeproj/project.pbxproj` | `7c875b89cf454c98412a78297f1dd390d48d30c8e4fa5d52c4881f6919b8b587` |
-| `Native/AeroMusic/AeroMusic/RootView.swift` | `c1a5823967326c76b1a5758a7ac25ca34f4dcc6584c6952bd12a1c90a0e0223d` |
+| `Native/AeroMusic/AeroMusic/RootView.swift` | `1a1ece724ff4a25892961a660b7e2a466c8d4d5fffa9ae2f02e4b53f9c101f65` |
 | `Native/AeroMusic/AeroMusic/AeroMusicApp.swift` | `104b76316f91970f996b72dfa1a977a05f4286c83968fda2b8938f9e68a31f0d` |
-| `Native/AeroMusic/AeroMusic/LibraryViews.swift` | `147b76c3c2925b93d9afe42801986cc77a2217e75c65b282fd228f624d6662a9` |
+| `Native/AeroMusic/AeroMusic/LibraryViews.swift` | `2be01df9f2ca3c99be870d8f938adb2062346532f20c58a304e0bbaec07efed8` |
 | `Native/AeroMusic/AeroMusic/VideoExperienceView.swift` | `1a4bf635531acf78c2a7d76459369f22a547653e3422ec251a950d2077976af0` |
 | `Native/AeroMusic/AeroMusic/PrivacyInfo.xcprivacy` | `a6ea123e26594d361ea873b71ed1ac7a7b20f7d922b4b034a002c8043531cb24` |
 | `Native/AeroMusic/AeroMusic/Assets.xcassets/AppIcon.appiconset/Contents.json` | `a22f4805b3d8b13728a7962942f4d6a4b54812e280faab54e02b2281fba866b2` |
@@ -44,13 +44,14 @@ Support 或任何 NAS 憑證。
 | `Native/AeroCore/Sources/AeroCache/FileOfflineCacheStore.swift` | `f49820f1e7e4b8820bf207d696876d4f4b083163445b0f764392c06aa96072eb` |
 | `Native/AeroMusic/AeroMusic/AeroCoreRSClient.swift` | `92e239d537e0bb3139100b5033bcf702860160444bfb545d4cf1d5f2a3e249fd` |
 | `Native/AeroCoreRS/tests/swift_bridge/main.swift` | `15d6d3b7181dd0793854d6341bfa843f19d0440e1289db443fa17cc47ea08c45` |
-| `Native/AeroMusic/AeroMusic/CelestialViews.swift` | `b9a7df401ecb81302bdf148f93f3b0e553c63b97bdfa09e4102e163520e8a954` |
+| `Native/AeroCore/Sources/AeroThemes/AeroTheme.swift` | `77df90e5896567800a7de6b4e3a35a7810dcca6c9c601924571adbd131a56ddf` |
+| `Native/AeroMusic/AeroMusic/CelestialViews.swift` | `78fcdeef0d815e5f4fbbc5b3c0a3c8373f04e2ef815ea16b4d1d36f7b6e55498` |
 | `Native/AeroCore/Sources/AeroLibrary/SwiftDataLibraryRepository.swift` | `08b97c835c607ad89c798d716b427ac2e46336676ad9d604c0136da470c46f93` |
 | `Native/V3_REVIEW.md` | `cb9027c2abe189fc939e6a767fe5bb5f0ef2ff7da0591ee1926e697fbf0fa8e0` |
 | `Native/AeroCore/Tests/AeroCoreTests/AeroCoreTests.swift` | `13939835129960e0fdbc53727903f8e6e438bf6bee0a7bb7bc43d7a11ac55901` |
-| `MissionCenter/tasks.md` | `c91893cbcde91634b670fbe821c46cb418c321da295b3cbc3a0f92d2b716204c` |
-| `MissionCenter/smoke-tests.md` | `74504cad0b062506702059530a7387eb560342c9a2d72896fa09b43653e31e1e` |
-| `MissionCenter/daily-log.md` | `73f112cb4e5fe2df9ece4befa466c93e6bd20b26c51ded2197cd664b71f60c26` |
+| `MissionCenter/tasks.md` | `eb009f5247388da940a116f6a78b3ed674a7894b60ed524407fd2e1810f46328` |
+| `MissionCenter/smoke-tests.md` | `ac63032accf952e7fef2d24f92b7354beb35ae2a5253d975d01754951b867efc` |
+| `MissionCenter/daily-log.md` | `c6ecd8ee1f8aa7a81aa4766dca4656c96140e45757f22af3be9034caf8675ac9` |
 | `MissionCenter/closeout.md` | `123d99df1843aa1be74728cec2fdeaf4ac9dd50c3eb93037d71f38362c6bcd7a` |
 
 ## 驗證快照
@@ -60,6 +61,7 @@ Support 或任何 NAS 憑證。
 - 原生媒體：MP4／MOV／M4V 依實際 AVAsset 軌道分流至 AVKit；Mac 影片視窗與 iPad 原生全螢幕／PiP 編譯通過，實際 NAS MP4 已驗證可見動態畫面。
 - 影音狀態：AVPlayer EOF 與音訊 queue-finished callback 共用 mixed queue，三種影音交界均可推進；目前曲目以可觀察 ID 驅動 Songs／Favorites／Queue 高亮，Mac／iPad Debug build 通過。
 - 非阻塞 UI：掃描、來源探測、搜尋／分頁、播放準備、分析與快取共用底部背景工作列；錯誤使用頂部非模態橫幅；專輯／歌手分組在 utility task 執行，lazy 頁尾才載入下一頁。CodeRabbit 最終 0 issues。
+- 主題／動效：四套天空已分化為星雲、月蝕、極光與晨曦；NavigationSplitView 三欄共用固定 58 顆錯峰星光、最高 12 fps，Reduce Motion／非前景暫停；四套 iPad Simulator 視覺回歸通過。
 - Playback：Sleep Timer 15／30／60／90 分鐘、取消與到時 pause 已接入共用 PlaybackEngine，Mac／iPad Release build 均通過。
 - Library UX：歌單按順序載入完整 PlaybackQueue；歌曲操作選單可釘選／取消釘選離線，pinned 狀態查詢與 scoped copy 已接入，Mac／iPad Release build 均通過。
 - Source recovery：stale／撤銷 bookmark 可由原生資料夾選擇器重新授權，既有曲目／歌單保留後重啟差異掃描；Mac／iPad Release 與最新 universal Development archive 均納入此流程。

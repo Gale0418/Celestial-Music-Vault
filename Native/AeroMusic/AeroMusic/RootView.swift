@@ -91,18 +91,22 @@ private struct WideRootView: View {
     var body: some View {
         @Bindable var appModel = appModel
         ZStack {
-            CelestialBackground()
+            theme.background
             NavigationSplitView {
                 SidebarView()
+                    .background(CelestialBackground(starCount: 18))
                     .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
             } content: {
                 LibraryStageView()
+                    .background(CelestialBackground(starCount: 24, starSeedOffset: 18))
                     .navigationSplitViewColumnWidth(min: 560, ideal: 800)
             } detail: {
                 QueueView()
+                    .background(CelestialBackground(starCount: 16, starSeedOffset: 42))
                     .navigationSplitViewColumnWidth(min: 250, ideal: 310, max: 380)
             }
             .navigationSplitViewStyle(.balanced)
+            .modifier(TransparentNavigationSplitBackground())
             .background(.clear)
         }
         #if os(macOS)
@@ -119,6 +123,16 @@ private struct WideRootView: View {
             }
         }
         .tint(theme.primary)
+    }
+}
+
+private struct TransparentNavigationSplitBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.containerBackground(.clear, for: .navigationSplitView)
+        #else
+        content
+        #endif
     }
 }
 
