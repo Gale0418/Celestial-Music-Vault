@@ -3,7 +3,7 @@
 - 最後整理： 2026-08-30
 
 ## 2026-08-30
-- 2026-08-30 19:22 +08:00｜變更：完成 AERO-G17 CodeRabbit 修正與正確簽章桌面交付，進入 GitHub main 發布複核｜原因：AERO-U16 因免費額度冷卻尚未審查，且先前桌面包為缺少 entitlements 的 ad-hoc 簽章，導致來源授權反覆失效｜影響：CodeRabbit 兩輪依序 2／0 findings；窄版播放列在影片播放時停用 shuffle／repeat 選單，generated brief 建議依契約與實際 sync 結果判定不採用。Mac Release／iPad Simulator Debug build 成功；桌面 App 改為 Apple Development、Team `X3UYL4NRRN`，strict verify 與四項沙盒 entitlements 通過並成功啟動。舊 ad-hoc App 已移至垃圾桶可復原；新沙盒容器不搬移 112 筆失效 bookmark，維持乾淨 0 來源／0 曲目。
+- 2026-08-30 19:22 +08:00｜變更：完成 AERO-G17 CodeRabbit 修正、正確簽章桌面交付與 GitHub main 發布｜原因：AERO-U16 因免費額度冷卻尚未審查，且先前桌面包為缺少 entitlements 的 ad-hoc 簽章，導致來源授權反覆失效｜影響：CodeRabbit 兩輪依序 2／0 findings；窄版播放列在影片播放時停用 shuffle／repeat 選單，generated brief 建議依契約與實際 sync 結果判定不採用。Mac Release／iPad Simulator Debug build 成功；桌面 App 改為 Apple Development、Team `X3UYL4NRRN`，strict verify 與四項沙盒 entitlements 通過並成功啟動。GitHub 外掛確認遠端提交 `c051e0dfffff87c6b973c27d3d8442e598cd58de`；舊 ad-hoc App 已移至垃圾桶可復原；新沙盒容器不搬移 112 筆失效 bookmark，維持乾淨 0 來源／0 曲目。
 
 ## 2026-08-29
 - 2026-08-29 14:45 +08:00｜變更：完成 AERO-F9 多資料夾 security-scoped bookmark 修復｜原因：SwiftUI fileImporter 回傳的 security-scoped URL 未先呼叫 `startAccessingSecurityScopedResource()`，且批次去重曾用新建的 standardized URL 鑄造 bookmark，導致 NAS 資料夾整批回報 NSCocoaErrorDomain 256｜影響：原始 picker URL 現先開啟 scope、建立 bookmark 後立即平衡釋放；標準化 URL 僅用於路徑去重。真實 NAS `mardoka` 已成功加入、背景遞迴索引、重啟保留並可重新索引；available 文案更正為「可使用」。Mac／iPad Debug build 通過，CodeRabbit 全差異審查 0 issues。

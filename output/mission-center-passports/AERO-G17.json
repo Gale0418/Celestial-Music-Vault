@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-G17",
+  "taskDigest": "a8f2b4d4db1efcb945e1610f6689e13a09b01ccde97138716a401ac3225e00e6",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "MissionCenter/smoke-tests.md",
+      "MissionCenter/daily-log.md",
+      "Native/CMV/CMV/PlayerBar.swift"
+    ]
+  },
+  "findings": [
+    {
+      "id": "coderabbit-compact-video-controls",
+      "severity": "Low",
+      "disposition": "fixed"
+    },
+    {
+      "id": "coderabbit-generated-brief",
+      "severity": "Low",
+      "disposition": "rejected-with-counterevidence"
+    }
+  ]
+}
