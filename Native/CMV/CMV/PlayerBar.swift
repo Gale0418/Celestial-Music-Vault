@@ -54,6 +54,8 @@ struct PlayerBar: View {
                     .labelStyle(.iconOnly)
             }
             .frame(width: 44, height: 44)
+            .disabled(appModel.videoURL != nil)
+            .accessibilityHint(appModel.videoURL == nil ? "調整隨機與重複播放" : "影片播放時無法調整")
             SleepTimerMenu()
         }
     }

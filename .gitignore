@@ -13,6 +13,7 @@ dist-app
 dist-ssr
 output/mission-center-assets
 output/mission-center-runtime
+MissionCenter/.mission-center/
 *.local
 
 # Editor directories and files
