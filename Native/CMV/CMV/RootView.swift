@@ -174,15 +174,17 @@ private struct WideRootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if showingQueue.wrappedValue {
-                QueueView()
+                PerformantQueueView()
                     .frame(width: 350)
                     .frame(maxHeight: .infinity)
+                    .background(theme.surface.opacity(reduceTransparency ? 0.96 : 0.88))
                     .background(
-                        reduceTransparency
-                            ? AnyShapeStyle(theme.surface.opacity(0.96))
-                            : AnyShapeStyle(.ultraThinMaterial.opacity(0.20))
+                        LinearGradient(
+                            colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                    .background(theme.surface.opacity(reduceTransparency ? 0 : 0.06))
                     .overlay(alignment: .leading) {
                         Rectangle()
                             .fill(theme.metal.opacity(0.20))
@@ -195,7 +197,7 @@ private struct WideRootView: View {
         #else
         libraryStage
             .inspector(isPresented: showingQueue) {
-                QueueView()
+                PerformantQueueView()
                     .inspectorColumnWidth(min: 300, ideal: 350, max: 420)
             }
         #endif

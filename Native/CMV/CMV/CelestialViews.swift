@@ -188,30 +188,40 @@ private struct AudioEnergyRing: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @State private var accumulatedRotationTime: TimeInterval = 0
+    @State private var rotationAnchor: TimeInterval?
     let diameter: CGFloat
     let energyState: AudioEnergyState
     let isActive: Bool
-    private static let scanDuration: TimeInterval = 4
-    private static let segmentCount = 120
+
+    // The old 120-segment/4-second pair advanced exactly one 3-degree segment
+    // per nominal 30 fps frame, aliasing continuous motion into slot-by-slot swaps.
+    private static let scanDuration: TimeInterval = 6
+    private static let segmentCount = 80
     private static let unitVectors: [CGVector] = (0..<segmentCount).map { index in
         let angle = Double(index) / Double(segmentCount) * .pi * 2 - .pi / 2
         return CGVector(dx: cos(angle), dy: sin(angle))
     }
 
+    private var shouldRotate: Bool {
+        !reduceMotion && isActive && scenePhase == .active
+    }
+
     var body: some View {
         TimelineView(.animation(
             minimumInterval: 1.0 / 30.0,
-            paused: reduceMotion || !isActive || scenePhase != .active
+            paused: !shouldRotate
         )) { timeline in
             let snapshot = energyState.snapshot
+            let timelineTime = timeline.date.timeIntervalSinceReferenceDate
+            let activeRotationTime = accumulatedRotationTime
+                + (rotationAnchor.map { max(0, timelineTime - $0) } ?? 0)
             let rotationRadians = reduceMotion
                 ? 0
-                : timeline.date.timeIntervalSinceReferenceDate
+                : activeRotationTime
                     .truncatingRemainder(dividingBy: Self.scanDuration)
                     / Self.scanDuration * .pi * 2
-            let rotationCosine = cos(rotationRadians)
-            let rotationSine = sin(rotationRadians)
-            let elapsed = timeline.date.timeIntervalSinceReferenceDate - snapshot.publishedAt
+            let elapsed = timelineTime - snapshot.publishedAt
             let rawBlend = min(1, max(0, elapsed / (1.0 / 30.0)))
             let blend = rawBlend * rawBlend * (3 - 2 * rawBlend)
 
@@ -232,24 +242,28 @@ private struct AudioEnergyRing: View {
                     style: StrokeStyle(lineWidth: 1.6)
                 )
 
+                // Rotate the graphics context once instead of performing two
+                // trigonometric transforms for every segment on every frame.
+                context.translateBy(x: center.x, y: center.y)
+                context.rotate(by: .radians(rotationRadians))
+                context.translateBy(x: -center.x, y: -center.y)
+
                 var outerBars = Path()
                 var innerBars = Path()
 
-                for (index, unitVector) in Self.unitVectors.enumerated() {
+                for (index, direction) in Self.unitVectors.enumerated() {
                     let previousSample = smoothedSample(
                         at: index,
-                        samples: snapshot.previousSamples
+                        samples: snapshot.previousSamples,
+                        writeIndex: snapshot.previousWriteIndex
                     )
                     let currentSample = smoothedSample(
                         at: index,
-                        samples: snapshot.samples
+                        samples: snapshot.samples,
+                        writeIndex: snapshot.writeIndex
                     )
                     let sample = lerp(previousSample, currentSample, blend)
                     let energy = CGFloat(isActive ? max(0.045, sample) : 0.035)
-                    let direction = CGVector(
-                        dx: unitVector.dx * rotationCosine - unitVector.dy * rotationSine,
-                        dy: unitVector.dx * rotationSine + unitVector.dy * rotationCosine
-                    )
                     let baseline = CGPoint(
                         x: center.x + direction.dx * baseRadius,
                         y: center.y + direction.dy * baseRadius
@@ -296,32 +310,60 @@ private struct AudioEnergyRing: View {
                     ),
                     style: StrokeStyle(lineWidth: 1.45, lineCap: .round)
                 )
-
             }
         }
         .frame(width: diameter + 88, height: diameter + 88)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .onAppear { updateRotationClock(rotating: shouldRotate) }
+        .onChange(of: shouldRotate) { _, rotating in
+            updateRotationClock(rotating: rotating)
+        }
     }
 
+    private func updateRotationClock(rotating: Bool) {
+        let now = Date.timeIntervalSinceReferenceDate
+        if rotating {
+            if rotationAnchor == nil { rotationAnchor = now }
+        } else if let rotationAnchor {
+            accumulatedRotationTime += max(0, now - rotationAnchor)
+            self.rotationAnchor = nil
+        }
+    }
+
+    /// The write index points at the next slot to be written, which is also
+    /// the oldest logical sample in a full circular buffer. Sampling relative
+    /// to that anchor keeps the waveform's time order stable across wraparound.
     private func smoothedSample(
         at segment: Int,
-        samples: [Float]
+        samples: [Float],
+        writeIndex: Int
     ) -> Float {
         guard !samples.isEmpty else { return 0 }
         let position = Double(segment) / Double(Self.unitVectors.count) * Double(samples.count)
         let lowerOffset = Int(position.rounded(.down)) % samples.count
         let upperOffset = (lowerOffset + 1) % samples.count
         let fraction = Float(position - position.rounded(.down))
-        let lower = filteredSample(at: lowerOffset, samples: samples)
-        let upper = filteredSample(at: upperOffset, samples: samples)
+        let lower = filteredSample(atLogicalOffset: lowerOffset, samples: samples, writeIndex: writeIndex)
+        let upper = filteredSample(atLogicalOffset: upperOffset, samples: samples, writeIndex: writeIndex)
         return lower + (upper - lower) * fraction
     }
 
-    private func filteredSample(at center: Int, samples: [Float]) -> Float {
-        let previous = (center - 1 + samples.count) % samples.count
-        let next = (center + 1) % samples.count
-        return samples[previous] * 0.24 + samples[center] * 0.52 + samples[next] * 0.24
+    private func filteredSample(
+        atLogicalOffset center: Int,
+        samples: [Float],
+        writeIndex: Int
+    ) -> Float {
+        let count = samples.count
+        guard count > 0 else { return 0 }
+        let anchor = ((writeIndex % count) + count) % count
+        func sample(at logicalOffset: Int) -> Float {
+            let normalized = ((logicalOffset % count) + count) % count
+            return samples[(anchor + normalized) % count]
+        }
+        return sample(at: center - 1) * 0.24
+            + sample(at: center) * 0.52
+            + sample(at: center + 1) * 0.24
     }
 
     private func lerp(_ from: Float, _ to: Float, _ amount: Double) -> Float {

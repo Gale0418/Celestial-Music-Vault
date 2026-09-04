@@ -16,3 +16,6 @@
 | 將 CMV 上架流程改為可重跑任務鏈 | [rorkai/app-store-connect-cli-skills](https://github.com/rorkai/app-store-connect-cli-skills) 與本機 `asc-*` skills | 採簽章、Xcode build、TestFlight、release flow、submission health 分離；所有提交先 dry-run，`--confirm` 另需核准 | MIT；GitHub 外掛唯讀核對 |
 | 預防 Guideline 2.1 資訊不足退件 | MediBuddy 任務 `01a04b26-127b-7772-a00f-3a2733ac5f2f` 的 Build 10 補件紀錄 | CMV 新增 Review Kit：完整 Notes、無剪輯實機影片、裝置／OS／核心流程、無帳號／無付費／NAS 授權方式與素材權利；資訊問題不先重建 Build | 同機專案自有紀錄；只採流程經驗，不複製敏感值 |
 | 反方檢查 App Store 漏項 | Antigravity cascade `65eb3c8b-224f-4dcd-a3f3-12f2c0d66619` | 採 Privacy Manifest、FFI panic boundary、dSYM、展示素材版權與狀態語意；拒絕其「內建 NAS 掃描／保存帳密」假設 | 本機授權協作；外部磁碟未掛載時基於既有摘要，具明確未知 |
+| 右欄播放佇列卡頓來源 | Apple `Understanding and improving SwiftUI performance`、Observation 官方文件 | 高頻播放秒數不再直接驅動整個 queue panel；以 Observation 快照隔離高頻粗 revision，只有 queue 順序／可見 metadata／目前曲目真正改變才發布 UI 狀態 | Apple 官方文件；採概念與 API |
+| 月環即時波形既成實作 | [GRimAce11/WaveformKit](https://github.com/GRimAce11/WaveformKit)、[dmrschmidt/DSWaveformImage](https://github.com/dmrschmidt/DSWaveformImage) | 採 bounded bar count、固定 cadence、Canvas／即時 samples 與分析／呈現分工概念；CMV 保留自有 AVAudioEngine meter，不新增第三方依賴或複製程式碼 | 公開 GitHub 專案；僅參考架構概念 |
+| UI 動效與效能收斂 | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) 的 audit／animate／optimize 規則 | 月環降回 80 段、移除逐段旋轉向量運算、修正 circular-buffer 時序並降低 queue backdrop blur；保留主視覺、刪掉無效 GPU 工作 | MIT；僅採規則與設計原則 |
