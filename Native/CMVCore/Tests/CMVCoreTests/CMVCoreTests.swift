@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import AVFoundation
 import CMVDomain
 import CMVAnalysis
 import CMVLibrary
@@ -29,6 +30,40 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(r128Gain, -7, accuracy: 0.001)
         XCTAssertNil(AudioMetadataParser.replayGainDB(from: ["artist=REPLAYGAIN_TRACK_GAIN=-7 dB"]))
         XCTAssertEqual(AudioMetadataParser.integerTag(from: "id3.trackNumber", value: "03/12"), 3)
+    }
+
+    func testAnalyzerCancellationMarkerOnlyAppliesToInFlightAnalysis() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CMVAnalyzer-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let audioURL = directory.appendingPathComponent("silence.wav")
+
+        var wave = Data("RIFF".utf8)
+        func appendLittleEndian<T: FixedWidthInteger>(_ value: T) {
+            var value = value.littleEndian
+            withUnsafeBytes(of: &value) { wave.append(contentsOf: $0) }
+        }
+        appendLittleEndian(UInt32(38))
+        wave.append(contentsOf: Data("WAVEfmt ".utf8))
+        appendLittleEndian(UInt32(16))
+        appendLittleEndian(UInt16(1))
+        appendLittleEndian(UInt16(1))
+        appendLittleEndian(UInt32(44_100))
+        appendLittleEndian(UInt32(88_200))
+        appendLittleEndian(UInt16(2))
+        appendLittleEndian(UInt16(16))
+        wave.append(contentsOf: Data("data".utf8))
+        appendLittleEndian(UInt32(2))
+        appendLittleEndian(Int16(0))
+        try wave.write(to: audioURL)
+
+        let analyzer = LocalAudioAnalyzer()
+        let trackID = UUID()
+        await analyzer.cancel(trackID: trackID)
+        _ = try await analyzer.analyze(trackID: trackID, url: audioURL)
+        await analyzer.cancel(trackID: trackID)
+        _ = try await analyzer.analyze(trackID: trackID, url: audioURL)
     }
 
     func testBatchedScanPreservesStableRecordsAndMarksOnlyUnseenTracksMissing() async throws {
@@ -272,6 +307,135 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(Set(pagedIDs).count, identical.count)
     }
 
+    func testSearchMatchesEveryTokenAcrossDifferentMetadataFields() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        try await repository.applyReconciliation(
+            upserts: [
+                ScannedMediaFile(
+                    relativePath: "hotel.flac", fileIdentifier: "hotel", fileSize: 1,
+                    modifiedAt: .now, title: "Hotel California", artist: "Eagles", album: "Greatest Hits"
+                ),
+                ScannedMediaFile(
+                    relativePath: "other.flac", fileIdentifier: "other", fileSize: 1,
+                    modifiedAt: .now, title: "Hotel California", artist: "Other Artist", album: "Greatest Hits"
+                )
+            ],
+            missingIdentifiers: [],
+            sourceID: sourceID
+        )
+
+        let candidates = try await repository.searchCandidates(matching: "hotel eagles")
+        XCTAssertEqual(candidates.map(\.id).count, 1)
+        let matches = try await repository.tracks(ids: candidates.map(\.id))
+        XCTAssertEqual(matches.map(\.fileIdentifier), ["hotel"])
+        let reversedQueryIDs = try await repository.trackIDs(matching: "eagles hotel")
+        XCTAssertEqual(reversedQueryIDs, candidates.map(\.id))
+    }
+
+    func testSearchCandidatesFoldDiacriticsWhilePreservingDisplayMetadata() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        try await repository.applyReconciliation(
+            upserts: [
+                ScannedMediaFile(
+                    relativePath: "deja-vu.flac", fileIdentifier: "deja-vu", fileSize: 1,
+                    modifiedAt: .now, title: "Canci\u{00F3}n", artist: "Beyonc\u{00E9}", album: "D\u{00E9}j\u{00E0} Vu"
+                )
+            ],
+            missingIdentifiers: [],
+            sourceID: sourceID
+        )
+
+        let candidates = try await repository.searchCandidates(matching: "beyonce deja vu")
+        XCTAssertEqual(candidates.count, 1)
+        XCTAssertEqual(candidates[0].title, "Canci\u{00F3}n")
+        XCTAssertEqual(candidates[0].artist, "Beyonc\u{00E9}")
+        XCTAssertEqual(candidates[0].album, "D\u{00E9}j\u{00E0} Vu")
+    }
+
+    func testTracksByIDsChunksLargePredicatesAndPreservesRequestedOrder() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let files = (0..<405).map { index in
+            ScannedMediaFile(
+                relativePath: "track-\(index).flac", fileIdentifier: "track-\(index)",
+                fileSize: 1, modifiedAt: .now, title: "Track \(index)"
+            )
+        }
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+        let imported = try await repository.tracks(sourceID: sourceID)
+        let requestedIDs = Array(imported.map(\.id).reversed())
+        let fetched = try await repository.tracks(ids: requestedIDs)
+        XCTAssertEqual(fetched.map(\.id), requestedIDs)
+    }
+
+    func testLoadedSearchIndexUpdatesAfterLaterScanOnSameRepository() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let first = ScannedMediaFile(
+            relativePath: "first.flac", fileIdentifier: "first", fileSize: 1,
+            modifiedAt: .now, title: "Moon One"
+        )
+        try await repository.applyReconciliation(upserts: [first], missingIdentifiers: [], sourceID: sourceID)
+        let initialCandidates = try await repository.searchCandidates(matching: "moon")
+        XCTAssertEqual(initialCandidates.count, 1)
+
+        let second = ScannedMediaFile(
+            relativePath: "second.flac", fileIdentifier: "second", fileSize: 1,
+            modifiedAt: .now, title: "Moon Two"
+        )
+        try await repository.applyReconciliation(
+            upserts: [first, second], missingIdentifiers: [], sourceID: sourceID
+        )
+        let updatedCandidates = try await repository.searchCandidates(matching: "moon")
+        XCTAssertEqual(updatedCandidates.count, 2)
+    }
+
+    func testApplyScanBatchRejectsDuplicateFileIdentifiers() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let duplicateFiles = [
+            ScannedMediaFile(relativePath: "one.flac", fileIdentifier: "same", fileSize: 1,
+                             modifiedAt: .now, title: "One"),
+            ScannedMediaFile(relativePath: "two.flac", fileIdentifier: "same", fileSize: 2,
+                             modifiedAt: .now, title: "Two")
+        ]
+
+        do {
+            try await repository.applyScanBatch(
+                duplicateFiles,
+                sourceID: sourceID,
+                scanID: await repository.beginScan(sourceID: sourceID)
+            )
+            XCTFail("Expected duplicate identifiers to be rejected")
+        } catch let error as LibraryRepositoryError {
+            XCTAssertEqual(error, .invalidReconciliation)
+        }
+        let imported = try await repository.tracks(sourceID: sourceID)
+        XCTAssertTrue(imported.isEmpty)
+    }
+
     func testMediaKindSurvivesReconciliationAndLegacyDefaultsToAudio() async throws {
         let container = try ModelContainer(
             for: MediaSourceRecord.self, TrackRecord.self,
@@ -455,6 +619,82 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertNil(resolvedURL)
         XCTAssertFalse(verified)
         try await store.unpin(trackID: trackID)
+    }
+
+    func testSameSizeSmartCacheMutationFallsBackToFullVerification() async throws {
+        let source = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cache-smart-corrupt-\(UUID().uuidString).bin")
+        try Data(repeating: 3, count: 64).write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let store = try FileOfflineCacheStore()
+        let trackID = UUID()
+        let cachedURL = try await store.prefetch(trackID: trackID, sourceURL: source)
+        let initialURL = await store.cachedURL(trackID: trackID)
+        XCTAssertEqual(initialURL, cachedURL)
+
+        try Data(repeating: 9, count: 64).write(to: cachedURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSinceNow: 120)],
+            ofItemAtPath: cachedURL.path
+        )
+
+        let mutatedURL = await store.cachedURL(trackID: trackID)
+        let verified = await store.verify(trackID: trackID)
+        XCTAssertNil(mutatedURL)
+        XCTAssertFalse(verified)
+        try await store.trim(to: 0)
+    }
+
+    func testPinnedStatusRequiresMediaAndChecksumSidecar() async throws {
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent("cache-pinned-status-\(UUID().uuidString).bin")
+        try Data(repeating: 5, count: 64).write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let store = try FileOfflineCacheStore()
+        let trackID = UUID()
+        let cachedURL = try await store.pin(trackID: trackID, sourceURL: source)
+        let intact = await store.isPinned(trackID: trackID)
+        XCTAssertTrue(intact)
+
+        try Data(repeating: 6, count: 64).write(to: cachedURL, options: .atomic)
+        let modifiedMediaStillPinned = await store.isPinned(trackID: trackID)
+        XCTAssertTrue(modifiedMediaStillPinned)
+
+        try Data(repeating: 5, count: 64).write(to: cachedURL, options: .atomic)
+        try FileManager.default.removeItem(at: cachedURL.deletingPathExtension().appendingPathExtension("sha256"))
+        let missingSidecar = await store.isPinned(trackID: trackID)
+        XCTAssertFalse(missingSidecar)
+
+        try await store.unpin(trackID: trackID)
+    }
+
+    func testOfflineCacheReplacesSameTrackWithNewExtension() async throws {
+        let sourceRoot = FileManager.default.temporaryDirectory.appendingPathComponent("cache-extension-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: sourceRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: sourceRoot) }
+        let firstSource = sourceRoot.appendingPathComponent("source.MP3")
+        let secondSource = sourceRoot.appendingPathComponent("source.FLAC")
+        try Data(repeating: 1, count: 32).write(to: firstSource)
+        try Data(repeating: 2, count: 48).write(to: secondSource)
+
+        let store = try FileOfflineCacheStore()
+        let pinnedID = UUID()
+        let firstPinnedURL = try await store.pin(trackID: pinnedID, sourceURL: firstSource)
+        let secondPinnedURL = try await store.pin(trackID: pinnedID, sourceURL: secondSource)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstPinnedURL.path))
+        let resolvedPinnedURL = await store.cachedURL(trackID: pinnedID)
+        XCTAssertEqual(resolvedPinnedURL, secondPinnedURL)
+
+        let smartID = UUID()
+        let firstSmartURL = try await store.prefetch(trackID: smartID, sourceURL: firstSource)
+        let secondSmartURL = try await store.prefetch(trackID: smartID, sourceURL: secondSource)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstSmartURL.path))
+        let resolvedSmartURL = await store.cachedURL(trackID: smartID)
+        XCTAssertEqual(resolvedSmartURL, secondSmartURL)
+
+        try await store.unpin(trackID: pinnedID)
+        try await store.trim(to: 0)
     }
 
     func testUnreachableSourceDoesNotClearExistingLibrary() async throws {

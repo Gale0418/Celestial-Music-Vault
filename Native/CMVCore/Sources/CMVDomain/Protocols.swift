@@ -48,7 +48,7 @@ public protocol PlaybackEngine: AnyObject {
     var queue: PlaybackQueue { get }
     var isPlaying: Bool { get }
     var sleepTimerEndDate: Date? { get }
-    func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL]) throws
+    func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL]) async throws
     func play() throws
     func pause()
     func setSleepTimer(minutes: Int)
@@ -102,8 +102,14 @@ public struct DeterministicCacheEvictionPlanner: CacheEvictionPlanner {
     public init() {}
 
     public func plan(entries: [CacheEvictionEntry], budgetBytes: Int64) -> [String] {
-        var total = entries.reduce(Int64(0)) { $0 + max(0, $1.sizeBytes) }
-        let budget = max(0, budgetBytes)
+        // A cache manifest is external state and can contain values whose
+        // aggregate exceeds Int64.max. Decimal keeps the fallback exact instead
+        // of trapping in debug or wrapping in optimized builds; Rust uses u128
+        // for the same reason on the primary path.
+        var total = entries.reduce(Decimal(0)) { partial, entry in
+            partial + Decimal(max(0, entry.sizeBytes))
+        }
+        let budget = Decimal(max(0, budgetBytes))
         let candidates = entries.filter { !$0.pinned }
             .sorted { ($0.lastAccessOrder, $0.identifier) < ($1.lastAccessOrder, $1.identifier) }
         var result: [String] = []
@@ -112,7 +118,7 @@ public struct DeterministicCacheEvictionPlanner: CacheEvictionPlanner {
             let entry = candidates[index]
             index += 1
             result.append(entry.identifier)
-            total = max(0, total - max(0, entry.sizeBytes))
+            total -= Decimal(max(0, entry.sizeBytes))
         }
         return result
     }

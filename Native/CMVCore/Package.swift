@@ -23,7 +23,7 @@ let package = Package(
         .target(name: "CMVCache", dependencies: ["CMVDomain"]),
         .target(name: "CMVThemes", dependencies: ["CMVDomain"]),
         .testTarget(name: "CMVCoreTests", dependencies: [
-            "CMVDomain", "CMVLibrary", "CMVAnalysis", "CMVCache"
+            "CMVDomain", "CMVLibrary", "CMVPlayback", "CMVAnalysis", "CMVCache"
         ])
     ]
 )

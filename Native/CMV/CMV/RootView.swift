@@ -5,6 +5,11 @@ import CMVDomain
 import CMVLibrary
 import CMVThemes
 
+private func isFileImporterCancellation(_ error: Error) -> Bool {
+    let cocoa = error as NSError
+    return cocoa.domain == NSCocoaErrorDomain && cocoa.code == CocoaError.Code.userCancelled.rawValue
+}
+
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
@@ -20,28 +25,32 @@ struct RootView: View {
     var body: some View {
         @Bindable var appModel = appModel
         GeometryReader { proxy in
-            Group {
-                #if os(iOS)
-                if proxy.size.width < 760 { CompactRootView() } else { WideRootView() }
-                #else
-                WideRootView()
-                #endif
+            VStack(spacing: 0) {
+                ErrorStatusBanner()
+                SourceStatusBanner()
+                Group {
+                    #if os(iOS)
+                    if proxy.size.width < 1_000 { CompactRootView() } else { WideRootView() }
+                    #else
+                    WideRootView()
+                    #endif
+                }
             }
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: 0) {
-                    ErrorStatusBanner()
-                    SourceStatusBanner()
-                }
-            }
             .fileImporter(
                 isPresented: $appModel.showingImporter,
                 allowedContentTypes: [.folder],
                 allowsMultipleSelection: true
             ) { result in
-                if case let .success(urls) = result { appModel.addSources(urls, context: modelContext) }
-                if case let .failure(error) = result { appModel.errorMessage = error.localizedDescription }
+                switch result {
+                case .success(let urls):
+                    appModel.addSources(urls, context: modelContext)
+                case .failure(let error):
+                    if !isFileImporterCancellation(error) {
+                        appModel.errorMessage = error.localizedDescription
+                    }
+                }
             }
             .onChange(of: appModel.videoURL) { _, _ in
                 updateVideoPresentation()
@@ -49,7 +58,13 @@ struct RootView: View {
             .onChange(of: appModel.videoPresentationMode) { _, _ in
                 updateVideoPresentation()
             }
-            .task { await appModel.refreshSourceStatuses(sources, context: modelContext) }
+            .task {
+                let model = appModel
+                model.videoSession.onPlaybackError = { [weak model] error in
+                    model?.errorMessage = "影片播放失敗：\(error.localizedDescription)"
+                }
+                await model.refreshSourceStatuses(sources, context: modelContext)
+            }
             #if os(iOS)
             .sheet(item: $videoSelection) { selection in
                 NavigationStack {
@@ -69,6 +84,13 @@ struct RootView: View {
                                     appModel.stopVideoPlayback()
                                     videoWindowStore.clear()
                                 }
+                            }
+                            ToolbarItem(placement: .primaryAction) {
+                                Button("放回月環", systemImage: "moon.circle.fill") {
+                                    appModel.videoPresentationMode = .moonPortal
+                                    videoSelection = nil
+                                }
+                                .accessibilityHint("保持目前進度並回到主畫面的月環播放器")
                             }
                         }
                 }
@@ -112,23 +134,17 @@ private struct WideRootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         @Bindable var appModel = appModel
         ZStack {
-            theme.background
+            CelestialBackground()
             NavigationSplitView {
                 SidebarView()
-                    .background(CelestialBackground(starCount: 18))
                     .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
-            } content: {
-                LibraryStageView()
-                    .background(CelestialBackground(starCount: 24, starSeedOffset: 18))
-                    .navigationSplitViewColumnWidth(min: 560, ideal: 800)
             } detail: {
-                QueueView()
-                    .background(CelestialBackground(starCount: 16, starSeedOffset: 42))
-                    .navigationSplitViewColumnWidth(min: 250, ideal: 310, max: 380)
+                detailColumn(showingQueue: $appModel.showingQueue)
             }
             .navigationSplitViewStyle(.balanced)
             .modifier(TransparentNavigationSplitBackground())
@@ -148,6 +164,56 @@ private struct WideRootView: View {
             }
         }
         .tint(theme.primary)
+    }
+
+    @ViewBuilder
+    private func detailColumn(showingQueue: Binding<Bool>) -> some View {
+        #if os(macOS)
+        HStack(spacing: 0) {
+            libraryStage
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if showingQueue.wrappedValue {
+                QueueView()
+                    .frame(width: 350)
+                    .frame(maxHeight: .infinity)
+                    .background(
+                        reduceTransparency
+                            ? AnyShapeStyle(theme.surface.opacity(0.96))
+                            : AnyShapeStyle(.ultraThinMaterial.opacity(0.20))
+                    )
+                    .background(theme.surface.opacity(reduceTransparency ? 0 : 0.06))
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(theme.metal.opacity(0.20))
+                            .frame(width: 1)
+                    }
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.28), value: showingQueue.wrappedValue)
+        #else
+        libraryStage
+            .inspector(isPresented: showingQueue) {
+                QueueView()
+                    .inspectorColumnWidth(min: 300, ideal: 350, max: 420)
+            }
+        #endif
+    }
+
+    private var libraryStage: some View {
+        LibraryStageView()
+            .navigationSplitViewColumnWidth(min: 560, ideal: 800)
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button(appModel.showingQueue ? "隱藏接下來播放" : "顯示接下來播放",
+                           systemImage: "music.note.list") {
+                        appModel.showingQueue.toggle()
+                    }
+                    .labelStyle(.iconOnly)
+                    .accessibilityValue(appModel.showingQueue ? "已顯示" : "已隱藏")
+                }
+            }
     }
 }
 
@@ -220,7 +286,7 @@ private struct CompactLibraryView: View {
     var body: some View {
         List {
             Section("瀏覽") {
-                NavigationLink { TrackListView() } label: { Label("歌曲", systemImage: "music.note") }
+                NavigationLink { ScrollView { TrackListView() } } label: { Label("歌曲", systemImage: "music.note") }
                 NavigationLink { CatalogView(kind: .album) } label: { Label("專輯", systemImage: "square.stack") }
                 NavigationLink { CatalogView(kind: .artist) } label: { Label("歌手", systemImage: "person.2") }
                 NavigationLink { FavoriteTracksView() } label: { Label("最愛", systemImage: "heart.fill") }
@@ -249,14 +315,19 @@ private struct SourceStatusBanner: View {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(.orange)
                 Text(summary)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(2)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
                 Spacer(minLength: 12)
                 Button("前往設定") { appModel.selection = .settings }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
+            #if os(macOS)
+            .frame(height: 28)
+            #else
             .frame(minHeight: 44)
+            #endif
             .background(.regularMaterial)
             .overlay(alignment: .bottom) {
                 Rectangle().fill(theme.primary.opacity(0.35)).frame(height: 1)

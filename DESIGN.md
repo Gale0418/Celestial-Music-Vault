@@ -7,11 +7,16 @@ auroras, and prismatic light create wonder; the library remains unmistakably an
 Apple-native productivity surface. Vinyl, turntables, lacquer, and mastering
 hardware are not part of this visual language.
 
-The approved visual references are:
+The approved visual references are permanently versioned outside tool runtime
+state:
 
-- `.impeccable/mocks/approved/cmv-macos-celestial.png`
-- `.impeccable/mocks/approved/cmv-ipad-landscape-celestial.png`
-- `.impeccable/mocks/approved/cmv-ipad-portrait-celestial.png`
+- `docs/design/references/cmv-macos-celestial.png`
+- `docs/design/references/cmv-ipad-landscape-celestial.png`
+- `docs/design/references/cmv-ipad-portrait-celestial.png`
+
+`.impeccable/` is treated as ephemeral tool working state and is not a design
+authority. The three files above, together with this document and
+`PRODUCT.md`, are the canonical visual direction.
 
 ## Semantic visual grammar
 

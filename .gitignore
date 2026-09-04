@@ -16,6 +16,10 @@ output/mission-center-runtime
 MissionCenter/.mission-center/
 *.local
 
+# Impeccable working state
+# Canonical design references live under docs/design/references/ instead.
+.impeccable/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

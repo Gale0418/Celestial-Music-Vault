@@ -1,12 +1,12 @@
-# CMV 2.0 approved composition set
+# CMV 2.0 approved visual references
 
-These three images are the comp-led north stars for the first native surface:
+These three images are the versioned visual north stars for the native CMV 2.0 surface. They are product design references, **not** Impeccable runtime state:
 
 - `cmv-macos-celestial.png` — three-column Celestial Cloud Atlas.
 - `cmv-ipad-landscape-celestial.png` — touch-first sky archive with a dismissible queue.
 - `cmv-ipad-portrait-celestial.png` — a hand-held music world with a starlight playback route.
 
-The earlier `*-crimson.png` images are rejected exploration retained only as design history; they are not implementation authority.
+Rejected Crimson exploration assets were intentionally removed from the active repository tree. Their history remains recoverable through Git and they are not implementation authority.
 
 ## Direction contract
 

@@ -124,7 +124,7 @@ let analysisSamples: [Float] = (0..<4_000).map { index in
     return Float(sin(phase * 2.0 * Double.pi * 440.0))
 }
 let analysis = try client.analyzePCM(samples: analysisSamples, sampleRateHz: 4_000, channels: 1)
-precondition(analysis.version == 2)
+precondition(analysis.version == 3)
 precondition(analysis.peak > 0.99)
 precondition(analysis.musicalKey == 9)
 print("Swift↔Rust PCM analysis passed (versioned LUFS/BPM/key)")

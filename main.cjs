@@ -10,14 +10,21 @@ const {
   loadUserDataFile
 } = require('./lib/user-data-store.cjs');
 
-const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus', '.aiff']);
+const AUDIO_EXTENSIONS = new Set([
+  '.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.flac', '.aac', '.wma', '.opus',
+  '.aiff', '.aif', '.alac', '.mov', '.m4v'
+]);
 const MEDIA_CONTENT_TYPES = new Map([
   ['.aac', 'audio/aac'],
+  ['.aif', 'audio/aiff'],
   ['.aiff', 'audio/aiff'],
+  ['.alac', 'audio/mp4'],
   ['.flac', 'audio/flac'],
   ['.m4a', 'audio/mp4'],
   ['.mp3', 'audio/mpeg'],
-  ['.mp4', 'audio/mp4'],
+  ['.mp4', 'video/mp4'],
+  ['.m4v', 'video/x-m4v'],
+  ['.mov', 'video/quicktime'],
   ['.ogg', 'audio/ogg'],
   ['.opus', 'audio/ogg'],
   ['.wav', 'audio/wav'],
@@ -27,6 +34,9 @@ const REMOTE_MEDIA_HOSTS = new Set(['www.soundhelix.com']);
 const APP_SCHEME = 'cmv';
 const approvedScanRoots = new Set();
 const APPROVED_ROOTS_REGISTRY = 'approved-roots.json';
+const APPROVED_ROOTS_VERSION = 1;
+let approvedRootsRegistryState = 'uninitialized';
+let persistenceWritesBlocked = false;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -46,7 +56,9 @@ function toMediaUrl(filePath) {
 
 function ensureApprovedRemoteMediaUrl(rawUrl) {
   const remoteUrl = new URL(rawUrl);
-  if (remoteUrl.protocol !== 'https:' || !REMOTE_MEDIA_HOSTS.has(remoteUrl.hostname)) {
+  if (remoteUrl.protocol !== 'https:' ||
+      !REMOTE_MEDIA_HOSTS.has(remoteUrl.hostname) ||
+      (remoteUrl.port && remoteUrl.port !== '443')) {
     throw new Error('Remote media host is not approved');
   }
   return remoteUrl.toString();
@@ -56,17 +68,26 @@ function resolveExistingPath(targetPath) {
   return fs.realpathSync.native ? fs.realpathSync.native(targetPath) : fs.realpathSync(targetPath);
 }
 
-function rememberApprovedRoots(paths) {
+function registerApprovedPaths(paths) {
+  const registered = [];
   for (const rawPath of paths || []) {
-    if (!rawPath) continue;
+    if (typeof rawPath !== 'string' || !path.isAbsolute(rawPath)) continue;
     try {
       const resolved = resolveExistingPath(rawPath);
       const stat = fs.statSync(resolved);
-      approvedScanRoots.add(stat.isDirectory() ? resolved : path.dirname(resolved));
+      const isDirectory = stat.isDirectory();
+      if (!isDirectory && !stat.isFile()) continue;
+      approvedScanRoots.add(isDirectory ? resolved : path.dirname(resolved));
+      registered.push({ path: resolved, isDirectory });
     } catch (e) {
       console.warn('Skipping unapproved root candidate:', rawPath, e.message);
     }
   }
+  return registered;
+}
+
+function rememberApprovedRoots(paths) {
+  return registerApprovedPaths(paths).map(entry => entry.path);
 }
 
 function isPathWithinApprovedRoots(targetPath) {
@@ -74,7 +95,6 @@ function isPathWithinApprovedRoots(targetPath) {
     const resolved = resolveExistingPath(targetPath);
     for (const root of approvedScanRoots) {
       const relative = path.relative(root, resolved);
-      // path.relative handles separators and prevents prefix/path-traversal tricks.
       if (relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))) {
         return true;
       }
@@ -101,7 +121,7 @@ function ensureApprovedFile(filePath) {
   const resolved = resolveExistingPath(filePath);
   const stat = fs.statSync(resolved);
   if (!stat.isFile()) {
-    throw new Error('Approved trash target must be a file');
+    throw new Error('Approved file target must be a file');
   }
   if (!isPathWithinApprovedRoots(resolved)) {
     throw new Error('File is outside approved music roots');
@@ -183,6 +203,11 @@ async function createLocalMediaResponse(filePath, rangeHeader, method = 'GET') {
 
 async function handleAppProtocol(request) {
   try {
+    const method = String(request.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+    }
+
     const requestUrl = new URL(request.url);
     if (requestUrl.host !== 'app') {
       return new Response('Not found', { status: 404 });
@@ -193,7 +218,7 @@ async function handleAppProtocol(request) {
       if (!encodedPath) return new Response('Missing media path', { status: 400 });
       const approvedPath = ensureApprovedFile(decodeURIComponent(encodedPath));
       const rangeHeaders = getForwardedRangeHeaders(request.headers);
-      return createLocalMediaResponse(approvedPath, rangeHeaders?.Range, request.method);
+      return createLocalMediaResponse(approvedPath, rangeHeaders?.Range, method);
     }
 
     if (requestUrl.pathname.startsWith('/remote/')) {
@@ -201,18 +226,21 @@ async function handleAppProtocol(request) {
       if (!encodedUrl) return new Response('Missing remote URL', { status: 400 });
       const approvedUrl = ensureApprovedRemoteMediaUrl(decodeURIComponent(encodedUrl));
       const rangeHeaders = getForwardedRangeHeaders(request.headers);
-      return net.fetch(approvedUrl, rangeHeaders ? { headers: rangeHeaders } : undefined);
+      return net.fetch(approvedUrl, {
+        method,
+        redirect: 'error',
+        ...(rangeHeaders ? { headers: rangeHeaders } : {})
+      });
     }
 
     const bundlePath = resolveBundleFile(requestUrl.pathname);
-    return net.fetch(pathToFileURL(bundlePath).toString());
+    return net.fetch(pathToFileURL(bundlePath).toString(), { method });
   } catch (error) {
     console.warn('Blocked CMV protocol request:', error.message);
     return new Response('Not found', { status: 404 });
   }
 }
 
-// Iterative scanner keeps large libraries responsive and avoids recursive Promise storms
 async function scanAudioFiles(dirPath) {
   const results = [];
   const pending = [dirPath];
@@ -223,6 +251,7 @@ async function scanAudioFiles(dirPath) {
       const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '__MACOSX') continue;
+        if (entry.isSymbolicLink()) continue;
         const fullPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
           pending.push(fullPath);
@@ -257,7 +286,6 @@ function assertTrustedIpcSender(event) {
   }
 }
 
-// IPC: Native multi-folder selection dialog (supports selecting multiple folders at once!)
 ipcMain.handle('select-folders', async (event) => {
   assertTrustedIpcSender(event);
   const result = await dialog.showOpenDialog({
@@ -265,30 +293,28 @@ ipcMain.handle('select-folders', async (event) => {
     title: '選擇音樂資料夾'
   });
   if (result.canceled) return [];
-  rememberApprovedRoots(result.filePaths);
-  await persistApprovedRootsRegistry();
-  return result.filePaths;
+  const registered = registerApprovedPaths(result.filePaths);
+  if (registered.length > 0) await persistApprovedRootsRegistry();
+  return registered.filter(entry => entry.isDirectory).map(entry => entry.path);
 });
 
-// IPC: Fast Node.js folder scanner
+// The preload obtains these paths only from Electron's webUtils.getPathForFile
+// for genuine user-selected File objects. Main still canonicalizes/stat-checks
+// every value before expanding the persistent approved-root boundary.
+ipcMain.handle('register-user-selected-paths', async (event, selectedPaths) => {
+  assertTrustedIpcSender(event);
+  if (!Array.isArray(selectedPaths)) throw new TypeError('selectedPaths must be an array');
+  const registered = registerApprovedPaths(selectedPaths.slice(0, 100_000));
+  if (registered.length > 0) await persistApprovedRootsRegistry();
+  return registered;
+});
+
 ipcMain.handle('scan-folder-for-audio', async (event, folderPath) => {
   assertTrustedIpcSender(event);
   const approvedPath = ensureApprovedDirectory(folderPath);
   return scanAudioFiles(approvedPath);
 });
 
-// IPC: Check if a path is a directory
-ipcMain.handle('is-directory', async (event, filePath) => {
-  assertTrustedIpcSender(event);
-  try {
-    const stat = await fs.promises.stat(filePath);
-    return stat.isDirectory();
-  } catch {
-    return false;
-  }
-});
-
-// IPC listener to open Finder/File Manager highlighting the specific file path
 ipcMain.on('show-item-in-folder', (event, filePath) => {
   assertTrustedIpcSender(event);
   if (!filePath) return;
@@ -299,7 +325,6 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
   }
 });
 
-// IPC: Move item to trash
 ipcMain.handle('trash-item', async (event, filePath) => {
   assertTrustedIpcSender(event);
   try {
@@ -312,11 +337,9 @@ ipcMain.handle('trash-item', async (event, filePath) => {
   }
 });
 
-// IPC: Show Native Message Box
 ipcMain.handle('show-message-box', async (event, options) => {
   assertTrustedIpcSender(event);
-  const result = await dialog.showMessageBox(options);
-  return result;
+  return dialog.showMessageBox(options);
 });
 
 function getApprovedRootsRegistryPath() {
@@ -327,23 +350,28 @@ function loadApprovedRootsRegistry() {
   approvedScanRoots.clear();
   try {
     const parsed = JSON.parse(fs.readFileSync(getApprovedRootsRegistryPath(), 'utf8'));
-    const roots = Array.isArray(parsed?.roots) ? parsed.roots : [];
-    for (const rawPath of roots) {
+    if (parsed?.version !== APPROVED_ROOTS_VERSION || !Array.isArray(parsed?.roots)) {
+      throw new Error('unsupported or malformed approved-roots registry');
+    }
+    for (const rawPath of parsed.roots) {
       if (typeof rawPath !== 'string' || !path.isAbsolute(rawPath)) continue;
       try {
         const resolved = resolveExistingPath(rawPath);
         if (fs.statSync(resolved).isDirectory()) approvedScanRoots.add(resolved);
       } catch {
-        // 保留曾由原生挑選器核准、但目前離線的 NAS 根目錄。
-        // 實際掃描、播放或刪除時仍必須通過 realpath/stat 驗證。
+        // Preserve a previously approved NAS root while it is temporarily
+        // offline. Actual read/trash requests still have to pass realpath/stat.
         approvedScanRoots.add(path.resolve(rawPath));
       }
     }
+    approvedRootsRegistryState = 'trusted';
   } catch (error) {
+    approvedRootsRegistryState = error.code === 'ENOENT' ? 'missing' : 'corrupt';
     if (error.code !== 'ENOENT') {
-      console.warn('Ignoring invalid approved-roots registry:', error.message);
+      console.warn('Approved-roots registry is unavailable:', error.message);
     }
   }
+  return approvedRootsRegistryState;
 }
 
 async function persistApprovedRootsRegistry() {
@@ -353,44 +381,59 @@ async function persistApprovedRootsRegistry() {
   try {
     await fs.promises.writeFile(
       tempPath,
-      JSON.stringify({ version: 1, roots: Array.from(approvedScanRoots) }, null, 2),
-      'utf8'
+      JSON.stringify({ version: APPROVED_ROOTS_VERSION, roots: Array.from(approvedScanRoots) }, null, 2),
+      { encoding: 'utf8', flush: true }
     );
-    try {
-      await fs.promises.rename(tempPath, registryPath);
-    } catch (error) {
-      if (error.code !== 'EEXIST' && error.code !== 'EPERM') throw error;
-      await fs.promises.rm(registryPath, { force: true });
-      await fs.promises.rename(tempPath, registryPath);
-    }
+    // On the supported macOS target rename replaces the destination atomically.
+    // Never delete a known-good registry first: a second rename failure would
+    // otherwise turn a transient filesystem error into permanent data loss.
+    await fs.promises.rename(tempPath, registryPath);
+    approvedRootsRegistryState = 'trusted';
   } finally {
     await fs.promises.rm(tempPath, { force: true }).catch(() => {});
   }
 }
 
 function filterPersistedUserData(data) {
-  // 持久化資料只驗證既有授權邊界，不以 NAS 當下是否連線作為刪除依據。
-  // 真正讀取或刪除檔案時仍會經過 realpath/stat 的嚴格檢查。
   return filterPersistedUserDataForRoots(data, approvedScanRoots, toMediaUrl);
 }
-// IPC: User Data Persistence (Favorites, Playlists, Library, Playback States)
+
+function hasPersistedMedia(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  if (Array.isArray(data.library) && data.library.length > 0) return true;
+  if (Array.isArray(data.favorites) && data.favorites.length > 0) return true;
+  return Array.isArray(data.playlists) && data.playlists.some(
+    playlist => playlist && typeof playlist === 'object' && Array.isArray(playlist.tracks) && playlist.tracks.length > 0
+  );
+}
+
+function assertApprovedRootsReadyForPersistedMedia(data) {
+  if (!hasPersistedMedia(data)) return;
+  if (approvedRootsRegistryState === 'trusted' && approvedScanRoots.size > 0) return;
+  persistenceWritesBlocked = true;
+  const error = new Error(
+    'CMV_APPROVED_ROOTS_UNAVAILABLE: 已儲存的音樂授權索引遺失或損壞；請重新選擇原音樂資料夾並重新啟動 CMV。為避免覆寫既有曲庫，本次工作階段已停用自動儲存。'
+  );
+  error.code = 'CMV_APPROVED_ROOTS_UNAVAILABLE';
+  throw error;
+}
+
 const getUserDataPath = () => path.join(app.getPath('userData'), 'user-data.json');
 const enqueueUserDataWrite = createSerialWriter(atomicWriteUserDataFile);
 
 ipcMain.handle('load-user-data', async (event) => {
   assertTrustedIpcSender(event);
-  try {
-    const data = await loadUserDataFile(getUserDataPath());
-    return data ? filterPersistedUserData(data) : null;
-  } catch (e) {
-    console.error('Failed to load user data:', e);
-  }
-  return null;
+  const data = await loadUserDataFile(getUserDataPath());
+  if (!data) return null;
+  assertApprovedRootsReadyForPersistedMedia(data);
+  return filterPersistedUserData(data);
 });
 
 ipcMain.handle('save-user-data', async (event, data) => {
   assertTrustedIpcSender(event);
   try {
+    if (persistenceWritesBlocked) return false;
+    if (hasPersistedMedia(data) && approvedRootsRegistryState !== 'trusted') return false;
     const filtered = filterPersistedUserData(data);
     if (!filtered) return false;
     await enqueueUserDataWrite(getUserDataPath(), filtered);
@@ -401,7 +444,6 @@ ipcMain.handle('save-user-data', async (event, data) => {
   }
 });
 
-// Window Mode Toggles
 ipcMain.on('toggle-mini-player', (event, isMini) => {
   if (!isTrustedIpcSender(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
@@ -423,28 +465,26 @@ ipcMain.on('toggle-fullscreen', (event, isFullscreen) => {
   if (!isTrustedIpcSender(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
-  win.setFullScreen(isFullscreen);
+  win.setFullScreen(Boolean(isFullscreen));
 });
 
 function createWindow() {
-  // Create a stunning premium macOS desktop window frame
   const win = new BrowserWindow({
     width: 1120,
     height: 760,
     minWidth: 960,
     minHeight: 680,
-    titleBarStyle: 'hiddenInset', // Seamless macOS Red/Yellow/Green dot integration!
+    titleBarStyle: 'hiddenInset',
     backgroundColor: '#0d0e12',
-    show: false, // show once ready to prevent white flicker
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      preload: path.join(__dirname, 'preload.cjs') // Safe context bridge
+      preload: path.join(__dirname, 'preload.cjs')
     }
   });
 
-  // Block renderer-created windows and navigation outside the app origin.
   win.webContents.setWindowOpenHandler(({ url }) => {
     console.warn('Blocked request to open a new window:', url);
     return { action: 'deny' };
@@ -461,13 +501,8 @@ function createWindow() {
     console.warn('Blocked renderer navigation:', navigationUrl);
   });
 
-  // Serve the app and approved local media from one secure custom origin.
   win.loadURL(`${APP_SCHEME}://app/index.html`);
-
-  // Display seamlessly once content is parsed
-  win.once('ready-to-show', () => {
-    win.show();
-  });
+  win.once('ready-to-show', () => win.show());
 }
 
 function focusPrimaryWindow() {
@@ -484,25 +519,22 @@ if (!hasSingleInstanceLock) {
 } else {
   app.on('second-instance', focusPrimaryWindow);
 
-  // macOS standard: keep app running when all windows close unless quit
   app.whenReady().then(() => {
     loadApprovedRootsRegistry();
     protocol.handle(APP_SCHEME, handleAppProtocol);
-    // Make sure IPC can receive crash logs and write them to a file
     ipcMain.on('crash-log', (event, errorInfo) => {
       if (!isTrustedIpcSender(event)) return;
-      try {
-        const fs = require('fs');
-        const path = require('path');
-        fs.appendFileSync(path.join(app.getPath('userData'), 'crash-log.txt'), new Date().toISOString() + '\n' + errorInfo + '\n\n');
-      } catch (e) {
-        console.error("Failed to write crash log", e);
-      }
+      const safeInfo = String(errorInfo ?? '').slice(0, 65_536);
+      fs.promises.appendFile(
+        path.join(app.getPath('userData'), 'crash-log.txt'),
+        `${new Date().toISOString()}\n${safeInfo}\n\n`,
+        'utf8'
+      ).catch(error => console.error('Failed to write crash log', error));
     });
 
     ipcMain.on('show-error-box', (event, title, content) => {
       if (!isTrustedIpcSender(event)) return;
-      dialog.showErrorBox(title, content);
+      dialog.showErrorBox(String(title ?? '').slice(0, 256), String(content ?? '').slice(0, 16_384));
     });
 
     createWindow();
@@ -522,5 +554,20 @@ app.on('window-all-closed', () => {
 });
 
 module.exports = {
-  AUDIO_EXTENSIONS, approvedScanRoots, rememberApprovedRoots, loadApprovedRootsRegistry, persistApprovedRootsRegistry, resolveExistingPath, isPathWithinApprovedRoots, ensureApprovedDirectory, ensureApprovedFile, scanAudioFiles, filterPersistedUserData
+  AUDIO_EXTENSIONS,
+  approvedScanRoots,
+  rememberApprovedRoots,
+  registerApprovedPaths,
+  loadApprovedRootsRegistry,
+  persistApprovedRootsRegistry,
+  resolveExistingPath,
+  isPathWithinApprovedRoots,
+  ensureApprovedDirectory,
+  ensureApprovedFile,
+  scanAudioFiles,
+  filterPersistedUserData,
+  hasPersistedMedia,
+  assertApprovedRootsReadyForPersistedMedia,
+  parseByteRange,
+  getMediaContentType
 };

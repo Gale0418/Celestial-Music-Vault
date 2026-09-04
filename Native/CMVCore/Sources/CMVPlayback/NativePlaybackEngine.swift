@@ -6,6 +6,21 @@ import AudioToolbox
 import Darwin
 import CMVDomain
 
+private actor AudioFileOpener {
+    func open(_ urlsByIndex: [Int: URL]) throws -> [Int: AVAudioFile] {
+        var files: [Int: AVAudioFile] = [:]
+        files.reserveCapacity(urlsByIndex.count)
+        for (index, url) in urlsByIndex {
+            files[index] = try AVAudioFile(forReading: url)
+        }
+        return files
+    }
+
+    func open(_ url: URL) throws -> AVAudioFile {
+        try AVAudioFile(forReading: url)
+    }
+}
+
 public struct PlaybackTimelineTrack: Equatable, Sendable {
     public var sampleRateHz: UInt32
     public var totalFrames: UInt64
@@ -67,13 +82,23 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     @Published public private(set) var isPlaying = false
     @Published public private(set) var elapsed: TimeInterval = 0
     @Published public private(set) var outputVolume: Float = 1
+    public private(set) var outputLevel: Float = 0
     @Published public private(set) var isShuffleEnabled = false
     @Published public private(set) var isRepeatEnabled = false
     @Published public private(set) var sleepTimerEndDate: Date?
-    /// Lets the app shell observe queue advancement without reaching through
-    /// a nested ObservableObject from SwiftUI rows.
+    public var requiresTimelineReschedule: Bool { timelineNeedsReschedule }
     public var onCurrentTrackChanged: ((Track?) -> Void)?
     public var onQueueFinished: (() -> Void)?
+    public var onOutputLevelChanged: ((Float) -> Void)?
+    public var onPlaybackStateChanged: ((Bool) -> Void)?
+    public var onElapsedChanged: ((TimeInterval) -> Void)?
+    public var onPlaybackError: ((Error) -> Void)?
+    public var onRemotePlayRequested: (() -> Void)?
+    public var onRemotePauseRequested: (() -> Void)?
+    public var onRemoteNextRequested: (() -> Void)?
+    public var onRemotePreviousRequested: (() -> Void)?
+    public var onRemoteSeekRequested: ((TimeInterval) -> Void)?
+    public var onSleepTimerElapsed: (() -> Void)?
 
     private let engine = AVAudioEngine()
     private let firstNode = AVAudioPlayerNode()
@@ -88,18 +113,22 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         componentFlagsMask: 0
     ))
     private let planner: PlaybackPairPlanner
+    private let fileOpener = AudioFileOpener()
     private var resolvedURLs: [UUID: URL] = [:]
     private var scheduledFiles: [Int: AVAudioFile] = [:]
     private var scheduledEngineStartFrames: [Int: UInt64] = [:]
     private var activeNodeIsFirst = true
     private var scheduleGeneration = 0
+    private var loadGeneration = 0
     private var timelineStarted = false
+    private var timelineNeedsReschedule = false
     private var currentTrackStartEngineFrame: UInt64 = 0
     private var currentSourceStartSeconds: TimeInterval = 0
     private var engineSampleRate: Double = 48_000
-    private var progressTimer: AnyCancellable?
-    private var sleepTimerTask: Task<Void, Never>?
-    private var notificationTokens: [NSObjectProtocol] = []
+    nonisolated(unsafe) private var progressTimer: AnyCancellable?
+    nonisolated(unsafe) private var sleepTimerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var notificationTokens: [NSObjectProtocol] = []
+    nonisolated(unsafe) private var remoteCommandTokens: [(MPRemoteCommand, Any)] = []
     #if os(iOS)
     private var wasPlayingBeforeInterruption = false
     #endif
@@ -125,26 +154,86 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         engine.connect(equalizer, to: limiter, format: nil)
         engine.connect(limiter, to: engine.mainMixerNode, format: nil)
         engine.mainMixerNode.outputVolume = outputVolume
+        installOutputMeter()
         configureRemoteCommands()
         configureAudioNotifications()
         startProgressUpdates()
     }
 
-    public func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL]) throws {
-        self.queue = queue
+    deinit {
+        sleepTimerTask?.cancel()
+        progressTimer?.cancel()
+        for token in notificationTokens {
+            NotificationCenter.default.removeObserver(token)
+        }
+        for (command, token) in remoteCommandTokens {
+            command.removeTarget(token)
+        }
+    }
+
+    public func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL]) async throws {
+        loadGeneration &+= 1
+        let requestedLoadGeneration = loadGeneration
+        let candidateQueue = shuffledQueue(queue)
+        let preparedFiles = try await openInitialFiles(for: candidateQueue, resolvedURLs: resolvedURLs)
+        try Task.checkCancellation()
+        guard requestedLoadGeneration == loadGeneration else { throw CancellationError() }
+
+        let oldQueue = self.queue
+        let oldResolvedURLs = self.resolvedURLs
+        let oldPreparedFiles = scheduledFiles
+        let oldElapsed = elapsed
+        let oldWasPlaying = isPlaying
+        let oldSourceFrame = oldPreparedFiles[oldQueue.currentIndex]
+            .flatMap { boundedSourceFrame(for: oldElapsed, file: $0) } ?? 0
+
+        do {
+            try prepareTimeline(sourceStartFrame: 0,
+                                for: candidateQueue,
+                                resolvedURLs: resolvedURLs,
+                                preparedFiles: preparedFiles)
+        } catch {
+            let primaryError = error
+            self.resolvedURLs = oldResolvedURLs
+            restoreTimeline(
+                queue: oldQueue,
+                sourceStartFrame: oldSourceFrame,
+                elapsed: oldElapsed,
+                preparedFiles: oldPreparedFiles,
+                resume: oldWasPlaying
+            )
+            throw primaryError
+        }
+
+        self.queue = candidateQueue
         self.resolvedURLs = resolvedURLs
-        shuffleUpcomingTrackIfNeeded()
-        elapsed = 0
-        try prepareTimeline(sourceStartFrame: 0)
+        publishElapsed(0)
+        publishPlaybackState(false)
+        publishOutputLevel(0)
         onCurrentTrackChanged?(self.queue.current)
         updateNowPlaying()
     }
 
-    /// 影片由 AVPlayer 解碼時仍共用同一個播放佇列，不啟動音訊 graph。
     public func setQueue(_ queue: PlaybackQueue) {
         self.queue = queue
         onCurrentTrackChanged?(self.queue.current)
         updateNowPlaying()
+    }
+
+    public func updateExternalNowPlaying(isPlaying: Bool, elapsed: TimeInterval, duration: TimeInterval) {
+        guard let track = queue.current else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle: track.title,
+            MPMediaItemPropertyArtist: track.artist,
+            MPMediaItemPropertyAlbumTitle: track.album,
+            MPMediaItemPropertyPlaybackDuration: max(duration, track.duration),
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: max(0, elapsed),
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
+        ]
     }
 
     public func play() throws {
@@ -153,6 +242,15 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         try session.setCategory(.playback, mode: .default, options: [.allowAirPlay])
         try session.setActive(true)
         #endif
+        if timelineNeedsReschedule {
+            do {
+                try prepareTimeline(sourceStartFrame: 0)
+                timelineNeedsReschedule = false
+            } catch {
+                timelineNeedsReschedule = true
+                throw error
+            }
+        }
         if !engine.isRunning { try engine.start() }
         if timelineStarted {
             firstNode.play()
@@ -163,7 +261,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             secondNode.play(at: start)
             timelineStarted = true
         }
-        isPlaying = true
+        publishPlaybackState(true)
         updateNowPlaying()
     }
 
@@ -171,11 +269,13 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         updateElapsed()
         firstNode.pause()
         secondNode.pause()
-        isPlaying = false
+        publishPlaybackState(false)
+        publishOutputLevel(0)
         updateNowPlaying()
     }
 
     public func setVolume(_ value: Float) {
+        guard value.isFinite else { return }
         outputVolume = min(1, max(0, value))
         engine.mainMixerNode.outputVolume = outputVolume
     }
@@ -187,8 +287,17 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             sleepTimerTask = nil
             return
         }
-        let nanoseconds = UInt64(minutes) * 60 * 1_000_000_000
-        sleepTimerEndDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        let seconds = Double(minutes) * 60
+        let nanosecondsValue = seconds * 1_000_000_000
+        guard seconds.isFinite, seconds > 0,
+              nanosecondsValue.isFinite,
+              nanosecondsValue <= Double(UInt64.max) else {
+            sleepTimerEndDate = nil
+            sleepTimerTask = nil
+            return
+        }
+        let nanoseconds = UInt64(nanosecondsValue.rounded(.down))
+        sleepTimerEndDate = Date().addingTimeInterval(seconds)
         sleepTimerTask = Task { @MainActor [weak self] in
             do {
                 try await Task.sleep(nanoseconds: nanoseconds)
@@ -196,62 +305,70 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 return
             }
             guard !Task.isCancelled, let self else { return }
-            self.pause()
+            if let callback = self.onSleepTimerElapsed { callback() } else { self.pause() }
             self.sleepTimerEndDate = nil
             self.sleepTimerTask = nil
         }
     }
 
-    public func cancelSleepTimer() {
-        setSleepTimer(minutes: 0)
-    }
-
+    public func cancelSleepTimer() { setSleepTimer(minutes: 0) }
     public func toggleShuffle() { isShuffleEnabled.toggle() }
-
     public func toggleRepeat() { isRepeatEnabled.toggle() }
 
     public func clearQueue() {
         firstNode.stop()
         secondNode.stop()
+        scheduleGeneration &+= 1
+        loadGeneration &+= 1
         queue = PlaybackQueue()
         onCurrentTrackChanged?(nil)
         resolvedURLs.removeAll(keepingCapacity: true)
         scheduledFiles.removeAll(keepingCapacity: true)
         scheduledEngineStartFrames.removeAll(keepingCapacity: true)
         timelineStarted = false
-        isPlaying = false
-        elapsed = 0
+        timelineNeedsReschedule = false
+        publishPlaybackState(false)
+        publishElapsed(0)
+        publishOutputLevel(0)
         updateNowPlaying()
     }
 
     public func seek(to seconds: TimeInterval) {
-        guard let file = scheduledFiles[queue.currentIndex] else { return }
-        let frame = AVAudioFramePosition(max(0, seconds) * file.processingFormat.sampleRate)
-        guard frame >= 0, frame < file.length else { return }
+        guard let file = scheduledFiles[queue.currentIndex],
+              let targetFrame = boundedSourceFrame(for: seconds, file: file) else { return }
         let resume = isPlaying
+        let oldElapsed = elapsed
+        let oldQueue = queue
+        let oldFiles = scheduledFiles
+        let oldFrame = boundedSourceFrame(for: oldElapsed, file: file) ?? 0
         do {
-            try prepareTimeline(sourceStartFrame: frame)
-            elapsed = seconds
+            try prepareTimeline(sourceStartFrame: targetFrame)
+            let actualSeconds = Double(targetFrame) / file.processingFormat.sampleRate
+            publishElapsed(actualSeconds)
             if resume { try play() }
         } catch {
-            isPlaying = false
+            let primaryError = error
+            restoreTimeline(
+                queue: oldQueue,
+                sourceStartFrame: oldFrame,
+                elapsed: oldElapsed,
+                preparedFiles: oldFiles,
+                resume: resume
+            )
+            onPlaybackError?(primaryError)
         }
     }
 
     public func skipForward() throws {
         guard queue.currentIndex + 1 < queue.tracks.count || isRepeatEnabled else { return }
-        let resume = isPlaying
-        if queue.currentIndex + 1 >= queue.tracks.count {
-            queue.currentIndex = 0
+        var candidate = queue
+        if candidate.currentIndex + 1 >= candidate.tracks.count {
+            candidate.currentIndex = 0
         } else {
-            shuffleUpcomingTrackIfNeeded()
-            queue.currentIndex += 1
+            candidate = shuffledQueue(candidate)
+            candidate.currentIndex += 1
         }
-        onCurrentTrackChanged?(queue.current)
-        elapsed = 0
-        try prepareTimeline(sourceStartFrame: 0)
-        if resume { try play() }
-        updateNowPlaying()
+        try transition(to: candidate)
     }
 
     public func skipBackward() throws {
@@ -263,18 +380,97 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             seek(to: 0)
             return
         }
+        var candidate = queue
+        candidate.currentIndex -= 1
+        try transition(to: candidate)
+    }
+
+    private func transition(to candidateQueue: PlaybackQueue) throws {
         let resume = isPlaying
-        queue.currentIndex -= 1
-        onCurrentTrackChanged?(queue.current)
-        elapsed = 0
-        try prepareTimeline(sourceStartFrame: 0)
-        if resume { try play() }
-        updateNowPlaying()
+        let oldQueue = queue
+        let oldElapsed = elapsed
+        let oldFiles = scheduledFiles
+        let oldFrame = scheduledFiles[oldQueue.currentIndex]
+            .flatMap { boundedSourceFrame(for: oldElapsed, file: $0) } ?? 0
+
+        do {
+            try prepareTimeline(
+                sourceStartFrame: 0,
+                for: candidateQueue,
+                resolvedURLs: resolvedURLs,
+                preparedFiles: oldFiles
+            )
+            queue = candidateQueue
+            publishElapsed(0)
+            onCurrentTrackChanged?(queue.current)
+            if resume { try play() } else { publishPlaybackState(false) }
+            updateNowPlaying()
+        } catch {
+            let primaryError = error
+            restoreTimeline(
+                queue: oldQueue,
+                sourceStartFrame: oldFrame,
+                elapsed: oldElapsed,
+                preparedFiles: oldFiles,
+                resume: resume
+            )
+            throw primaryError
+        }
+    }
+
+    private func restoreTimeline(
+        queue oldQueue: PlaybackQueue,
+        sourceStartFrame: AVAudioFramePosition,
+        elapsed oldElapsed: TimeInterval,
+        preparedFiles: [Int: AVAudioFile],
+        resume: Bool
+    ) {
+        self.queue = oldQueue
+        publishPlaybackState(false)
+        do {
+            try prepareTimeline(
+                sourceStartFrame: sourceStartFrame,
+                for: oldQueue,
+                resolvedURLs: resolvedURLs,
+                preparedFiles: preparedFiles
+            )
+            self.queue = oldQueue
+            publishElapsed(oldElapsed)
+            onCurrentTrackChanged?(oldQueue.current)
+            if resume { try play() }
+            updateNowPlaying()
+        } catch {
+            let restoreError = error
+            firstNode.stop()
+            secondNode.stop()
+            scheduleGeneration &+= 1
+            self.queue = PlaybackQueue()
+            scheduledFiles.removeAll(keepingCapacity: true)
+            scheduledEngineStartFrames.removeAll(keepingCapacity: true)
+            timelineStarted = false
+            timelineNeedsReschedule = false
+            publishPlaybackState(false)
+            publishElapsed(0)
+            publishOutputLevel(0)
+            onCurrentTrackChanged?(nil)
+            updateNowPlaying()
+            onPlaybackError?(restoreError)
+        }
+    }
+
+    private func boundedSourceFrame(for seconds: TimeInterval, file: AVAudioFile) -> AVAudioFramePosition? {
+        let rate = file.processingFormat.sampleRate
+        guard seconds.isFinite, rate.isFinite, rate > 0, file.length > 0 else { return nil }
+        let raw = max(0, seconds) * rate
+        guard raw.isFinite else { return nil }
+        let maximum = file.length - 1
+        if raw >= Double(maximum) { return maximum }
+        return AVAudioFramePosition(raw.rounded(.down))
     }
 
     public func setEQ(enabled: Bool, gains: [Float]) {
         equalizer.bypass = !enabled
-        for (index, gain) in gains.prefix(equalizer.bands.count).enumerated() {
+        for (index, gain) in gains.prefix(equalizer.bands.count).enumerated() where gain.isFinite {
             equalizer.bands[index].filterType = .parametric
             equalizer.bands[index].frequency = 32 * pow(2, Float(index))
             equalizer.bands[index].bandwidth = 1
@@ -283,79 +479,199 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         }
     }
 
+    private func installOutputMeter() {
+        transitionMixer.installTap(
+            onBus: 0,
+            bufferSize: 1_024,
+            format: nil,
+            block: Self.makeOutputMeterHandler(for: self)
+        )
+    }
+
+    nonisolated private static func makeOutputMeterHandler(
+        for engine: NativePlaybackEngine
+    ) -> AVAudioNodeTapBlock {
+        { [weak engine] buffer, _ in
+            guard let normalized = normalizedOutputLevel(from: buffer) else { return }
+            Task { @MainActor [weak engine] in
+                guard let engine, engine.isPlaying else { return }
+                engine.publishOutputLevel(normalized)
+            }
+        }
+    }
+
+    nonisolated private static func normalizedOutputLevel(from buffer: AVAudioPCMBuffer) -> Float? {
+        guard let channels = buffer.floatChannelData else { return nil }
+        let frameCount = Int(buffer.frameLength)
+        let channelCount = Int(buffer.format.channelCount)
+        guard frameCount > 0, channelCount > 0 else { return nil }
+
+        var sumOfSquares: Float = 0
+        for channel in 0..<channelCount {
+            let samples = channels[channel]
+            for frame in 0..<frameCount {
+                let sample = samples[frame]
+                guard sample.isFinite else { continue }
+                sumOfSquares += sample * sample
+            }
+        }
+        guard sumOfSquares.isFinite else { return 1 }
+        let rms = sqrt(sumOfSquares / Float(frameCount * channelCount))
+        let decibels = 20 * log10(max(rms, 0.000_001))
+        return min(1, max(0, (decibels + 60) / 60))
+    }
+
+    private func publishOutputLevel(_ value: Float) {
+        guard value.isFinite else { return }
+        let clamped = min(1, max(0, value))
+        outputLevel = clamped
+        onOutputLevelChanged?(clamped)
+    }
+
+    private func publishPlaybackState(_ value: Bool) {
+        guard isPlaying != value else { return }
+        isPlaying = value
+        onPlaybackStateChanged?(value)
+    }
+
+    private func publishElapsed(_ value: TimeInterval) {
+        guard value.isFinite else { return }
+        let clamped = max(0, value)
+        guard elapsed != clamped else { return }
+        elapsed = clamped
+        onElapsedChanged?(clamped)
+    }
+
     private func prepareTimeline(sourceStartFrame: AVAudioFramePosition) throws {
+        let preparedFiles = scheduledFiles
+        try prepareTimeline(sourceStartFrame: sourceStartFrame,
+                            for: queue,
+                            resolvedURLs: resolvedURLs,
+                            preparedFiles: preparedFiles)
+    }
+
+    private func prepareTimeline(sourceStartFrame: AVAudioFramePosition,
+                                 for candidateQueue: PlaybackQueue,
+                                 resolvedURLs candidateURLs: [UUID: URL],
+                                 preparedFiles: [Int: AVAudioFile] = [:]) throws {
         firstNode.stop()
         secondNode.stop()
-        scheduleGeneration += 1
+        scheduleGeneration &+= 1
         timelineStarted = false
+        timelineNeedsReschedule = false
         activeNodeIsFirst = true
         currentTrackStartEngineFrame = 0
         scheduledFiles.removeAll(keepingCapacity: true)
         scheduledEngineStartFrames.removeAll(keepingCapacity: true)
 
-        guard let currentTrack = queue.current,
-              let currentURL = resolvedURLs[currentTrack.id] else {
+        guard let currentTrack = candidateQueue.current,
+              let currentURL = candidateURLs[currentTrack.id] else {
             throw NativePlaybackError.unresolvedTrack
         }
-        let currentFile = try AVAudioFile(forReading: currentURL)
-        scheduledFiles[queue.currentIndex] = currentFile
+        let currentFile = try preparedFiles[candidateQueue.currentIndex] ?? AVAudioFile(forReading: currentURL)
         engineSampleRate = engine.mainMixerNode.outputFormat(forBus: 0).sampleRate
         if engineSampleRate <= 0 { engineSampleRate = currentFile.processingFormat.sampleRate }
-        guard engineSampleRate > 0 else { throw NativePlaybackError.invalidAudioFormat }
+        guard engineSampleRate > 0,
+              engineSampleRate.isFinite,
+              engineSampleRate <= Double(UInt32.max) else {
+            throw NativePlaybackError.invalidAudioFormat
+        }
 
         let currentInput = try timelineTrack(file: currentFile, sourceStartFrame: sourceStartFrame,
                                              replayGainDB: currentTrack.replayGainDB)
         currentSourceStartSeconds = Double(sourceStartFrame) / currentFile.processingFormat.sampleRate
+        let engineRate = UInt32(engineSampleRate.rounded())
 
-        if let next = try nextFileAndTrack(after: queue.currentIndex) {
+        if let next = try nextFileAndTrack(after: candidateQueue.currentIndex,
+                                           in: candidateQueue,
+                                           resolvedURLs: candidateURLs,
+                                           preparedFiles: preparedFiles) {
             let nextInput = try timelineTrack(file: next.file, sourceStartFrame: 0,
                                               replayGainDB: next.track.replayGainDB)
-            let plan = try planner(UInt32(engineSampleRate.rounded()), currentInput, nextInput)
+            let plan = try planner(engineRate, currentInput, nextInput)
             try schedule(file: currentFile, on: firstNode,
                          sourceStartFrame: plan.currentStartFrame,
                          frameCount: plan.currentFrameCount, engineStartFrame: 0,
-                         gain: plan.currentGainLinear, queueIndex: queue.currentIndex)
-            scheduledFiles[queue.currentIndex + 1] = next.file
+                         gain: plan.currentGainLinear, queueIndex: candidateQueue.currentIndex)
+            scheduledFiles[candidateQueue.currentIndex] = currentFile
             try schedule(file: next.file, on: secondNode, sourceStartFrame: 0,
-                         frameCount: UInt64(next.file.length),
+                         frameCount: nextInput.totalFrames,
                          engineStartFrame: plan.nextStartEngineFrame,
-                         gain: plan.nextGainLinear, queueIndex: queue.currentIndex + 1)
+                         gain: plan.nextGainLinear, queueIndex: candidateQueue.currentIndex + 1)
+            scheduledFiles[candidateQueue.currentIndex + 1] = next.file
         } else {
-            let plan = try planner(UInt32(engineSampleRate.rounded()), currentInput, currentInput)
+            let plan = try planner(engineRate, currentInput, currentInput)
             try schedule(file: currentFile, on: firstNode,
                          sourceStartFrame: plan.currentStartFrame,
                          frameCount: plan.currentFrameCount, engineStartFrame: 0,
-                         gain: plan.currentGainLinear, queueIndex: queue.currentIndex)
+                         gain: plan.currentGainLinear, queueIndex: candidateQueue.currentIndex)
+            scheduledFiles[candidateQueue.currentIndex] = currentFile
         }
     }
 
-    private func scheduleFollowingTrack() throws {
+    private func scheduleFollowingTrack() {
         let currentIndex = queue.currentIndex
-        guard let currentFile = scheduledFiles[currentIndex],
-              let next = try nextFileAndTrack(after: currentIndex) else { return }
+        guard let currentFile = scheduledFiles[currentIndex] else { return }
+        let nextIndex = currentIndex + 1
+        guard queue.tracks.indices.contains(nextIndex),
+              let nextURL = resolvedURLs[queue.tracks[nextIndex].id] else { return }
+        let nextTrack = queue.tracks[nextIndex]
+        let generation = scheduleGeneration
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let nextFile = try await fileOpener.open(nextURL)
+                guard generation == scheduleGeneration,
+                      queue.currentIndex == currentIndex else { return }
+                try scheduleFollowingTrack(
+                    currentFile: currentFile,
+                    nextFile: nextFile,
+                    nextTrack: nextTrack,
+                    currentIndex: currentIndex
+                )
+            } catch {
+                guard generation == scheduleGeneration,
+                      queue.currentIndex == currentIndex else { return }
+                onPlaybackError?(error)
+            }
+        }
+    }
+
+    private func scheduleFollowingTrack(
+        currentFile: AVAudioFile,
+        nextFile: AVAudioFile,
+        nextTrack: Track,
+        currentIndex: Int
+    ) throws {
         let currentInput = try timelineTrack(file: currentFile, sourceStartFrame: 0,
                                              replayGainDB: queue.tracks[currentIndex].replayGainDB)
-        let nextInput = try timelineTrack(file: next.file, sourceStartFrame: 0,
-                                          replayGainDB: next.track.replayGainDB)
+        let nextInput = try timelineTrack(file: nextFile, sourceStartFrame: 0,
+                                          replayGainDB: nextTrack.replayGainDB)
+        guard engineSampleRate > 0,
+              engineSampleRate.isFinite,
+              engineSampleRate <= Double(UInt32.max) else {
+            throw NativePlaybackError.invalidAudioFormat
+        }
         let plan = try planner(UInt32(engineSampleRate.rounded()), currentInput, nextInput)
-        let nextStart = currentTrackStartEngineFrame + plan.nextStartEngineFrame
-        scheduledFiles[currentIndex + 1] = next.file
-        try schedule(file: next.file, on: standbyNode, sourceStartFrame: 0,
-                     frameCount: UInt64(next.file.length), engineStartFrame: nextStart,
+        let (nextStart, overflow) = currentTrackStartEngineFrame.addingReportingOverflow(plan.nextStartEngineFrame)
+        guard !overflow else { throw NativePlaybackError.unsupportedFrameCount }
+        try schedule(file: nextFile, on: standbyNode, sourceStartFrame: 0,
+                     frameCount: nextInput.totalFrames, engineStartFrame: nextStart,
                      gain: plan.nextGainLinear, queueIndex: currentIndex + 1)
+        scheduledFiles[currentIndex + 1] = nextFile
     }
 
     private func schedule(file: AVAudioFile, on node: AVAudioPlayerNode,
                           sourceStartFrame: UInt64, frameCount: UInt64,
                           engineStartFrame: UInt64, gain: Double,
                           queueIndex: Int) throws {
-        guard let start = AVAudioFramePosition(exactly: sourceStartFrame),
+        guard gain.isFinite,
+              let start = AVAudioFramePosition(exactly: sourceStartFrame),
               let count = AVAudioFrameCount(exactly: frameCount),
               let engineStart = AVAudioFramePosition(exactly: engineStartFrame) else {
             throw NativePlaybackError.unsupportedFrameCount
         }
         node.volume = Float(min(4, max(0, gain)))
-        scheduledEngineStartFrames[queueIndex] = engineStartFrame
         let generation = scheduleGeneration
         node.scheduleSegment(
             file,
@@ -368,24 +684,56 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 self?.handleTrackFinished(queueIndex: queueIndex, generation: generation)
             }
         }
+        scheduledEngineStartFrames[queueIndex] = engineStartFrame
     }
 
     private func handleTrackFinished(queueIndex: Int, generation: Int) {
         guard generation == scheduleGeneration, queue.currentIndex == queueIndex else { return }
         guard queueIndex + 1 < queue.tracks.count else {
             guard isRepeatEnabled else {
-                isPlaying = false
-                elapsed = queue.current?.duration ?? elapsed
+                publishPlaybackState(false)
+                timelineStarted = false
+                timelineNeedsReschedule = true
+                publishElapsed(queue.current?.duration ?? elapsed)
                 onQueueFinished?()
                 updateNowPlaying()
                 return
             }
             queue.currentIndex = 0
             onCurrentTrackChanged?(queue.current)
-            elapsed = 0
+            publishElapsed(0)
             shuffleUpcomingTrackIfNeeded()
-            try? prepareTimeline(sourceStartFrame: 0)
-            try? play()
+            let repeatGeneration = scheduleGeneration
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    let preparedFiles = try await openInitialFiles(for: queue, resolvedURLs: resolvedURLs)
+                    guard repeatGeneration == scheduleGeneration,
+                          queue.currentIndex == 0 else { return }
+                    try prepareTimeline(
+                        sourceStartFrame: 0,
+                        for: queue,
+                        resolvedURLs: resolvedURLs,
+                        preparedFiles: preparedFiles
+                    )
+                    try play()
+                } catch {
+                    guard repeatGeneration == scheduleGeneration else { return }
+                    publishPlaybackState(false)
+                    timelineNeedsReschedule = true
+                    onPlaybackError?(error)
+                }
+            }
+            updateNowPlaying()
+            return
+        }
+        guard scheduledFiles[queueIndex + 1] != nil,
+              scheduledEngineStartFrames[queueIndex + 1] != nil else {
+            publishPlaybackState(false)
+            timelineStarted = false
+            timelineNeedsReschedule = true
+            publishElapsed(queue.current?.duration ?? elapsed)
+            onQueueFinished?()
             updateNowPlaying()
             return
         }
@@ -397,33 +745,60 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         currentTrackStartEngineFrame = scheduledEngineStartFrames[queue.currentIndex] ?? 0
         scheduledFiles.removeValue(forKey: queueIndex)
         scheduledEngineStartFrames.removeValue(forKey: queueIndex)
-        elapsed = 0
-        try? scheduleFollowingTrack()
+        publishElapsed(0)
+        scheduleFollowingTrack()
         updateNowPlaying()
     }
 
-    private func nextFileAndTrack(after index: Int) throws -> (file: AVAudioFile, track: Track)? {
+    private func nextFileAndTrack(after index: Int,
+                                  in queue: PlaybackQueue,
+                                  resolvedURLs: [UUID: URL],
+                                  preparedFiles: [Int: AVAudioFile] = [:]) throws -> (file: AVAudioFile, track: Track)? {
         let nextIndex = index + 1
         guard queue.tracks.indices.contains(nextIndex) else { return nil }
         let track = queue.tracks[nextIndex]
         guard let url = resolvedURLs[track.id] else { throw NativePlaybackError.unresolvedTrack }
-        return (try AVAudioFile(forReading: url), track)
+        return (try preparedFiles[nextIndex] ?? AVAudioFile(forReading: url), track)
     }
 
-    private func shuffleUpcomingTrackIfNeeded() {
-        guard isShuffleEnabled else { return }
-        let nextIndex = queue.currentIndex + 1
-        guard nextIndex < queue.tracks.count else { return }
-        let selectedIndex = Int.random(in: nextIndex..<queue.tracks.count)
-        if selectedIndex != nextIndex {
-            queue.tracks.swapAt(nextIndex, selectedIndex)
+    private func openInitialFiles(
+        for queue: PlaybackQueue,
+        resolvedURLs: [UUID: URL]
+    ) async throws -> [Int: AVAudioFile] {
+        guard let current = queue.current,
+              let currentURL = resolvedURLs[current.id] else {
+            throw NativePlaybackError.unresolvedTrack
         }
+        var urlsByIndex = [queue.currentIndex: currentURL]
+        let nextIndex = queue.currentIndex + 1
+        if queue.tracks.indices.contains(nextIndex) {
+            guard let nextURL = resolvedURLs[queue.tracks[nextIndex].id] else {
+                throw NativePlaybackError.unresolvedTrack
+            }
+            urlsByIndex[nextIndex] = nextURL
+        }
+        return try await fileOpener.open(urlsByIndex)
+    }
+
+    private func shuffleUpcomingTrackIfNeeded() { queue = shuffledQueue(queue) }
+
+    private func shuffledQueue(_ input: PlaybackQueue) -> PlaybackQueue {
+        var result = input
+        guard isShuffleEnabled else { return result }
+        let nextIndex = result.currentIndex + 1
+        guard nextIndex < result.tracks.count else { return result }
+        let selectedIndex = Int.random(in: nextIndex..<result.tracks.count)
+        if selectedIndex != nextIndex { result.tracks.swapAt(nextIndex, selectedIndex) }
+        return result
     }
 
     private func timelineTrack(file: AVAudioFile, sourceStartFrame: AVAudioFramePosition,
                                replayGainDB: Double?) throws -> PlaybackTimelineTrack {
         let rate = file.processingFormat.sampleRate
-        guard rate > 0, rate <= Double(UInt32.max), sourceStartFrame >= 0 else {
+        guard rate > 0, rate.isFinite, rate <= Double(UInt32.max),
+              file.length >= 0,
+              sourceStartFrame >= 0,
+              replayGainDB?.isFinite ?? true else {
             throw NativePlaybackError.invalidAudioFormat
         }
         return PlaybackTimelineTrack(sampleRateHz: UInt32(rate.rounded()),
@@ -440,35 +815,57 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
 
     private func updateElapsed() {
         guard isPlaying,
+              engineSampleRate.isFinite, engineSampleRate > 0,
               let nodeTime = activeNode.lastRenderTime,
               let playerTime = activeNode.playerTime(forNodeTime: nodeTime) else { return }
-        // `playerTime.sampleTime` is relative to the active player node.  The
-        // queue's engine timeline is only used for scheduling the next node;
-        // subtracting it here would pin every subsequent track at 0:00.
         let rendered = max(0, playerTime.sampleTime)
         let duration = queue.current?.duration ?? .greatestFiniteMagnitude
-        elapsed = min(duration, currentSourceStartSeconds + Double(rendered) / engineSampleRate)
+        publishElapsed(min(duration, currentSourceStartSeconds + Double(rendered) / engineSampleRate))
         updateNowPlaying()
     }
 
     private func configureRemoteCommands() {
         let commands = MPRemoteCommandCenter.shared()
-        commands.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in try? self?.play() }; return .success
-        }
-        commands.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.pause() }; return .success
-        }
-        commands.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in try? self?.skipForward() }; return .success
-        }
-        commands.previousTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in try? self?.skipBackward() }; return .success
-        }
-        commands.changePlaybackPositionCommand.addTarget { [weak self] event in
+        remoteCommandTokens.append((commands.playCommand, commands.playCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let callback = self.onRemotePlayRequested { callback() }
+                else { do { try self.play() } catch { self.onPlaybackError?(error) } }
+            }
+            return .success
+        }))
+        remoteCommandTokens.append((commands.pauseCommand, commands.pauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let callback = self.onRemotePauseRequested { callback() } else { self.pause() }
+            }
+            return .success
+        }))
+        remoteCommandTokens.append((commands.nextTrackCommand, commands.nextTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let callback = self.onRemoteNextRequested { callback() }
+                else { do { try self.skipForward() } catch { self.onPlaybackError?(error) } }
+            }
+            return .success
+        }))
+        remoteCommandTokens.append((commands.previousTrackCommand, commands.previousTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let callback = self.onRemotePreviousRequested { callback() }
+                else { do { try self.skipBackward() } catch { self.onPlaybackError?(error) } }
+            }
+            return .success
+        }))
+        remoteCommandTokens.append((commands.changePlaybackPositionCommand, commands.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            Task { @MainActor in self?.seek(to: event.positionTime) }; return .success
-        }
+            Task { @MainActor in
+                guard let self else { return }
+                if let callback = self.onRemoteSeekRequested { callback(event.positionTime) }
+                else { self.seek(to: event.positionTime) }
+            }
+            return .success
+        }))
     }
 
     private func configureAudioNotifications() {
@@ -509,7 +906,9 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         case .ended:
             let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions ?? 0)
                 .contains(.shouldResume)
-            if wasPlayingBeforeInterruption && shouldResume { try? play() }
+            if wasPlayingBeforeInterruption && shouldResume {
+                do { try play() } catch { onPlaybackError?(error) }
+            }
             wasPlayingBeforeInterruption = false
         @unknown default: pause()
         }
@@ -523,9 +922,11 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     private func recoverAfterEngineChange() {
         let resume = isPlaying
         let position = elapsed
-        isPlaying = false
+        publishPlaybackState(false)
         seek(to: position)
-        if resume { try? play() }
+        if resume && !isPlaying {
+            do { try play() } catch { onPlaybackError?(error) }
+        }
     }
 
     private func updateNowPlaying() {
@@ -546,17 +947,28 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
 
     private static let fallbackPlanner: PlaybackPairPlanner = { engineRate, current, next in
         guard engineRate > 0, current.sampleRateHz > 0, next.sampleRateHz > 0,
-              current.startFrame <= current.totalFrames else {
+              current.startFrame <= current.totalFrames,
+              current.replayGainDB?.isFinite ?? true,
+              next.replayGainDB?.isFinite ?? true else {
             throw NativePlaybackError.invalidAudioFormat
         }
         let remaining = current.totalFrames - current.startFrame
-        let nextStart = UInt64((Double(remaining) * Double(engineRate) /
-                                Double(current.sampleRateHz)).rounded())
-        func gain(_ decibels: Double?) -> Double { min(4, pow(10, (decibels ?? 0) / 20)) }
+        let scaled = Double(remaining) * Double(engineRate) / Double(current.sampleRateHz)
+        let rounded = scaled.rounded()
+        let twoTo64 = 18_446_744_073_709_551_616.0
+        guard rounded.isFinite, rounded >= 0, rounded < twoTo64 else {
+            throw NativePlaybackError.unsupportedFrameCount
+        }
+        let nextStart = UInt64(rounded)
+        func gain(_ decibels: Double?) throws -> Double {
+            let value = pow(10, (decibels ?? 0) / 20)
+            guard value.isFinite, value >= 0 else { throw NativePlaybackError.invalidAudioFormat }
+            return min(4, value)
+        }
         return PlaybackSchedulePlan(currentStartFrame: current.startFrame,
                                     currentFrameCount: remaining,
                                     nextStartEngineFrame: nextStart,
-                                    currentGainLinear: gain(current.replayGainDB),
-                                    nextGainLinear: gain(next.replayGainDB))
+                                    currentGainLinear: try gain(current.replayGainDB),
+                                    nextGainLinear: try gain(next.replayGainDB))
     }
 }

@@ -2,7 +2,7 @@
 name = "cmv-core-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.98"
+rust-version = "1.98.1"
 description = "Platform-neutral core for Celestial Music Vault"
 license = "Proprietary"
 publish = false
@@ -17,5 +17,6 @@ path = "src/lib.rs"
 
 [profile.release]
 codegen-units = 1
+debug = 1
 lto = "thin"
-strip = "symbols"
+strip = "none"

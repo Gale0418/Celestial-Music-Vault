@@ -12,15 +12,25 @@ actor NativeAudioAnalyzer: AudioAnalyzer {
     }
 
     func analyze(trackID: UUID, url: URL) async throws -> AnalysisProfile {
-        cancelled.remove(trackID)
+        guard cancelled.remove(trackID) == nil else { throw CancellationError() }
         let ownsSecurityScope = url.startAccessingSecurityScopedResource()
         defer {
             if ownsSecurityScope { url.stopAccessingSecurityScopedResource() }
         }
         let file = try AVAudioFile(forReading: url)
         let format = file.processingFormat
-        let channels = UInt16(format.channelCount)
-        guard channels > 0 else { throw CocoaError(.fileReadCorruptFile) }
+        let rawChannelCount = format.channelCount
+        let rawSampleRate = format.sampleRate
+        guard rawChannelCount > 0,
+              rawChannelCount <= AVAudioChannelCount(UInt16.max),
+              rawSampleRate.isFinite,
+              rawSampleRate > 0,
+              rawSampleRate <= Double(UInt32.max),
+              file.length >= 0 else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let channels = UInt16(rawChannelCount)
+        let sampleRateHz = UInt32(rawSampleRate.rounded())
         let frameCapacity = AVAudioFrameCount(min(16_384, max(1, file.length)))
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity),
               let channelData = buffer.floatChannelData else {
@@ -36,20 +46,23 @@ actor NativeAudioAnalyzer: AudioAnalyzer {
         var globalFrame = 0
         while file.framePosition < file.length {
             try Task.checkCancellation()
-            if cancelled.contains(trackID) { throw CancellationError() }
+            if cancelled.remove(trackID) != nil { throw CancellationError() }
             try file.read(into: buffer)
             let frames = min(Int(buffer.frameLength), maxAnalysisFrames - globalFrame)
             guard frames > 0 else { break }
             for frame in 0..<frames {
                 for channel in 0..<Int(channels) {
-                    samples.append(channelData[channel][frame])
+                    let sample = channelData[channel][frame]
+                    guard sample.isFinite else { throw CocoaError(.fileReadCorruptFile) }
+                    samples.append(sample)
                 }
                 globalFrame += 1
             }
             await Task.yield()
             if globalFrame >= maxAnalysisFrames { break }
         }
-        let result = try rust.analyzePCM(samples: samples, sampleRateHz: UInt32(format.sampleRate.rounded()), channels: channels)
+        guard !samples.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
+        let result = try rust.analyzePCM(samples: samples, sampleRateHz: sampleRateHz, channels: channels)
         let key = result.musicalKey.map(Self.keyName)
         return AnalysisProfile(version: Int(result.version), bpm: result.bpm, musicalKey: key,
                                integratedLoudnessLUFS: result.integratedLoudnessLUFS,

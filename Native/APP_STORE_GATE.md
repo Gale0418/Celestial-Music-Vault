@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜送審前 gate
 
-更新：2026-08-27
+更新：2026-09-01
 
 這份清單是送 TestFlight 前的可重跑 gate，不把模擬器編譯誤當成實機核准。
 
@@ -9,13 +9,14 @@
 - deployment target：macOS 15.0、iPadOS 18.0；只啟用 `iphoneos`、`iphonesimulator`、`macosx`。
 - macOS App Sandbox、user-selected read-only、app-scope bookmark 與 network client entitlement 已列在 `CMV.entitlements`。
 - App 不保存 NAS 帳密、不建立帳號、不送出音樂、PCM、Metadata 或 Smart DJ 結果。
-- `PrivacyInfo.xcprivacy` 宣告不追蹤、不收集資料；檔案修改時間只用於使用者明確授權的資料夾差異掃描（`3B52.1`）。
+- `PrivacyInfo.xcprivacy` 宣告不追蹤、不收集資料；檔案修改時間只用於使用者明確授權的資料夾差異掃描（`3B52.1`），`UserDefaults` 只保存 App 自身偏好（`CA92.1`），system boot time 只用於 App 內能量表 elapsed-time 節流（`35F9.1`）與 AVAudioTime 絕對 host timestamp 排程（`8FFB.1`）。
 - `Info.plist` 僅宣告音訊背景模式與 Music 類別；沒有任意網路載入或第三方追蹤 SDK。
-- 已完成本機 universal Release archive：`/tmp/CMV-macOS-universal.xcarchive`；
-  App binary 同時含 `arm64`／`x86_64`，`codesign --verify --deep --strict` 通過，
-  embedded entitlements 與 `PrivacyInfo.xcprivacy` 均可解析。此 archive 使用
-  Apple Development 憑證，僅代表本機封裝與沙盒驗證，不等同 App Store
-  Distribution／TestFlight 簽署。
+- 靜態搜尋未找到 CMV 自行建立 URLSession／Network／Bonjour／SMB 連線；目前
+  `network.client` entitlement 僅暫留至實機 NAS 掛載測試。若 Finder／Files 掛載後的
+  security-scoped 檔案存取不需要它，正式 RC 應移除以維持最小權限。
+- 歷史上曾完成 Development 簽章的 universal archive 驗證；目前 canonical
+  `/tmp/CMV-macOS-universal.xcarchive` 已不存在，且工作樹與 artifact manifest 已變更，
+  因此該歷史證據不可作為本次 RC。正式 RC 必須重建並重新記錄 binary／dSYM UUID。
 - App icon 已加入 `Assets.xcassets/AppIcon.appiconset`，1024px／512px RGB 無 Alpha，
   並由 macOS／iPadOS Release bundle 產出；metadata、隱私政策／支援 URL 與授權
   清單集中記錄於 `Native/APP_STORE_METADATA.md`。
@@ -29,6 +30,19 @@
 5. 使用授權的完整節目級 loudness reference material 驗證，不以 1 kHz tone fixture 取代節目認證。
 6. 依 `Native/APP_STORE_METADATA.md` 補齊 Privacy Policy／Support URL、商店文案、
    年齡分級、App Review notes 與完整素材／第三方授權紀錄。
+
+## 2026-09-01 唯讀發行盤點
+
+- `asc 4.11.0` 與 Xcode 26.6 可用，但 `asc auth status` 沒有已登入 profile；不得從
+  MediBuddy 複製 API key，須由發布者為 CMV 正式登入或指定既有受權 profile。
+- Bundle ID／版本／build 已固定為 `com.windsheep.cmv`／`2.0`／`1`；送審前仍須確認
+  App Store Connect App Record 是否以相同 Bundle ID 同時建立 IOS 與 MAC_OS lane。
+- Keychain 目前只有 Apple Development identity，尚無 Apple Distribution；不得把
+  Development／ad-hoc build 宣稱為 TestFlight 或 App Store ready。
+- 實體 iPad 目前離線；背景音訊、PiP、Files provider、bookmark 重啟恢復與 NAS
+  故障矩陣仍無實機證據。
+- `Native/APP_STORE_REVIEW_KIT.md` 與 `Native/ASSET_RIGHTS_LEDGER.md` 是 canonical
+  審核資料入口；含方括號的欄位均為人工 gate，不得猜測或自動填入。
 
 ## 可重跑命令
 

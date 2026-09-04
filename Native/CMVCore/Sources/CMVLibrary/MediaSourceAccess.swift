@@ -1,7 +1,7 @@
 import Foundation
 import CMVDomain
 
-public enum MediaSourceAccessError: LocalizedError {
+public enum MediaSourceAccessError: LocalizedError, Equatable {
     case staleBookmark
     case accessDenied
     public var errorDescription: String? {
@@ -50,6 +50,11 @@ public struct SecurityScopedMediaSourceProvider: MediaSourceProvider {
     public init() {}
 
     public func makeBookmark(for url: URL) throws -> Data {
+        // System picker URLs carry the sandbox extension on the original URL.
+        // Acquire it here as well as at higher-level call sites so every
+        // bookmark minting path (including reauthorization) is self-contained.
+        let ownsAccess = url.startAccessingSecurityScopedResource()
+        defer { if ownsAccess { url.stopAccessingSecurityScopedResource() } }
         #if os(macOS)
         let options: URL.BookmarkCreationOptions = [.withSecurityScope]
         #else
@@ -83,6 +88,11 @@ public struct SecurityScopedMediaSourceProvider: MediaSourceProvider {
         #else
         let bookmarkOptions: URL.BookmarkCreationOptions = [.minimalBookmark]
         #endif
+        // Recreating a stale security-scoped bookmark without first consuming
+        // the resolved URL's sandbox extension can fail even though resolution
+        // itself succeeded. Keep this balanced and local to the refresh path.
+        let ownsAccess = url.startAccessingSecurityScopedResource()
+        defer { if ownsAccess { url.stopAccessingSecurityScopedResource() } }
         guard let refreshed = try? url.bookmarkData(
             options: bookmarkOptions,
             includingResourceValuesForKeys: nil,

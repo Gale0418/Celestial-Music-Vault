@@ -1,5 +1,0 @@
-{
-  "buildPath": "comp-led",
-  "platform": "swiftui-multiplatform",
-  "primaryViewports": ["macOS", "iPad-landscape", "iPad-portrait"]
-}

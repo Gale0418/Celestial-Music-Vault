@@ -62,13 +62,12 @@ pub unsafe extern "C" fn cmv_core_reconcile_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-
-    // Always initialize the output before parsing so failure never exposes
-    // uninitialized ownership state to Swift.
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
 
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
@@ -112,10 +111,12 @@ pub unsafe extern "C" fn cmv_core_plan_playback_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
 
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
@@ -158,10 +159,12 @@ pub unsafe extern "C" fn cmv_core_search_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
 
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
@@ -197,10 +200,12 @@ pub unsafe extern "C" fn cmv_core_analyze_pcm_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
             &[]
@@ -236,10 +241,12 @@ pub unsafe extern "C" fn cmv_core_make_dj_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
             &[]
@@ -273,10 +280,12 @@ pub unsafe extern "C" fn cmv_core_eviction_plan_v1(
     input_len: usize,
     out_buffer: *mut CMVOwnedBufferV1,
 ) -> i32 {
+    if !out_buffer.is_null() {
+        unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
+    }
     if out_buffer.is_null() || (input_ptr.is_null() && input_len != 0) {
         return CMVStatusV1::InvalidArgument as i32;
     }
-    unsafe { out_buffer.write(CMVOwnedBufferV1::default()) };
     let status = catch_unwind(AssertUnwindSafe(|| {
         let input = if input_len == 0 {
             &[]
@@ -712,15 +721,17 @@ impl<'a> Decoder<'a> {
     }
 
     fn f64(&mut self) -> Result<f64, ()> {
-        Ok(f64::from_le_bytes(
+        let value = f64::from_le_bytes(
             self.take(8)?.try_into().map_err(|_| ())?,
-        ))
+        );
+        value.is_finite().then_some(value).ok_or(())
     }
 
     fn f32(&mut self) -> Result<f32, ()> {
-        Ok(f32::from_le_bytes(
+        let value = f32::from_le_bytes(
             self.take(4)?.try_into().map_err(|_| ())?,
-        ))
+        );
+        value.is_finite().then_some(value).ok_or(())
     }
 
     fn optional_f64(&mut self) -> Result<Option<f64>, ()> {
@@ -854,6 +865,30 @@ mod tests {
     }
 
     #[test]
+    fn invalid_arguments_zero_non_null_outputs_for_every_endpoint() {
+        let endpoints: &[unsafe extern "C" fn(*const u8, usize, *mut CMVOwnedBufferV1) -> i32] = &[
+            cmv_core_reconcile_v1,
+            cmv_core_plan_playback_v1,
+            cmv_core_search_v1,
+            cmv_core_analyze_pcm_v1,
+            cmv_core_make_dj_v1,
+            cmv_core_eviction_plan_v1,
+        ];
+
+        for endpoint in endpoints {
+            let mut output = CMVOwnedBufferV1 {
+                ptr: ptr::dangling_mut(),
+                len: 99,
+            };
+            let status = unsafe { endpoint(ptr::null(), 1, &mut output) };
+
+            assert_eq!(status, CMVStatusV1::InvalidArgument as i32);
+            assert!(output.ptr.is_null());
+            assert_eq!(output.len, 0);
+        }
+    }
+
+    #[test]
     fn null_output_is_rejected_without_reading_input() {
         let status = unsafe { cmv_core_reconcile_v1(ptr::null(), 0, ptr::null_mut()) };
         assert_eq!(status, CMVStatusV1::InvalidArgument as i32);
@@ -946,6 +981,51 @@ mod tests {
         unsafe { cmv_core_buffer_free_v1(output) };
     }
 
+    #[test]
+    fn non_finite_float_payloads_are_rejected() {
+        let mut pcm = Encoder::default();
+        pcm.bytes.extend_from_slice(MAGIC);
+        pcm.u16(ABI_VERSION);
+        pcm.u32(4_000);
+        pcm.u16(1);
+        pcm.u32(1);
+        pcm.f32(f32::NAN);
+        let mut output = CMVOwnedBufferV1::default();
+        let status = unsafe {
+            cmv_core_analyze_pcm_v1(pcm.bytes.as_ptr(), pcm.bytes.len(), &mut output)
+        };
+        assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
+        assert!(output.ptr.is_null());
+        assert_eq!(output.len, 0);
+
+        let mut playback = Encoder::default();
+        playback.bytes.extend_from_slice(MAGIC);
+        playback.u16(ABI_VERSION);
+        playback.u32(48_000);
+        encode_test_timeline_track(&mut playback, 44_100, 441_000, 44_100, Some(f64::NAN));
+        encode_test_timeline_track(&mut playback, 48_000, 960_000, 0, None);
+        let status = unsafe {
+            cmv_core_plan_playback_v1(
+                playback.bytes.as_ptr(),
+                playback.bytes.len(),
+                &mut output,
+            )
+        };
+        assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
+        assert!(output.ptr.is_null());
+        assert_eq!(output.len, 0);
+
+        for (bpm, energy) in [(Some(f64::NAN), 0.5), (None, f64::INFINITY)] {
+            let request = encode_test_dj_request(bpm, energy);
+            let status = unsafe {
+                cmv_core_make_dj_v1(request.as_ptr(), request.len(), &mut output)
+            };
+            assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
+            assert!(output.ptr.is_null());
+            assert_eq!(output.len, 0);
+        }
+    }
+
     fn encode_test_request() -> Vec<u8> {
         let mut encoder = Encoder::default();
         encoder.bytes.extend_from_slice(MAGIC);
@@ -964,6 +1044,23 @@ mod tests {
         encoder.u64(11);
         encoder.i64(101);
         encoder.string("New A");
+        encoder.bytes
+    }
+
+    fn encode_test_dj_request(bpm: Option<f64>, energy: f64) -> Vec<u8> {
+        let mut encoder = Encoder::default();
+        encoder.bytes.extend_from_slice(MAGIC);
+        encoder.u16(ABI_VERSION);
+        encoder.u32(1);
+        encoder.u32(1);
+        encoder.string("track");
+        encoder.string("Track");
+        encoder.u8(0);
+        encoder.u8(0);
+        encoder.optional_f64(bpm);
+        encoder.f64(energy);
+        encoder.u32(0);
+        encoder.u32(0);
         encoder.bytes
     }
 

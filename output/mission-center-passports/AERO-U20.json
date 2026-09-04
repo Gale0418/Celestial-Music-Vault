@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-U20",
+  "taskDigest": "44fe6712dc7ae2ebcbd18dbadbdfc0a934c102e6b3a2e1e9434712b74be4c73d",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "Native/CMVCore/Sources/CMVPlayback/NativePlaybackEngine.swift",
+      "Native/CMV/CMV/PlayerBar.swift",
+      "Native/CMV/CMV/CelestialViews.swift"
+    ]
+  },
+  "findings": []
+}

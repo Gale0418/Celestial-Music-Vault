@@ -9,6 +9,8 @@ enum CMVCoreRSError: Error, Equatable, Sendable {
     case playbackPlanFailed
     case searchFailed
     case analysisFailed
+    case djFailed
+    case cacheFailed
     case rustPanic
     case unknownStatus(Int32)
     case malformedResponse
@@ -126,11 +128,7 @@ struct CMVCoreRSClient: Sendable {
         scanned: [RustScannedFile],
         sourceReachable: Bool
     ) throws -> RustReconciliation {
-        let actualVersion = cmv_core_abi_version_v1()
-        guard actualVersion == Self.supportedABIVersion else {
-            throw CMVCoreRSError.unsupportedABIVersion(actualVersion)
-        }
-
+        try validateABIVersion()
         let request = try RequestEncoder.encode(
             existing: existing,
             scanned: scanned,
@@ -144,16 +142,10 @@ struct CMVCoreRSClient: Sendable {
                 &output
             )
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else {
-            throw Self.error(for: status)
-        }
         defer { cmv_core_buffer_free_v1(output) }
-        guard let pointer = output.ptr else {
-            throw CMVCoreRSError.malformedResponse
-        }
-        var decoder = ResponseDecoder(
-            bytes: UnsafeBufferPointer(start: pointer, count: output.len)
-        )
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
+        guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
+        var decoder = ResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
     }
 
@@ -162,10 +154,7 @@ struct CMVCoreRSClient: Sendable {
         current: RustTimelineTrack,
         next: RustTimelineTrack
     ) throws -> RustPlaybackPlan {
-        let actualVersion = cmv_core_abi_version_v1()
-        guard actualVersion == Self.supportedABIVersion else {
-            throw CMVCoreRSError.unsupportedABIVersion(actualVersion)
-        }
+        try validateABIVersion()
         let request = PlaybackRequestEncoder.encode(
             engineSampleRateHz: engineSampleRateHz,
             current: current,
@@ -179,16 +168,10 @@ struct CMVCoreRSClient: Sendable {
                 &output
             )
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else {
-            throw Self.error(for: status)
-        }
         defer { cmv_core_buffer_free_v1(output) }
-        guard let pointer = output.ptr else {
-            throw CMVCoreRSError.malformedResponse
-        }
-        var decoder = PlaybackResponseDecoder(
-            bytes: UnsafeBufferPointer(start: pointer, count: output.len)
-        )
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
+        guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
+        var decoder = PlaybackResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
     }
 
@@ -197,10 +180,8 @@ struct CMVCoreRSClient: Sendable {
         tracks: [RustSearchTrack],
         limit: Int
     ) throws -> [RustSearchResult] {
-        let actualVersion = cmv_core_abi_version_v1()
-        guard actualVersion == Self.supportedABIVersion else {
-            throw CMVCoreRSError.unsupportedABIVersion(actualVersion)
-        }
+        guard limit >= 0 else { throw CMVCoreRSError.invalidArgument }
+        try validateABIVersion()
         let request = try SearchRequestEncoder.encode(query: query, tracks: tracks, limit: limit)
         var output = CMVOwnedBufferV1(ptr: nil, len: 0)
         let status = request.withUnsafeBytes { bytes in
@@ -210,32 +191,38 @@ struct CMVCoreRSClient: Sendable {
                 &output
             )
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else {
-            throw Self.error(for: status)
-        }
         defer { cmv_core_buffer_free_v1(output) }
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
-        var decoder = SearchResponseDecoder(
-            bytes: UnsafeBufferPointer(start: pointer, count: output.len)
-        )
+        var decoder = SearchResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
     }
 
     func analyzePCM(samples: [Float], sampleRateHz: UInt32, channels: UInt16) throws -> RustAnalysisFeatures {
+        guard sampleRateHz > 0, channels > 0, !samples.isEmpty,
+              samples.count % Int(channels) == 0,
+              samples.allSatisfy(\.isFinite) else {
+            throw CMVCoreRSError.invalidArgument
+        }
+        guard samples.count <= Int(UInt32.max) else { throw CMVCoreRSError.valueTooLarge }
         try validateABIVersion()
         let request = try AnalysisRequestEncoder.encode(samples: samples, sampleRateHz: sampleRateHz, channels: channels)
         var output = CMVOwnedBufferV1(ptr: nil, len: 0)
         let status = request.withUnsafeBytes { bytes in
             cmv_core_analyze_pcm_v1(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &output)
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         defer { cmv_core_buffer_free_v1(output) }
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
         var decoder = AnalysisResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
     }
 
     func makeDJ(tracks: [RustDJTrack], limit: Int) throws -> [RustDJSelection] {
+        guard limit >= 0,
+              tracks.allSatisfy({ $0.energy.isFinite && ($0.bpm?.isFinite ?? true) }) else {
+            throw CMVCoreRSError.invalidArgument
+        }
         try validateABIVersion()
         var request = Data("CMV1".utf8)
         request.appendInteger(UInt16(1))
@@ -255,8 +242,8 @@ struct CMVCoreRSClient: Sendable {
         let status = request.withUnsafeBytes { bytes in
             cmv_core_make_dj_v1(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &output)
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         defer { cmv_core_buffer_free_v1(output) }
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
         var decoder = DJResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
@@ -266,10 +253,7 @@ struct CMVCoreRSClient: Sendable {
         guard budgetBytes >= 0, entries.allSatisfy({ $0.sizeBytes >= 0 }) else {
             throw CMVCoreRSError.invalidArgument
         }
-        let actualVersion = cmv_core_abi_version_v1()
-        guard actualVersion == Self.supportedABIVersion else {
-            throw CMVCoreRSError.unsupportedABIVersion(actualVersion)
-        }
+        try validateABIVersion()
         var request = Data("CMV1".utf8)
         request.appendInteger(UInt16(1))
         request.appendInteger(UInt64(budgetBytes))
@@ -284,8 +268,8 @@ struct CMVCoreRSClient: Sendable {
         let status = request.withUnsafeBytes { bytes in
             cmv_core_eviction_plan_v1(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &output)
         }
-        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         defer { cmv_core_buffer_free_v1(output) }
+        guard status == CMV_STATUS_OK_V1.rawValue else { throw Self.error(for: status) }
         guard let pointer = output.ptr else { throw CMVCoreRSError.malformedResponse }
         var decoder = CacheResponseDecoder(bytes: UnsafeBufferPointer(start: pointer, count: output.len))
         return try decoder.decode()
@@ -299,8 +283,8 @@ struct CMVCoreRSClient: Sendable {
         case 4: .playbackPlanFailed
         case 5: .searchFailed
         case 6: .analysisFailed
-        case 7: .unknownStatus(status)
-        case 8: .unknownStatus(status)
+        case 7: .djFailed
+        case 8: .cacheFailed
         case 255: .rustPanic
         default: .unknownStatus(status)
         }
@@ -350,14 +334,11 @@ private enum SearchRequestEncoder {
 
 private enum AnalysisRequestEncoder {
     static func encode(samples: [Float], sampleRateHz: UInt32, channels: UInt16) throws -> Data {
-        guard channels > 0, samples.count <= Int(UInt32.max), samples.count % Int(channels) == 0 else {
-            throw CMVCoreRSError.valueTooLarge
-        }
         var bytes = Data("CMV1".utf8)
         bytes.appendInteger(UInt16(1))
         bytes.appendInteger(sampleRateHz)
         bytes.appendInteger(channels)
-        bytes.appendInteger(UInt32(samples.count))
+        try bytes.appendCount(samples.count)
         for sample in samples { bytes.appendInteger(sample.bitPattern) }
         return bytes
     }
@@ -393,16 +374,14 @@ private struct ResponseDecoder {
     private let bytes: UnsafeBufferPointer<UInt8>
     private var offset = 0
 
-    init(bytes: UnsafeBufferPointer<UInt8>) {
-        self.bytes = bytes
-    }
+    init(bytes: UnsafeBufferPointer<UInt8>) { self.bytes = bytes }
 
     mutating func decode() throws -> RustReconciliation {
         guard try take(count: 4).elementsEqual("CMV1".utf8),
               try readInteger(as: UInt16.self) == 1 else {
             throw CMVCoreRSError.malformedResponse
         }
-        let upsertCount = try readCount()
+        let upsertCount = try readBoundedCount(minimumBytesPerItem: 29)
         var upserts: [RustTrackUpsert] = []
         upserts.reserveCapacity(upsertCount)
         for _ in 0..<upsertCount {
@@ -411,15 +390,11 @@ private struct ResponseDecoder {
             }
             upserts.append(RustTrackUpsert(kind: kind, file: try readScannedFile()))
         }
-        let missingCount = try readCount()
+        let missingCount = try readBoundedCount(minimumBytesPerItem: 4)
         var missing: [String] = []
         missing.reserveCapacity(missingCount)
-        for _ in 0..<missingCount {
-            missing.append(try readString())
-        }
-        guard offset == bytes.count else {
-            throw CMVCoreRSError.malformedResponse
-        }
+        for _ in 0..<missingCount { missing.append(try readString()) }
+        guard offset == bytes.count else { throw CMVCoreRSError.malformedResponse }
         return RustReconciliation(upserts: upserts, missingIdentifiers: missing)
     }
 
@@ -433,12 +408,17 @@ private struct ResponseDecoder {
         )
     }
 
-    private mutating func readCount() throws -> Int {
-        Int(try readInteger(as: UInt32.self))
+    private mutating func readBoundedCount(minimumBytesPerItem: Int) throws -> Int {
+        let count = Int(try readInteger(as: UInt32.self))
+        guard minimumBytesPerItem > 0,
+              count <= (bytes.count - offset) / minimumBytesPerItem else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        return count
     }
 
     private mutating func readString() throws -> String {
-        let count = try readCount()
+        let count = Int(try readInteger(as: UInt32.self))
         let data = Data(try take(count: count))
         guard let value = String(data: data, encoding: .utf8) else {
             throw CMVCoreRSError.malformedResponse
@@ -467,9 +447,7 @@ private struct PlaybackResponseDecoder {
     private let bytes: UnsafeBufferPointer<UInt8>
     private var offset = 0
 
-    init(bytes: UnsafeBufferPointer<UInt8>) {
-        self.bytes = bytes
-    }
+    init(bytes: UnsafeBufferPointer<UInt8>) { self.bytes = bytes }
 
     mutating func decode() throws -> RustPlaybackPlan {
         guard try take(count: 4).elementsEqual("CMV1".utf8),
@@ -480,13 +458,17 @@ private struct PlaybackResponseDecoder {
             currentStartFrame: try readInteger(as: UInt64.self),
             currentFrameCount: try readInteger(as: UInt64.self),
             nextStartEngineFrame: try readInteger(as: UInt64.self),
-            currentGainLinear: Double(bitPattern: try readInteger(as: UInt64.self)),
-            nextGainLinear: Double(bitPattern: try readInteger(as: UInt64.self))
+            currentGainLinear: try readFiniteDouble(),
+            nextGainLinear: try readFiniteDouble()
         )
-        guard offset == bytes.count else {
-            throw CMVCoreRSError.malformedResponse
-        }
+        guard offset == bytes.count else { throw CMVCoreRSError.malformedResponse }
         return result
+    }
+
+    private mutating func readFiniteDouble() throws -> Double {
+        let value = Double(bitPattern: try readInteger(as: UInt64.self))
+        guard value.isFinite else { throw CMVCoreRSError.malformedResponse }
+        return value
     }
 
     private mutating func readInteger<T: FixedWidthInteger>(as: T.Type) throws -> T {
@@ -517,7 +499,7 @@ private struct SearchResponseDecoder {
               try readInteger(as: UInt16.self) == 1 else {
             throw CMVCoreRSError.malformedResponse
         }
-        let count = Int(try readInteger(as: UInt32.self))
+        let count = try readBoundedCount(minimumBytesPerItem: 8)
         var results: [RustSearchResult] = []
         results.reserveCapacity(count)
         for _ in 0..<count {
@@ -528,6 +510,14 @@ private struct SearchResponseDecoder {
         }
         guard offset == bytes.count else { throw CMVCoreRSError.malformedResponse }
         return results
+    }
+
+    private mutating func readBoundedCount(minimumBytesPerItem: Int) throws -> Int {
+        let count = Int(try readInteger(as: UInt32.self))
+        guard count <= (bytes.count - offset) / minimumBytesPerItem else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        return count
     }
 
     private mutating func readString() throws -> String {
@@ -567,10 +557,10 @@ private struct AnalysisResponseDecoder {
               try readInteger(as: UInt16.self) == 1 else { throw CMVCoreRSError.malformedResponse }
         let result = RustAnalysisFeatures(
             version: try readInteger(as: UInt32.self),
-            integratedLoudnessLUFS: Double(bitPattern: try readInteger(as: UInt64.self)),
-            peak: Double(bitPattern: try readInteger(as: UInt64.self)),
-            energy: Double(bitPattern: try readInteger(as: UInt64.self)),
-            brightness: Double(bitPattern: try readInteger(as: UInt64.self)),
+            integratedLoudnessLUFS: try readFiniteDouble(),
+            peak: try readFiniteDouble(),
+            energy: try readFiniteDouble(),
+            brightness: try readFiniteDouble(),
             bpm: try readOptionalDouble(),
             musicalKey: try readOptionalByte()
         )
@@ -578,10 +568,16 @@ private struct AnalysisResponseDecoder {
         return result
     }
 
+    private mutating func readFiniteDouble() throws -> Double {
+        let value = Double(bitPattern: try readInteger(as: UInt64.self))
+        guard value.isFinite else { throw CMVCoreRSError.malformedResponse }
+        return value
+    }
+
     private mutating func readOptionalDouble() throws -> Double? {
         switch try readInteger(as: UInt8.self) {
         case 0: return nil
-        case 1: return Double(bitPattern: try readInteger(as: UInt64.self))
+        case 1: return try readFiniteDouble()
         default: throw CMVCoreRSError.malformedResponse
         }
     }
@@ -602,8 +598,11 @@ private struct AnalysisResponseDecoder {
     }
 
     private mutating func take(count: Int) throws -> Slice<UnsafeBufferPointer<UInt8>> {
-        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else { throw CMVCoreRSError.malformedResponse }
-        let start = offset; offset += count
+        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        let start = offset
+        offset += count
         return bytes[start..<offset]
     }
 }
@@ -617,13 +616,13 @@ private struct DJResponseDecoder {
     mutating func decode() throws -> [RustDJSelection] {
         guard try take(count: 4).elementsEqual("CMV1".utf8),
               try readInteger(as: UInt16.self) == 1 else { throw CMVCoreRSError.malformedResponse }
-        let count = Int(try readInteger(as: UInt32.self))
+        let count = try readBoundedCount(minimumBytesPerItem: 16)
         var result: [RustDJSelection] = []
         result.reserveCapacity(count)
         for _ in 0..<count {
             let identifier = try readString()
-            let score = Double(bitPattern: try readInteger(as: UInt64.self))
-            let reasonCount = Int(try readInteger(as: UInt32.self))
+            let score = try readFiniteDouble()
+            let reasonCount = try readBoundedCount(minimumBytesPerItem: 4)
             var reasons: [String] = []
             reasons.reserveCapacity(reasonCount)
             for _ in 0..<reasonCount { reasons.append(try readString()) }
@@ -631,6 +630,20 @@ private struct DJResponseDecoder {
         }
         guard offset == bytes.count else { throw CMVCoreRSError.malformedResponse }
         return result
+    }
+
+    private mutating func readBoundedCount(minimumBytesPerItem: Int) throws -> Int {
+        let count = Int(try readInteger(as: UInt32.self))
+        guard count <= (bytes.count - offset) / minimumBytesPerItem else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        return count
+    }
+
+    private mutating func readFiniteDouble() throws -> Double {
+        let value = Double(bitPattern: try readInteger(as: UInt64.self))
+        guard value.isFinite else { throw CMVCoreRSError.malformedResponse }
+        return value
     }
 
     private mutating func readString() throws -> String {
@@ -648,8 +661,11 @@ private struct DJResponseDecoder {
     }
 
     private mutating func take(count: Int) throws -> Slice<UnsafeBufferPointer<UInt8>> {
-        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else { throw CMVCoreRSError.malformedResponse }
-        let start = offset; offset += count
+        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        let start = offset
+        offset += count
         return bytes[start..<offset]
     }
 }
@@ -663,12 +679,20 @@ private struct CacheResponseDecoder {
     mutating func decode() throws -> [String] {
         guard try take(count: 4).elementsEqual("CMV1".utf8),
               try readInteger(as: UInt16.self) == 1 else { throw CMVCoreRSError.malformedResponse }
-        let count = Int(try readInteger(as: UInt32.self))
+        let count = try readBoundedCount(minimumBytesPerItem: 4)
         var result: [String] = []
         result.reserveCapacity(count)
         for _ in 0..<count { result.append(try readString()) }
         guard offset == bytes.count else { throw CMVCoreRSError.malformedResponse }
         return result
+    }
+
+    private mutating func readBoundedCount(minimumBytesPerItem: Int) throws -> Int {
+        let count = Int(try readInteger(as: UInt32.self))
+        guard count <= (bytes.count - offset) / minimumBytesPerItem else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        return count
     }
 
     private mutating func readString() throws -> String {
@@ -686,8 +710,11 @@ private struct CacheResponseDecoder {
     }
 
     private mutating func take(count: Int) throws -> Slice<UnsafeBufferPointer<UInt8>> {
-        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else { throw CMVCoreRSError.malformedResponse }
-        let start = offset; offset += count
+        guard count >= 0, offset <= bytes.count, count <= bytes.count - offset else {
+            throw CMVCoreRSError.malformedResponse
+        }
+        let start = offset
+        offset += count
         return bytes[start..<offset]
     }
 }

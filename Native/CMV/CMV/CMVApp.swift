@@ -25,7 +25,7 @@ struct CMVApp: App {
             appContent
         }
         .defaultSize(width: 1_360, height: 860)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
         WindowGroup("影片", id: "video") {
             if let container {
                 VideoWindowView()

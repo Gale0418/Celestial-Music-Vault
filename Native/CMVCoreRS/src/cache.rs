@@ -11,15 +11,22 @@ pub struct CacheEntry {
 /// Returns smart-cache identifiers to evict, oldest first. Pinned entries are
 /// never returned, even when their combined size exceeds the budget.
 pub fn eviction_plan(entries: &[CacheEntry], budget_bytes: u64) -> Vec<String> {
-    let mut total = entries.iter().map(|entry| entry.size_bytes).sum::<u64>();
+    // The aggregate can exceed u64 even though each individual entry cannot.
+    // u128 keeps the comparison exact instead of debug-panicking, wrapping in
+    // release, or losing the overflow amount through saturation.
+    let mut total = entries
+        .iter()
+        .map(|entry| u128::from(entry.size_bytes))
+        .sum::<u128>();
+    let budget = u128::from(budget_bytes);
     let mut candidates: Vec<&CacheEntry> = entries.iter().filter(|entry| !entry.pinned).collect();
     candidates.sort_by_key(|entry| (entry.last_access_order, entry.identifier.as_str()));
     let mut evictions = Vec::new();
     for entry in candidates {
-        if total <= budget_bytes {
+        if total <= budget {
             break;
         }
-        total = total.saturating_sub(entry.size_bytes);
+        total -= u128::from(entry.size_bytes);
         evictions.push(entry.identifier.clone());
     }
     evictions
@@ -64,5 +71,24 @@ mod tests {
             last_access_order: 0,
         };
         assert!(eviction_plan(&[entry], 1).is_empty());
+    }
+
+    #[test]
+    fn aggregate_size_above_u64_max_is_accounted_for_exactly() {
+        let entries = vec![
+            CacheEntry {
+                identifier: "old".into(),
+                size_bytes: u64::MAX,
+                pinned: false,
+                last_access_order: 1,
+            },
+            CacheEntry {
+                identifier: "new".into(),
+                size_bytes: 1,
+                pinned: false,
+                last_access_order: 2,
+            },
+        ];
+        assert_eq!(eviction_plan(&entries, 0), vec!["old", "new"]);
     }
 }

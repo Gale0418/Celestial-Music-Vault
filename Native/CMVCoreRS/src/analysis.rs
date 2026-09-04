@@ -1,8 +1,10 @@
 //! Deterministic, value-only audio feature extraction.
 //!
-//! PCM acquisition and file access stay in the Apple layer.  This module only
+//! PCM acquisition and file access stay in the Apple layer. This module only
 //! receives interleaved normalized samples, which keeps the result portable
 //! and makes fixture tests reproducible across macOS and iPadOS.
+
+const ANALYSIS_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalysisFeatures {
@@ -20,6 +22,8 @@ pub enum AnalysisError {
     InvalidSampleRate,
     InvalidChannelCount,
     EmptySamples,
+    InvalidFrameAlignment,
+    NonFiniteSample,
 }
 
 pub fn analyze_pcm(
@@ -38,6 +42,13 @@ pub fn analyze_pcm(
     }
 
     let channel_count = usize::from(channels);
+    if !samples.len().is_multiple_of(channel_count) {
+        return Err(AnalysisError::InvalidFrameAlignment);
+    }
+    if samples.iter().any(|sample| !sample.is_finite()) {
+        return Err(AnalysisError::NonFiniteSample);
+    }
+
     let filtered = k_weighted(samples, sample_rate_hz, channel_count);
     let integrated_loudness_lufs = integrated_loudness(&filtered, sample_rate_hz, channel_count);
     let rms = (samples
@@ -52,12 +63,12 @@ pub fn analyze_pcm(
         .fold(0.0, f64::max)
         .min(1.0);
     let energy = (rms * 4.0).clamp(0.0, 1.0);
-    let brightness = brightness_score(samples, channels);
-    let bpm = estimate_bpm(samples, sample_rate_hz, channels);
-    let musical_key = estimate_key(samples, sample_rate_hz, channels);
+    let brightness = brightness_score(samples, channel_count);
+    let bpm = estimate_bpm(samples, sample_rate_hz, channel_count);
+    let musical_key = estimate_key(samples, sample_rate_hz, channel_count);
 
     Ok(AnalysisFeatures {
-        version: 2,
+        version: ANALYSIS_VERSION,
         integrated_loudness_lufs,
         peak,
         energy,
@@ -107,18 +118,13 @@ fn k_weighted(samples: &[f32], sample_rate_hz: u32, channels: usize) -> Vec<f64>
     let (pre, rlb) = k_weighting_coefficients(sample_rate_hz);
     let mut high_pass = vec![Biquad::new(pre.0, pre.1, pre.2, pre.3, pre.4); channels];
     let mut rlb = vec![Biquad::new(rlb.0, rlb.1, rlb.2, rlb.3, rlb.4); channels];
-    samples
-        .chunks_exact(channels)
-        .flat_map(|frame| {
-            frame
-                .iter()
-                .enumerate()
-                .map(|(channel, sample)| {
-                    rlb[channel].process(high_pass[channel].process(f64::from(*sample)))
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect()
+    let mut output = Vec::with_capacity(samples.len());
+    for frame in samples.chunks_exact(channels) {
+        for (channel, sample) in frame.iter().enumerate() {
+            output.push(rlb[channel].process(high_pass[channel].process(f64::from(*sample))));
+        }
+    }
+    output
 }
 
 fn k_weighting_coefficients(sample_rate_hz: u32) -> (BiquadCoefficients, BiquadCoefficients) {
@@ -207,44 +213,50 @@ fn channel_weights(channels: usize) -> Vec<f64> {
     }
 }
 
-fn brightness_score(samples: &[f32], channels: u16) -> f64 {
-    let channel_count = usize::from(channels);
+/// A cheap high-frequency proxy over every interleaved channel. Comparing
+/// adjacent complete frames avoids silently treating a right-only stereo file
+/// as dark merely because channel zero is silent.
+fn brightness_score(samples: &[f32], channels: usize) -> f64 {
+    let mut frames = samples.chunks_exact(channels);
+    let Some(mut previous) = frames.next() else {
+        return 0.0;
+    };
     let mut total = 0.0;
-    let mut count = 0usize;
-    for frame in samples.chunks_exact(channel_count) {
-        if let Some(&next) = samples.get((count + 1) * channel_count) {
-            total += f64::from((next - frame[0]).abs());
+    let mut comparisons = 0usize;
+    for current in frames {
+        for channel in 0..channels {
+            total += f64::from((current[channel] - previous[channel]).abs());
+            comparisons += 1;
         }
-        count += 1;
+        previous = current;
     }
-    (total / count.max(1) as f64 * 8.0).clamp(0.0, 1.0)
+    (total / comparisons.max(1) as f64 * 8.0).clamp(0.0, 1.0)
 }
 
-fn frame_energy(samples: &[f32], channels: usize, frame_start: usize, frame_len: usize) -> f64 {
-    let mut total = 0.0;
-    let mut count = 0usize;
-    for frame in samples
-        .chunks_exact(channels)
-        .skip(frame_start)
-        .take(frame_len)
-    {
-        let mean = frame.iter().map(|value| f64::from(*value)).sum::<f64>() / channels as f64;
-        total += mean * mean;
-        count += 1;
-    }
-    total / count.max(1) as f64
+/// Computes one window's mean-square energy without cancelling anti-phase
+/// stereo content. The caller passes an exact window slice, keeping BPM
+/// envelope construction linear in the number of samples.
+fn window_energy(window: &[f32]) -> f64 {
+    window
+        .iter()
+        .map(|value| {
+            let value = f64::from(*value);
+            value * value
+        })
+        .sum::<f64>()
+        / window.len().max(1) as f64
 }
 
-fn estimate_bpm(samples: &[f32], sample_rate_hz: u32, channels: u16) -> Option<f64> {
-    let channels = usize::from(channels);
+fn estimate_bpm(samples: &[f32], sample_rate_hz: u32, channels: usize) -> Option<f64> {
     let frame_len = (usize::try_from(sample_rate_hz).ok()? / 100).max(1);
-    let frame_count = samples.len() / channels / frame_len;
-    if frame_count < 16 {
+    let samples_per_window = frame_len.checked_mul(channels)?;
+    let envelope: Vec<f64> = samples
+        .chunks_exact(samples_per_window)
+        .map(window_energy)
+        .collect();
+    if envelope.len() < 16 {
         return None;
     }
-    let envelope: Vec<f64> = (0..frame_count)
-        .map(|index| frame_energy(samples, channels, index * frame_len, frame_len))
-        .collect();
     let onset: Vec<f64> = envelope
         .windows(2)
         .map(|window| (window[1] - window[0]).max(0.0))
@@ -263,8 +275,8 @@ fn estimate_bpm(samples: &[f32], sample_rate_hz: u32, channels: u16) -> Option<f
             .skip(lag)
             .zip(onset.iter())
             .map(|(current, delayed)| current * delayed)
-            .sum::<f64>();
-        let score = score / overlap.max(1) as f64;
+            .sum::<f64>()
+            / overlap.max(1) as f64;
         if score > best.1 {
             best = (bpm, score);
         }
@@ -272,15 +284,36 @@ fn estimate_bpm(samples: &[f32], sample_rate_hz: u32, channels: u16) -> Option<f
     (best.1 > 1.0e-12).then_some(best.0)
 }
 
-fn estimate_key(samples: &[f32], sample_rate_hz: u32, channels: u16) -> Option<u8> {
-    let channels = usize::from(channels);
+/// Zero-crossing key estimation is intentionally simple, but it must not bind
+/// correctness to channel zero. Pick the highest-energy channel once and then
+/// scan only that channel in a second linear pass.
+fn estimate_key(samples: &[f32], sample_rate_hz: u32, channels: usize) -> Option<u8> {
+    let mut channel_energy = vec![0.0_f64; channels];
+    for frame in samples.chunks_exact(channels) {
+        for (channel, sample) in frame.iter().enumerate() {
+            let value = f64::from(*sample);
+            channel_energy[channel] += value * value;
+        }
+    }
+    let selected_channel = channel_energy
+        .iter()
+        .enumerate()
+        .max_by(|left, right| left.1.total_cmp(right.1).then_with(|| right.0.cmp(&left.0)))?
+        .0;
+    if channel_energy[selected_channel] <= 1.0e-12 {
+        return None;
+    }
+
     let mut crossings = 0usize;
     let mut previous = 0.0f32;
-    for frame in samples.chunks_exact(channels).map(|frame| frame[0]) {
-        if previous <= 0.0 && frame > 0.0 {
+    for sample in samples
+        .chunks_exact(channels)
+        .map(|frame| frame[selected_channel])
+    {
+        if previous <= 0.0 && sample > 0.0 {
             crossings += 1;
         }
-        previous = frame;
+        previous = sample;
     }
     let frames = samples.len() / channels;
     let frequency = crossings as f64 * f64::from(sample_rate_hz) / frames.max(1) as f64;
@@ -299,7 +332,7 @@ mod tests {
     fn constant_fixture_is_stable_and_versioned() {
         let samples = vec![0.25f32; 48_000];
         let result = analyze_pcm(&samples, 48_000, 1).expect("fixture should analyze");
-        assert_eq!(result.version, 2);
+        assert_eq!(result.version, ANALYSIS_VERSION);
         assert!(result.integrated_loudness_lufs < -35.0);
         assert!((result.energy - 1.0).abs() < f64::EPSILON);
         assert_eq!(result.peak, 0.25);
@@ -322,6 +355,32 @@ mod tests {
     }
 
     #[test]
+    fn right_only_stereo_signal_is_not_treated_as_silence() {
+        let sample_rate = 4_000u32;
+        let samples: Vec<f32> = (0..sample_rate * 4)
+            .flat_map(|index| {
+                let phase = f64::from(index) / f64::from(sample_rate);
+                let right = (phase * 2.0 * std::f64::consts::PI * 440.0).sin() as f32 * 0.4;
+                [0.0, right]
+            })
+            .collect();
+        let result = analyze_pcm(&samples, sample_rate, 2).expect("stereo fixture should analyze");
+        assert_eq!(result.musical_key, Some(9));
+        assert!(result.brightness > 0.01);
+    }
+
+    #[test]
+    fn anti_phase_stereo_keeps_nonzero_window_energy() {
+        let window: Vec<f32> = (0..400)
+            .flat_map(|index| {
+                let value = if index < 200 { 0.0 } else { 0.8 };
+                [value, -value]
+            })
+            .collect();
+        assert!(window_energy(&window) > 0.3);
+    }
+
+    #[test]
     fn invalid_input_fails_closed() {
         assert_eq!(
             analyze_pcm(&[], 48_000, 1),
@@ -334,6 +393,14 @@ mod tests {
         assert_eq!(
             analyze_pcm(&[0.0], 48_000, 0),
             Err(AnalysisError::InvalidChannelCount)
+        );
+        assert_eq!(
+            analyze_pcm(&[0.0, 0.1, 0.2], 48_000, 2),
+            Err(AnalysisError::InvalidFrameAlignment)
+        );
+        assert_eq!(
+            analyze_pcm(&[0.0, f32::NAN], 48_000, 1),
+            Err(AnalysisError::NonFiniteSample)
         );
     }
 

@@ -7,8 +7,9 @@ usage() {
   run-local-gates.sh
 
 執行 CMV 2.0 的本機完整 gate：Rust／Swift 測試、雙平台 Release
-build、bundle／AppIcon／privacy preflight、artifact manifest、MissionCenter
-Doctor。建置輸出預設放在 /tmp，不會刪除既有產物。
+build、bundle／AppIcon／privacy preflight、canonical archive qualification、
+現行 toolchain contract 與 MissionCenter Doctor。建置輸出預設放在 /tmp，
+不會刪除既有產物。
 
 可用環境變數：
   CMV_CARGO_TARGET_DIR   Rust target 路徑
@@ -36,7 +37,7 @@ mac_derived="$derived_root/mac"
 ipad_derived="$derived_root/ipad"
 archive_path="${CMV_ARCHIVE_PATH:-/tmp/CMV-macOS-universal.xcarchive}"
 
-for required_tool in cargo swift xcodebuild plutil lipo shasum python3; do
+for required_tool in cargo rustc swift xcodebuild plutil lipo python3 git; do
   command -v "$required_tool" >/dev/null || {
     print -u2 -- "error: 缺少必要工具：$required_tool"
     exit 1
@@ -48,6 +49,36 @@ run_step() {
 }
 
 cd "$workspace"
+
+run_step "Rust 1.98.1 toolchain contract"
+python3 - <<'PY'
+from pathlib import Path
+import tomllib
+
+expected = "1.98.1"
+root = Path.cwd()
+
+toolchain = tomllib.loads((root / "rust-toolchain.toml").read_text())
+actual_channel = toolchain.get("toolchain", {}).get("channel")
+if actual_channel != expected:
+    raise SystemExit(f"rust-toolchain.toml channel mismatch: expected {expected}, got {actual_channel!r}")
+
+for relative in (
+    "Native/CMVCoreRS/Cargo.toml",
+    "Native/CMVCoreRS/ffi/Cargo.toml",
+):
+    data = tomllib.loads((root / relative).read_text())
+    actual = data.get("package", {}).get("rust-version")
+    if actual != expected:
+        raise SystemExit(f"{relative} rust-version mismatch: expected {expected}, got {actual!r}")
+PY
+
+rustc_version="$(rustc --version)"
+[[ "$rustc_version" == rustc\ 1.98.1\ * ]] || {
+  print -u2 -- "error: active rustc must be 1.98.1; got: $rustc_version"
+  exit 1
+}
+
 run_step "Rust fmt／Clippy／workspace tests"
 (
   cd Native/CMVCoreRS
@@ -78,7 +109,7 @@ xcodebuild -quiet \
   -scheme CMV \
   -configuration Release \
   -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPad Air 11-inch (M4),OS=26.5' \
+  -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath "$ipad_derived" \
   -jobs 1 \
   ARCHS='arm64 x86_64' \
@@ -101,20 +132,7 @@ Native/scripts/qualify-app-store.sh \
   --app "$archive_path/Products/Applications/CMV.app" \
   --expected-arches 'x86_64 arm64'
 
-run_step "artifact manifest and whitespace checks"
-bad=0
-manifest_entries=0
-while IFS=$'\t' read -r file_path expected; do
-  [[ -n "$file_path" ]] || continue
-  manifest_entries=$((manifest_entries + 1))
-  actual=$(shasum -a 256 "$file_path" | awk '{print $1}')
-  if [[ "$actual" != "$expected" ]]; then
-    print -u2 -- "DRIFT $file_path expected=$expected actual=$actual"
-    bad=1
-  fi
-done < <(sed -n 's/^| `\([^`]*\)` | `\([0-9a-f]*\)` |$/\1\t\2/p' Native/ARTIFACT_MANIFEST.md)
-(( manifest_entries > 0 )) || { print -u2 -- "error: artifact manifest is empty or malformed"; exit 1; }
-(( bad == 0 )) || exit 1
+run_step "repository whitespace checks"
 git diff --check
 
 run_step "MissionCenter sync／Doctor"

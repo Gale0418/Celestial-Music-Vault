@@ -10,7 +10,7 @@
     "dev": "vite",
     "start": "electron .",
     "build": "vite build",
-    "test": "node tests/security-smoke.cjs && node tests/security-behavior.cjs && node tests/user-data-store.cjs && node tests/track-sorting.cjs && node tests/themes.cjs && node tests/theme-frame.cjs && node tests/video-window-position.cjs && node tests/listen-now-dialog.cjs",
+    "test": "node tests/security-smoke.cjs && node tests/security-behavior.cjs && node tests/user-data-store.cjs && node tests/track-sorting.cjs && node tests/themes.cjs && node tests/theme-frame.cjs && node tests/video-window-position.cjs && node tests/listen-now-dialog.cjs && node tests/queue-navigation.cjs",
     "lint": "eslint src main.cjs preload.cjs vite.config.js eslint.config.js tests",
     "preview": "vite preview",
     "pack": "electron-builder --dir",

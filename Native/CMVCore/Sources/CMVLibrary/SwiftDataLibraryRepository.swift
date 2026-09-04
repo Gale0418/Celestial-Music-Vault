@@ -4,6 +4,34 @@ import CMVDomain
 
 public enum LibraryRepositoryError: Error, Equatable, Sendable {
     case invalidReconciliation
+    case trackNotFound(UUID)
+    case playlistNotFound(UUID)
+    case invalidPlaylistName
+}
+
+public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
+    public let id: UUID
+    public let title: String
+    public let artist: String
+    public let album: String
+    public let isFavorite: Bool
+    public let rating: Int
+
+    public init(
+        id: UUID,
+        title: String,
+        artist: String,
+        album: String,
+        isFavorite: Bool,
+        rating: Int
+    ) {
+        self.id = id
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.isFavorite = isFavorite
+        self.rating = rating
+    }
 }
 
 public actor SwiftDataLibraryRepository: LibraryRepository {
@@ -33,6 +61,10 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
 
     public func tracks(ids: [UUID]) async throws -> [Track] {
         try await worker.tracks(ids: ids)
+    }
+
+    public func searchCandidates(matching query: String) async throws -> [LibrarySearchCandidate] {
+        try await worker.searchCandidates(matching: query)
     }
 
     public func excludeTracks(ids: [UUID]) async throws {
@@ -140,16 +172,18 @@ public actor LibraryDataActor {
         let title: String
         let artist: String
         let album: String
+        let displayArtist: String
+        let displayAlbum: String
         let sortTitle: String
         let albumArtist: String
         let discNumber: Int
         let trackNumber: Int
         let modifiedAt: Date
+        let isFavorite: Bool
+        let rating: Int
     }
 
     private var searchIndex: [UUID: SearchEntry] = [:]
-    private var searchTokensByID: [UUID: Set<String>] = [:]
-    private var searchIDsByToken: [String: Set<UUID>] = [:]
     private var searchIndexLoaded = false
 
     public func tracks(
@@ -162,28 +196,15 @@ public actor LibraryDataActor {
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !normalized.isEmpty {
             try ensureSearchIndex()
-            let needle = Self.searchValue(normalized)
-            let queryTokens = Self.searchTokens(needle)
-            let indexedCandidates = queryTokens.compactMap { searchIDsByToken[$0] }
-            var candidateIDs: Set<UUID>?
-            if let smallestIndex = indexedCandidates.indices.min(by: {
-                indexedCandidates[$0].count < indexedCandidates[$1].count
-            }) {
-                var result = indexedCandidates[smallestIndex]
-                for index in indexedCandidates.indices where index != smallestIndex {
-                    result.formIntersection(indexedCandidates[index])
-                }
-                candidateIDs = result
-            } else {
-                candidateIDs = nil
-            }
-            let matches = (candidateIDs ?? Set(searchIndex.keys)).compactMap { searchIndex[$0] }
-                .filter { entry in
-                    entry.title.contains(needle) ||
-                    entry.artist.contains(needle) ||
-                    entry.album.contains(needle)
-                }
-            let matchingIDs = Self.sorted(matches, by: sort, ascending: ascending)
+            let queryTokens = Self.queryTokens(Self.searchValue(normalized))
+            // The previous exact-token posting-list shortcut conflicted with
+            // substring search semantics: a query token such as "love" could
+            // exclude "Lovely" whenever some unrelated record happened to
+            // contain the exact token "love". The normalized 50k index is
+            // already reused across queries, so scan that compact value index
+            // and preserve correctness deterministically.
+            let matches = searchIndex.values.filter { Self.matches($0, queryTokens: queryTokens) }
+            let matchingIDs = Self.sorted(Array(matches), by: sort, ascending: ascending)
                 .dropFirst(max(0, offset))
                 .prefix(max(1, limit))
                 .map(\.id)
@@ -216,12 +237,27 @@ public actor LibraryDataActor {
         }
 
         try ensureSearchIndex()
-        let needle = Self.searchValue(normalized)
-        let matches = searchIndex.values
-            .filter { entry in
-                entry.title.contains(needle) || entry.artist.contains(needle) || entry.album.contains(needle)
-            }
-        return Self.sorted(matches, by: sort, ascending: ascending).map(\.id)
+        let queryTokens = Self.queryTokens(Self.searchValue(normalized))
+        let matches = searchIndex.values.filter { Self.matches($0, queryTokens: queryTokens) }
+        return Self.sorted(Array(matches), by: sort, ascending: ascending).map(\.id)
+    }
+
+    public func searchCandidates(matching query: String) throws -> [LibrarySearchCandidate] {
+        try ensureSearchIndex()
+        let queryTokens = Self.queryTokens(Self.searchValue(
+            query.trimmingCharacters(in: .whitespacesAndNewlines)
+        ))
+        return searchIndex.values.compactMap { entry in
+            guard Self.matches(entry, queryTokens: queryTokens) else { return nil }
+            return LibrarySearchCandidate(
+                id: entry.id,
+                title: entry.sortTitle,
+                artist: entry.displayArtist,
+                album: entry.displayAlbum,
+                isFavorite: entry.isFavorite,
+                rating: entry.rating
+            )
+        }
     }
 
     public func tracks(sourceID: UUID) throws -> [Track] {
@@ -233,10 +269,17 @@ public actor LibraryDataActor {
 
     public func tracks(ids: [UUID]) throws -> [Track] {
         guard !ids.isEmpty else { return [] }
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
-            ids.contains(record.id) && !record.isExcluded
-        })
-        let byID = Dictionary(uniqueKeysWithValues: try modelContext.fetch(descriptor).map { ($0.id, $0.domain) })
+        var byID: [UUID: Track] = [:]
+        byID.reserveCapacity(ids.count)
+        for start in stride(from: 0, to: ids.count, by: 400) {
+            let batch = Array(ids[start..<min(start + 400, ids.count)])
+            let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
+                batch.contains(record.id) && !record.isExcluded
+            })
+            for record in try modelContext.fetch(descriptor) {
+                byID[record.id] = record.domain
+            }
+        }
         return ids.compactMap { byID[$0] }
     }
 
@@ -267,7 +310,7 @@ public actor LibraryDataActor {
                 playlist.trackIDs = filtered
                 playlist.modifiedAt = .now
             }
-            try modelContext.save()
+            try saveChanges()
             if searchIndexLoaded { ids.forEach(removeFromSearchIndex) }
         } catch {
             modelContext.rollback()
@@ -299,7 +342,7 @@ public actor LibraryDataActor {
                     playlist.modifiedAt = .now
                 }
             }
-            try modelContext.save()
+            try saveChanges()
             if searchIndexLoaded { restoredRecords.forEach(index) }
         } catch {
             modelContext.rollback()
@@ -329,11 +372,12 @@ public actor LibraryDataActor {
             let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
                 record.sourceID == sourceID && identifiers.contains(record.fileIdentifier)
             })
-            for record in try modelContext.fetch(descriptor) {
+            let records = try modelContext.fetch(descriptor)
+            for record in records {
                 record.availabilityRaw = MediaAvailability.missing.rawValue
-                if searchIndexLoaded { index(record) }
             }
-            try modelContext.save()
+            try saveChanges()
+            if searchIndexLoaded { records.forEach(index) }
         }
     }
 
@@ -342,12 +386,17 @@ public actor LibraryDataActor {
     public func applyScanBatch(_ files: [ScannedMediaFile], sourceID: UUID, scanID: UUID) throws {
         guard !files.isEmpty else { return }
         let identifiers = files.map(\.fileIdentifier)
+        guard Set(identifiers).count == identifiers.count else {
+            throw LibraryRepositoryError.invalidReconciliation
+        }
         let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
             record.sourceID == sourceID && identifiers.contains(record.fileIdentifier)
         })
         let existing = try modelContext.fetch(descriptor)
         var byIdentifier: [String: TrackRecord] = [:]
         for record in existing { byIdentifier[record.fileIdentifier] = record }
+        var changedRecords: [TrackRecord] = []
+        changedRecords.reserveCapacity(files.count)
         for file in files {
             let record = byIdentifier.removeValue(forKey: file.fileIdentifier) ?? TrackRecord(sourceID: sourceID, file: file)
             record.relativePath = file.relativePath
@@ -366,9 +415,10 @@ public actor LibraryDataActor {
             record.availabilityRaw = MediaAvailability.available.rawValue
             record.lastSeenScanID = scanID
             if record.modelContext == nil { modelContext.insert(record) }
-            if searchIndexLoaded { index(record) }
+            changedRecords.append(record)
         }
-        try modelContext.save()
+        try saveChanges()
+        if searchIndexLoaded { changedRecords.forEach(index) }
     }
 
     public func finishScan(sourceID: UUID, scanID: UUID, sourceWasReachable: Bool) throws {
@@ -385,52 +435,48 @@ public actor LibraryDataActor {
             guard !unseen.isEmpty else { break }
             for record in unseen {
                 record.availabilityRaw = MediaAvailability.missing.rawValue
-                if searchIndexLoaded { index(record) }
             }
-            try modelContext.save()
+            try saveChanges()
+            if searchIndexLoaded { unseen.forEach(index) }
         }
     }
 
     public func setFavorite(trackID: UUID, isFavorite: Bool) throws {
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.id == trackID })
-        if let record = try modelContext.fetch(descriptor).first {
-            record.isFavorite = isFavorite
-            try modelContext.save()
-            if searchIndexLoaded { index(record) }
-        }
+        let record = try trackRecord(id: trackID)
+        record.isFavorite = isFavorite
+        try saveChanges()
+        if searchIndexLoaded { index(record) }
     }
 
     public func setRating(trackID: UUID, rating: Int) throws {
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.id == trackID })
-        if let record = try modelContext.fetch(descriptor).first {
-            record.rating = min(5, max(0, rating))
-            try modelContext.save()
-            if searchIndexLoaded { index(record) }
-        }
+        let record = try trackRecord(id: trackID)
+        record.rating = min(5, max(0, rating))
+        try saveChanges()
+        if searchIndexLoaded { index(record) }
     }
 
     public func recordPlayback(trackID: UUID, skipped: Bool) throws {
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.id == trackID })
-        if let record = try modelContext.fetch(descriptor).first {
-            if skipped { record.skipCount += 1 } else { record.playCount += 1 }
-            record.lastPlayedAt = .now
-            try modelContext.save()
-            if searchIndexLoaded { index(record) }
+        let record = try trackRecord(id: trackID)
+        if skipped {
+            if record.skipCount < Int.max { record.skipCount += 1 }
+        } else if record.playCount < Int.max {
+            record.playCount += 1
         }
+        record.lastPlayedAt = .now
+        try saveChanges()
+        if searchIndexLoaded { index(record) }
     }
 
     public func setAnalysis(trackID: UUID, profile: AnalysisProfile) throws {
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.id == trackID })
-        if let record = try modelContext.fetch(descriptor).first {
-            record.analysisVersion = profile.version
-            record.bpm = profile.bpm
-            record.musicalKey = profile.musicalKey
-            record.integratedLoudnessLUFS = profile.integratedLoudnessLUFS
-            record.energy = profile.energy
-            record.brightness = profile.brightness
-            try modelContext.save()
-            if searchIndexLoaded { index(record) }
-        }
+        let record = try trackRecord(id: trackID)
+        record.analysisVersion = profile.version
+        record.bpm = profile.bpm
+        record.musicalKey = profile.musicalKey
+        record.integratedLoudnessLUFS = profile.integratedLoudnessLUFS
+        record.energy = profile.energy
+        record.brightness = profile.brightness
+        try saveChanges()
+        if searchIndexLoaded { index(record) }
     }
 
     public func playlists() throws -> [Playlist] {
@@ -443,25 +489,23 @@ public actor LibraryDataActor {
         let playlist = Playlist(name: trimmed.isEmpty ? "未命名歌單" : trimmed)
         modelContext.insert(PlaylistRecord(id: playlist.id, name: playlist.name, trackIDs: playlist.trackIDs,
                                            now: playlist.createdAt))
-        try modelContext.save()
+        try saveChanges()
         return playlist
     }
 
     public func renamePlaylist(id: UUID, name: String) throws {
-        let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
-        guard let record = try modelContext.fetch(descriptor).first else { return }
+        let record = try playlistRecord(id: id)
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { throw LibraryRepositoryError.invalidPlaylistName }
         record.name = trimmed
         record.modifiedAt = .now
-        try modelContext.save()
+        try saveChanges()
     }
 
     public func deletePlaylist(id: UUID) throws {
-        let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
-        guard let record = try modelContext.fetch(descriptor).first else { return }
+        let record = try playlistRecord(id: id)
         modelContext.delete(record)
-        try modelContext.save()
+        try saveChanges()
     }
 
     public func addTrack(trackID: UUID, toPlaylist id: UUID) throws {
@@ -469,30 +513,68 @@ public actor LibraryDataActor {
     }
 
     public func addTracks(trackIDs: [UUID], toPlaylist id: UUID) throws {
-        let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
-        guard let record = try modelContext.fetch(descriptor).first else { return }
+        let record = try playlistRecord(id: id)
+        var seenRequested = Set<UUID>()
+        let requested = trackIDs.filter { seenRequested.insert($0).inserted }
+        guard !requested.isEmpty else { return }
+
+        var available = Set<UUID>()
+        for start in stride(from: 0, to: requested.count, by: 400) {
+            let batch = Array(requested[start..<min(start + 400, requested.count)])
+            let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { track in
+                batch.contains(track.id) && !track.isExcluded
+            })
+            available.formUnion(try modelContext.fetch(descriptor).map(\.id))
+        }
+        if let missing = requested.first(where: { !available.contains($0) }) {
+            throw LibraryRepositoryError.trackNotFound(missing)
+        }
+
         var existing = Set(record.trackIDs)
-        let uniqueNewIDs = trackIDs.filter { existing.insert($0).inserted }
+        let uniqueNewIDs = requested.filter { existing.insert($0).inserted }
         guard !uniqueNewIDs.isEmpty else { return }
         record.trackIDs.append(contentsOf: uniqueNewIDs)
         record.modifiedAt = .now
-        try modelContext.save()
+        try saveChanges()
     }
 
     public func removeTrack(trackID: UUID, fromPlaylist id: UUID) throws {
-        let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
-        guard let record = try modelContext.fetch(descriptor).first else { return }
+        let record = try playlistRecord(id: id)
+        guard record.trackIDs.contains(trackID) else { return }
         record.trackIDs.removeAll { $0 == trackID }
         record.modifiedAt = .now
-        try modelContext.save()
+        try saveChanges()
+    }
+
+    private func trackRecord(id: UUID) throws -> TrackRecord {
+        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.id == id })
+        guard let record = try modelContext.fetch(descriptor).first else {
+            throw LibraryRepositoryError.trackNotFound(id)
+        }
+        return record
+    }
+
+    private func playlistRecord(id: UUID) throws -> PlaylistRecord {
+        let descriptor = FetchDescriptor<PlaylistRecord>(predicate: #Predicate { $0.id == id })
+        guard let record = try modelContext.fetch(descriptor).first else {
+            throw LibraryRepositoryError.playlistNotFound(id)
+        }
+        return record
+    }
+
+    private func saveChanges() throws {
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     private func ensureSearchIndex() throws {
         guard !searchIndexLoaded else { return }
         let descriptor = FetchDescriptor<TrackRecord>()
         searchIndex.removeAll(keepingCapacity: true)
-        searchTokensByID.removeAll(keepingCapacity: true)
-        searchIDsByToken.removeAll(keepingCapacity: true)
         for record in try modelContext.fetch(descriptor) { index(record) }
         searchIndexLoaded = true
     }
@@ -503,37 +585,39 @@ public actor LibraryDataActor {
         let title = Self.searchValue(record.title)
         let artist = Self.searchValue(record.artist)
         let album = Self.searchValue(record.album)
-        let tokens = Self.searchTokens([title, artist, album].joined(separator: " "))
         searchIndex[record.id] = SearchEntry(
             id: record.id,
             title: title,
             artist: artist,
             album: album,
+            displayArtist: record.artist,
+            displayAlbum: record.album,
             sortTitle: record.title,
             albumArtist: Self.searchValue(record.albumArtist),
             discNumber: record.discNumber ?? 0,
             trackNumber: record.trackNumber ?? 0,
-            modifiedAt: record.modifiedAt
+            modifiedAt: record.modifiedAt,
+            isFavorite: record.isFavorite,
+            rating: record.rating
         )
-        searchTokensByID[record.id] = tokens
-        for token in tokens { searchIDsByToken[token, default: []].insert(record.id) }
     }
 
     private func removeFromSearchIndex(_ id: UUID) {
         searchIndex.removeValue(forKey: id)
-        guard let oldTokens = searchTokensByID.removeValue(forKey: id) else { return }
-        for token in oldTokens {
-            searchIDsByToken[token]?.remove(id)
-            if searchIDsByToken[token]?.isEmpty == true { searchIDsByToken.removeValue(forKey: token) }
-        }
     }
 
     private static func searchValue(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 
-    private static func searchTokens(_ value: String) -> Set<String> {
-        Set(value.split { !$0.isLetter && !$0.isNumber }.map(String.init))
+    private static func queryTokens(_ value: String) -> Set<String> {
+        Set(value.split(whereSeparator: \.isWhitespace).map(String.init))
+    }
+
+    private static func matches(_ entry: SearchEntry, queryTokens: Set<String>) -> Bool {
+        queryTokens.allSatisfy { token in
+            entry.title.contains(token) || entry.artist.contains(token) || entry.album.contains(token)
+        }
     }
 
     private static func sortDescriptors(

@@ -7,23 +7,34 @@ public struct LocalSmartDJService: SmartDJService {
     public func makeQueue(from tracks: [Track], profiles: [UUID: AnalysisProfile],
                           history: [UUID: ListeningSignal], limit: Int) async -> [DJSelection] {
         tracks.map { track in
-            let profile = profiles[track.id]
+            let profile = track.analysis ?? profiles[track.id]
             let signal = history[track.id] ?? ListeningSignal()
-            var score = Double(track.rating) * 0.7 + (track.isFavorite ? 2.0 : 0)
-            score += min(2.0, Double(signal.playCount) * 0.12)
-            score -= min(4.0, Double(signal.skipCount) * 0.45)
+            let rating = min(5, max(0, track.rating))
+            let playCount = max(0, signal.playCount)
+            let skipCount = max(0, signal.skipCount)
+            let bpm = profile?.bpm.flatMap { value in
+                value.isFinite && (20...400).contains(value) ? value : nil
+            }
+            var score = Double(rating) * 0.7 + (track.isFavorite ? 2.0 : 0)
+            score += min(2.0, Double(playCount) * 0.12)
+            score -= min(4.0, Double(skipCount) * 0.45)
             var reasons: [String] = []
             if track.isFavorite { reasons.append("你已加入最愛") }
-            if track.rating >= 4 { reasons.append("評分很高") }
-            if let bpm = profile?.bpm { reasons.append("節奏約 \(Int(bpm)) BPM") }
-            if let key = profile?.musicalKey { reasons.append("調性為 \(key)") }
+            if rating >= 4 { reasons.append("評分很高") }
+            if let bpm { reasons.append("節奏約 \(Int(bpm.rounded())) BPM") }
+            if let key = profile?.musicalKey?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+                reasons.append("調性為 \(key)")
+            }
             if reasons.isEmpty {
-                reasons.append(signal.playCount == 0 ? "尚未播放過" : "依聆聽習慣推薦")
+                reasons.append(playCount == 0 ? "尚未播放過" : "依聆聽習慣推薦")
             }
             return DJSelection(track: track, score: score, reasons: reasons)
         }
         .sorted { lhs, rhs in
-            lhs.score == rhs.score ? lhs.track.title.localizedStandardCompare(rhs.track.title) == .orderedAscending : lhs.score > rhs.score
+            if lhs.score != rhs.score { return lhs.score > rhs.score }
+            let titleOrder = lhs.track.title.localizedStandardCompare(rhs.track.title)
+            if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+            return lhs.track.id.uuidString < rhs.track.id.uuidString
         }
         .prefix(max(0, limit))
         .map { $0 }

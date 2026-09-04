@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-U23",
+  "taskDigest": "3e3215d0c7d09d09e3870d42d9348d569ffd277d26ae1d997f73533921481b83",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "MissionCenter/smoke-tests.md",
+      "Native/CMV/CMV/LibraryViews.swift",
+      "Native/CMV/CMV/CelestialViews.swift",
+      "Native/CMV/CMV/RootView.swift"
+    ]
+  },
+  "findings": []
+}

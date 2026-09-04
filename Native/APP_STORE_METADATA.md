@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜App Store Connect metadata gate
 
-更新：2026-08-27
+更新：2026-09-01
 
 這份文件是送審前的 metadata 與授權資料單一清單。它不把本機建置或
 模擬器測試當成 Apple 審核資料，也不在工作區保存 Apple ID、憑證或 NAS 帳密。
@@ -9,6 +9,7 @@
 
 - App 名稱：`星穹私藏音樂庫 Celestial Music Vault`
 - 版本：`2.0`（build `1`）
+- Bundle ID：`com.windsheep.cmv`
 - 類別：Music
 - 支援平台：macOS 15+、iPadOS 18+
 - 產品定位：夢幻星空風格的本機／NAS 私人音樂庫播放器；不含帳號、雲端 AI、
@@ -29,6 +30,26 @@
 4. 年齡分級、版權聲明、出口合規與 App Review notes。
 5. 內建或測試節目級音訊、字體、插圖與產生式圖示的授權／來源紀錄，以及完整
    `LICENSE`／`NOTICE` 清單。
+
+## 本次發行語言與素材規則
+
+- 第一版以 `zh-Hant` 為唯一承諾語言；在 UI 尚未完成英文在地化前，不建立會讓
+  審核者期待完整英文介面的 en-US 商店頁。
+- Mac 與 iPad 截圖必須來自同一個已凍結 RC，不得混用歷史 `com.aeromusic.native`
+  build、`/tmp` 臨時截圖或不同主題狀態。
+- 截圖／預覽影片只能使用自有或明確授權的音訊、影片與封面；不得出現商業專輯
+  封面、YouTube／串流服務畫面或權利不明的 VTuber 影片。
+- Review Notes、無剪輯實機影片與測試矩陣集中在
+  `Native/APP_STORE_REVIEW_KIT.md`；權利證據集中在
+  `Native/ASSET_RIGHTS_LEDGER.md`。
+
+## App Privacy 對照
+
+程式會在裝置本機保存使用者授權資料夾的 security-scoped bookmark、相對路徑／
+檔案識別、媒體 metadata／封面、歌單、最愛、評分、播放／跳歌紀錄、BPM／調性／
+響度分析、主題偏好與離線快取。這些資料不傳給開發者或第三方，因此 App Store
+問卷可選「不收集」，但公開隱私政策仍須清楚說明本機處理、刪除方式與 NAS 連線
+模型。CMV 不做 SMB 登入、LAN 掃描、雲端同步、廣告、追蹤或第三方分析。
 
 ## 驗收方式
 

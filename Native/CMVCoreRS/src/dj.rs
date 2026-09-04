@@ -23,18 +23,28 @@ pub fn make_queue(mut tracks: Vec<DJTrack>, limit: usize) -> Vec<DJSelection> {
     let mut selections: Vec<DJSelection> = tracks
         .drain(..)
         .map(|track| {
-            let mut score = f64::from(track.rating) * 0.7 + if track.favorite { 2.0 } else { 0.0 };
-            score += track.energy.clamp(0.0, 1.0) * 0.25;
+            // Core invariants are enforced here as well as at the FFI/UI
+            // boundary so corrupted persisted snapshots cannot become
+            // artificially dominant recommendations.
+            let rating = track.rating.min(5);
+            let energy = if track.energy.is_finite() {
+                track.energy.clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let bpm = track.bpm.filter(|value| value.is_finite() && *value > 0.0);
+            let mut score = f64::from(rating) * 0.7 + if track.favorite { 2.0 } else { 0.0 };
+            score += energy * 0.25;
             score += f64::from(track.play_count).mul_add(0.12, 0.0).min(2.0);
             score -= f64::from(track.skip_count).mul_add(0.45, 0.0).min(4.0);
             let mut reasons = Vec::new();
             if track.favorite {
                 reasons.push("已加入最愛".to_owned());
             }
-            if track.rating >= 4 {
+            if rating >= 4 {
                 reasons.push("評分很高".to_owned());
             }
-            if let Some(bpm) = track.bpm {
+            if let Some(bpm) = bpm {
                 reasons.push(format!("節奏約 {:.0} BPM", bpm));
             }
             if reasons.is_empty() {
@@ -99,18 +109,8 @@ mod tests {
             result.first().map(|item| item.identifier.as_str()),
             Some("favorite")
         );
-        assert!(
-            result[0]
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("最愛"))
-        );
-        assert!(
-            result[0]
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("120"))
-        );
+        assert!(result[0].reasons.iter().any(|reason| reason.contains("最愛")));
+        assert!(result[0].reasons.iter().any(|reason| reason.contains("120")));
     }
 
     #[test]
@@ -136,5 +136,25 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["a", "m"]
         );
+    }
+
+    #[test]
+    fn corrupted_rating_bpm_and_energy_are_normalized_by_the_core() {
+        let result = make_queue(
+            vec![DJTrack {
+                identifier: "corrupt".into(),
+                title: "corrupt".into(),
+                favorite: false,
+                rating: u8::MAX,
+                bpm: Some(-120.0),
+                energy: f64::NAN,
+                play_count: 0,
+                skip_count: 0,
+            }],
+            1,
+        );
+        assert_eq!(result.len(), 1);
+        assert!((result[0].score - 3.5).abs() < f64::EPSILON);
+        assert!(result[0].reasons.iter().all(|reason| !reason.contains("BPM")));
     }
 }

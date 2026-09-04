@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-U19",
+  "taskDigest": "a36c1f3a37f48b25bb7d8516fc467efc8dc004d2f174ffbd956af28e6bd0abfc",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "Native/UI_INFORMATION_ARCHITECTURE_AUDIT.md",
+      "Native/CMV/CMV/LibraryViews.swift",
+      "Native/CMV/CMV/RootView.swift"
+    ]
+  },
+  "findings": []
+}

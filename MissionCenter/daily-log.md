@@ -1,8 +1,16 @@
 # 每日紀錄
 
-- 最後整理： 2026-08-30
+- 最後整理： 2026-09-01
+
+## 2026-09-01
+- 2026-09-01 06:48 +08:00｜變更：AERO-F26 補修月環 cadence 與播放／快取 I/O 競爭｜原因：使用者將音樂移至本機後月環仍卡，確認 2048-frame tap＋15 Hz 門檻實際量化至約 11 Hz，且明確要求月環只保留音軌效果、不顯示播放進度弧｜影響：改為 1024-frame meter、60 Hz 上限能量狀態與 30 FPS Canvas，預算 80 段幾何並移除進度弧；智慧預取延後兩秒、可取消、跳過已快取曲目，smart cache 保留 SHA-256 完整驗證並以 digest＋size＋mtime 降低熱路徑 I/O。Swift 27/27、Mac／iPad Debug build 與 diff check 通過；AERO-F26 回 Review 等待感知驗收，未覆蓋桌面舊 App。
+- 2026-09-01 05:46 +08:00｜變更：新增 AERO-SD4 Smart DJ／聲學分析可操作性 gate｜原因：跨領域 source audit 確認 Rust／Swift service 與測試存在，但 App UI 無 `analyzeAndPersist`／`makeSmartQueue` callsite，只有設定頁隱私敘述｜影響：AERO-RC4 新增 SD4 依賴；完成離線可操作入口、背景進度／取消／錯誤與選歌理由前，不在商店文案宣稱功能已交付。
+- 2026-09-01 05:41 +08:00｜變更：完成可逆 App Store 預備修正並將 AERO-AC4 轉 Blocked｜原因：唯讀盤點確認 asc 未登入、僅有 Apple Development identity，且 Privacy Manifest 漏列 UserDefaults／SystemBootTime、Rust release symbols 被剝除、shared scheme 與 Review Kit 尚未版本化｜影響：新增 CA92.1／35F9.1／8FFB.1，Rust release 保留 line tables／symbols，加入 shared CMV scheme、Review Kit、隱私政策草稿與素材權利台帳；Rust 29 tests、Mac／iPad arm64 Release build、雙 bundle preflight、privacy categories、binary／dSYM UUID 與代表性 Rust dSYM linkage names 均通過。未登入／上傳／建立憑證；AC4 等待發布者以 CMV profile 執行 `asc auth login`。
+- 2026-09-01 05:20 +08:00｜變更：核准並啟動 AERO-R3 App Store 上架任務鏈｜原因：使用者要求使用 asc skills、Mission Center、Antigravity、Game Studios、GitHub 與 MediBuddy 經驗，先完成所有安全可逆的發布準備｜影響：新增 AC4／RC4／SG4／DV4／MD4／BD4／TF4／SH4／SB4／RV4／RT4；GitHub 確認 rorkai asc skills 來源，MediBuddy Guideline 2.1 補件經驗納入 Review Kit，Antigravity 反方審查採納 Privacy／FFI／dSYM／素材權利檢查並拒絕不符合 CMV 的內建 NAS 假設。Chrome 因管理安全檢查不可用，未繞過；外接磁碟短暫掉線後已恢復。正式上傳／提交與 Electron 退場仍保留 action-time 核准。
+- 2026-09-01 03:37 +08:00｜變更：AERO-F25／F26／F27 可靠性修正進入 Review｜原因：使用者要求以跨領域專家、官方資料、CodeRabbit 與獨立 critic 全面檢查目前工作樹｜影響：搜尋索引可重用且不截斷 500 筆，重音搜尋保留顯示 metadata；AVPlayer callback、慢 NAS 音訊準備與純音訊續播採 generation／背景 opener／重試保護；離線快取跨副檔名替換可 rollback，Rust ABI failure output 歸零並拒絕非有限浮點；曲庫失敗不偽裝空狀態，目錄與 queue lazy rows 使用一致快照。CodeRabbit 三輪 findings 為 6／2／2，所有仍成立項目均修正；Swift 26/26、Rust FFI 9、Rust core 19＋shared 1、macOS／iPad Simulator build 與 diff check 通過。Chrome attach 不可用、Antigravity 最終請求 delivery unknown，未誤宣稱完成外部審查。
 
 ## 2026-08-30
+- 2026-08-30 19:38 +08:00｜變更：完成 AERO-U18 獨立影片播放器返回月環操作｜原因：使用者實測將影片拉出月環後只有停止／關閉，沒有保留進度返回主畫面的對稱出口｜影響：Mac utility window 與 iPad sheet 的原生 toolbar 均新增「放回月環」；先將呈現模式切回 `.moonPortal` 再關閉容器，既有 onDisappear guard 因而不會停止或重載同一 AVPlayer session。Impeccable detector無 findings、Mac Release／iPad Simulator Debug build、Apple Development strict codesign與桌面啟動通過；舊桌面 App 移至垃圾桶可復原。
 - 2026-08-30 19:22 +08:00｜變更：完成 AERO-G17 CodeRabbit 修正、正確簽章桌面交付與 GitHub main 發布｜原因：AERO-U16 因免費額度冷卻尚未審查，且先前桌面包為缺少 entitlements 的 ad-hoc 簽章，導致來源授權反覆失效｜影響：CodeRabbit 兩輪依序 2／0 findings；窄版播放列在影片播放時停用 shuffle／repeat 選單，generated brief 建議依契約與實際 sync 結果判定不採用。Mac Release／iPad Simulator Debug build 成功；桌面 App 改為 Apple Development、Team `X3UYL4NRRN`，strict verify 與四項沙盒 entitlements 通過並成功啟動。GitHub 外掛確認遠端提交 `c051e0dfffff87c6b973c27d3d8442e598cd58de`；舊 ad-hoc App 已移至垃圾桶可復原；新沙盒容器不搬移 112 筆失效 bookmark，維持乾淨 0 來源／0 曲目。
 
 ## 2026-08-29
@@ -82,6 +90,7 @@
 - Swift warning cleanup：背景快取預取明確以 `_ = try?` 消費回傳 URL；Mac／iPad universal Release 增量 build 均通過，該 unused-result warning 不再出現。
 - 最新 runner bundle iPad Simulator smoke：`com.aeromusic.native` PID 31152 安裝／啟動成功，container 可解析；等待 8 秒截圖 `/tmp/aeromusic-ipad-local-gates-final.png`，portrait safe-area、空佇列、mini player 與雲朵圖示均可讀。實體 iPad／NAS 仍維持外部 gate。
 - 最終完成稽核：`gh pr list --state all` 回傳空集合；`origin/main` 與本機 HEAD `2c42c03` 同步，未經授權不建立 PR。AERO-E3／AERO-V3 維持 In Progress，AERO-R3 維持 Backlog，沒有把外部 gate 誤標 Done。
+- AERO-F25 進入 Review：共享 SwiftData repository、跨欄多 token 搜尋、完整候選 Rust 排序、400-ID chunk fetch 與增量目錄 grouping 已落地；3 條聚焦回歸與 macOS app build 通過，待 50k／150 ms 實測。AERO-F26 進入 Review：影片 callback generation、observer teardown、背景 AVAudioFile opener、queue generation 與 terminal lease cleanup 已完成，CMVPlayback 與 macOS app build 通過。AERO-F27 依序轉 Ready，開始 cache／FFI／UI 錯誤契約修補。
 - 本機可靠性補強（螃蟹版）：新增 checksum-verified `OfflineCacheStore.cachedURL`，播放入口先取釘選／smart cache 再解析來源，NAS 暫時離線時可直接播放完整性驗證過的釘選檔；新增損毀快取拒播測試，Swift 14/14 通過。
 - 大曲庫 UX 補強（螃蟹版）：歌曲清單與專輯／歌手 catalog 改用 offset 分頁及可取消的逐頁載入，避免五萬首一次建立常駐 View；Mac Wide shell 新增原生資料夾拖放加入音樂來源；啟動時重新檢查持久 bookmark／來源狀態。雙平台 Debug build 通過，下一輪完整 local gates 會重新凍結 manifest 與 Release 證據。
 - AERO-V3 實體裝置再盤點（螃蟹版）：`xcrun devicectl list devices` 現在看見已配對且可用的「Pe的 iPad (2)」，但 `device info details` 回報 Xcode 無法掛載對應 Developer Disk Image；因此完成最新 source 的 generic iOS arm64 Release 不簽章編譯與 App Store preflight，未把無法掛載 DDI 誤算成實機安裝／背景／PiP 通過。完整 local gates 仍輸出 `LOCAL_GATES_PASS`，V3 實機 gate 保持未完成。
@@ -92,6 +101,8 @@
 - Rust cache policy wiring：`aero_core_eviction_plan_v1` 已加入 ABI；`FileOfflineCacheStore` 透過 `CacheEvictionPlanner` 注入 Rust LRU，Swift 只負責刪檔／manifest／checksum，package-only 測試保留 deterministic Swift fallback。Rust 19 core、FFI bridge（含 pinned protection）、Swift 14/14、macOS／iPad Debug build 全部通過。
 - MediBuddy signing playbook cross-check：參考隔壁專案的 Team/profile 分層經驗，改以 Xcode 實際解析的 profile Team（不把 Apple ID／密碼／profile 內容寫入 repo）執行 AeroMusic iOS Debug Automatic Signing；產出 `com.aeromusic.native` arm64 signed app 並由 `codesign -dv` 確認 Apple Development／TeamIdentifier。嘗試安裝已配對 iPad 時，CoreDevice 明確回報 device locked、DDI 無法掛載；未把 signed build 冒充實機 runtime pass。
 - AERO-M4 多資料夾來源批次匯入（螃蟹版）：原生 `fileImporter` 開啟 `allowsMultipleSelection`，Mac 拖放與 picker 共用 `AppModel.addSources`；批次建立 bookmark、單次存檔、標準化路徑去重後逐來源掃描，既有單來源 facade 與重新授權單選行為不變。macOS universal Debug／iPad Simulator Debug build、Rust 27 tests、Swift 14 tests 通過；必要的 Swift 6 `SceneBuilder` recovery 結構修正一併納入。CodeRabbit 第二輪 0 findings；首輪指出的 save 失敗暫存插入已改為只刪除本批來源。
+- AERO-U22 全程式稽核完成：三席獨立 reviewer 與本機 Antigravity 交叉挑刺，僅採用現存程式碼可證 findings；修正播放交易回滾、混合影音 queue mode、影片 Now Playing／睡眠計時、掃描併發、最愛／評分競態與 pinned checksum。Swift 19/19、Rust 27/27、Mac／iPad build 與 diff check 全綠，無已知 P0/P1。
+- AERO-U23 豪華 Now Playing 封頂：詳情材質真正延展到底部、播放操作收進玻璃控制艙、右側佇列加寬並可點播／直接五星評分，背景加入低頻流星雨且遵守 Reduce Motion。Impeccable detector 無 finding；以臨時 Bundle ID 避開桌面遊戲同識別衝突後完成精準視窗截圖驗收。
 
 ## 2026-08-26
 - 啟動 AeroMusic 2.0 SwiftUI 原生重建；建立 AERO-E3 任務樹並記錄雙平台、NAS、離線、隱私與 Electron 退場護欄。

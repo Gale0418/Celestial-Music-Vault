@@ -22,3 +22,5 @@
 - 2026-08-27：`AeroCoreRS` 第一里程碑採 Rust 標準函式庫、手寫窄幅 C ABI 與版本化 value DTO；新增 crate／unsafe／codegen 工具都必須另行記錄授權、維護與退出成本。Cargo 產物固定於本機 `/tmp`，不在 NAS 工作區建立活躍 `target/`。
 - 2026-08-27：使用者指定 `critic_full` 為主要功能完成後的最終會議，不逐切片重複派送；已核准 3 critic＋1 arbiter、總 32k tokens、initial 5k/seat、delta 3k/seat、每席 8＋4 tool calls、25 分鐘與最多一輪 delta。RS3 因尚未接入 runtime、可完全移除且 CodeRabbit 0 issues，記錄低風險非感知 skip；預算保留至 V3。
 - 2026-08-27：完成全任務蟹化邊界盤點。L3 scan diff、P3 sample timeline／gain、M3 搜尋排序、A3 聲學／DJ、C3 cache policy 進 Rust；SwiftUI、SwiftData、security-scoped URL、AVFoundation／AVKit／MediaPlayer、檔案協調與 SHA-256 留在 Swift。U3 不為追求 Rust 比例硬跨 FFI，避免增加平台維護成本。
+- 2026-09-01：使用者核准 AERO-R3 上架任務草案並授權先完成安全可逆工作。發布採 IOS／MAC_OS 分平台 lane；Release Candidate、Apple／App Record 唯讀盤點、簽章、實機、Metadata／Review Kit、Build、TestFlight、submission health、dry-run、正式送審、審核監控、Electron 退場依序設閘門。任何上傳／提交的 `--confirm` 與 Electron 刪除仍需 action-time 明確核准。
+- 2026-09-01：沿用 MediBuddy 的 App Review 實戰：Waiting for Review／In Review 不視為完成；Guideline 2.1 的資訊要求先補 Review Notes／實機影片／操作說明，不在沒有程式缺陷證據時重建 Build。CMV 不內建 NAS 掃描或帳密，因此不新增 Bonjour、區網掃描、測試 NAS 帳密或 Keychain 功能。

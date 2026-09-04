@@ -63,7 +63,14 @@ public actor IncrementalScanner {
             if !accessAlreadyGranted { root.stopAccessingSecurityScopedResource() }
         }
 
-        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey, .fileResourceIdentifierKey, .isHiddenKey]
+        let keys: [URLResourceKey] = [
+            .isRegularFileKey,
+            .isSymbolicLinkKey,
+            .fileSizeKey,
+            .contentModificationDateKey,
+            .fileResourceIdentifierKey,
+            .isHiddenKey
+        ]
         guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys,
                                                                options: [.skipsHiddenFiles, .skipsPackageDescendants]) else {
             throw CocoaError(.fileReadNoSuchFile)
@@ -78,7 +85,11 @@ public actor IncrementalScanner {
             if cancelled { throw CancellationError() }
             guard Self.supportedExtensions.contains(url.pathExtension.lowercased()) else { continue }
             let values = try url.resourceValues(forKeys: Set(keys))
-            guard values.isRegularFile == true else { continue }
+            // A library authorization is a directory boundary, not permission
+            // to follow arbitrary links elsewhere on disk or a NAS. Skipping
+            // symlink entries also prevents tracks that index successfully but
+            // later fail the playback path boundary check.
+            guard values.isRegularFile == true, values.isSymbolicLink != true else { continue }
             processed += 1
             let relative = String(url.path.dropFirst(root.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             let identifier = values.fileResourceIdentifier.map { String(describing: $0) } ?? relative

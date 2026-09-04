@@ -3,6 +3,7 @@ import AVFoundation
 import SwiftUI
 import SwiftData
 import Observation
+import Combine
 import CMVDomain
 import CMVLibrary
 import CMVPlayback
@@ -11,6 +12,18 @@ import CMVCache
 #if os(macOS)
 import AppKit
 #endif
+
+private func canonicalSearchValue(_ value: String) -> String {
+    value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+}
+
+private func epochMilliseconds(_ date: Date) -> Int64 {
+    let value = date.timeIntervalSince1970 * 1_000
+    guard value.isFinite else { return 0 }
+    if value >= Double(Int64.max) { return Int64.max }
+    if value <= Double(Int64.min) { return Int64.min }
+    return Int64(value.rounded())
+}
 
 private actor ScanBatchState {
     private var seenIdentifiers = Set<String>()
@@ -31,12 +44,20 @@ private actor ScanBatchState {
     }
 
     func completedWithoutIssues() -> Bool { !encounteredIssue }
+    func identifierSnapshot() -> Set<String> { seenIdentifiers }
 }
 
 private struct SourceStatusProbeResult: Sendable {
     let id: UUID
     let refreshedBookmark: Data?
     let status: MediaSourceStatus
+}
+
+private struct SourceStateSnapshot {
+    let bookmarkData: Data
+    let status: MediaSourceStatus
+    let lastSuccessfulScan: Date?
+    let updatedAt: Date
 }
 
 private struct RustCacheEvictionPlanner: CacheEvictionPlanner {
@@ -54,7 +75,69 @@ private struct RustCacheEvictionPlanner: CacheEvictionPlanner {
         if let plan = try? client.planEviction(entries: rustEntries, budgetBytes: budgetBytes) {
             return plan
         }
-        return DeterministicCacheEvictionPlanner().plan(entries: entries, budgetBytes: budgetBytes)
+        return DeterministicCacheEvictionPlanner().plan(entries: entries, budgetBytes: max(0, budgetBytes))
+    }
+}
+
+struct AudioEnergySnapshot: Sendable {
+    var level: Float
+    var previousLevel: Float
+    var samples: [Float]
+    var previousSamples: [Float]
+    var writeIndex: Int
+    var previousWriteIndex: Int
+    var publishedAt: TimeInterval
+
+    static let silent = AudioEnergySnapshot(
+        level: 0,
+        previousLevel: 0,
+        samples: Array(repeating: 0, count: 64),
+        previousSamples: Array(repeating: 0, count: 64),
+        writeIndex: 0,
+        previousWriteIndex: 0,
+        publishedAt: 0
+    )
+}
+
+@MainActor
+@Observable
+final class AudioEnergyState {
+    private(set) var snapshot = AudioEnergySnapshot.silent
+    @ObservationIgnored private var lastPublishTime: TimeInterval = 0
+    @ObservationIgnored private var smoothedLevel: Float = 0
+    private let minimumPublishInterval: TimeInterval = 1.0 / 60.0
+
+    func receive(_ rawLevel: Float) {
+        guard rawLevel.isFinite else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        let clamped = min(1, max(0, rawLevel))
+        if clamped == 0 {
+            lastPublishTime = now
+            if snapshot.level != 0 || smoothedLevel != 0 { pause() }
+            return
+        }
+        guard now - lastPublishTime >= minimumPublishInterval else { return }
+        lastPublishTime = now
+        let blend: Float = clamped > smoothedLevel ? 0.62 : 0.20
+        smoothedLevel += (clamped - smoothedLevel) * blend
+        var next = snapshot
+        next.previousLevel = snapshot.level
+        next.previousSamples = snapshot.samples
+        next.previousWriteIndex = snapshot.writeIndex
+        next.level = smoothedLevel
+        next.samples[next.writeIndex] = smoothedLevel
+        next.writeIndex = (next.writeIndex + 1) % next.samples.count
+        next.publishedAt = Date.timeIntervalSinceReferenceDate
+        snapshot = next
+    }
+
+    func pause() {
+        smoothedLevel = 0
+        var next = snapshot
+        next.previousLevel = snapshot.level
+        next.level = 0
+        next.publishedAt = Date.timeIntervalSinceReferenceDate
+        snapshot = next
     }
 }
 
@@ -67,6 +150,7 @@ final class AppModel {
     var showingImporter = false
     var showingQueue = true
     var errorMessage: String?
+    private(set) var libraryReadError: String?
     var selectedTheme: CMVThemeID {
         didSet { UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeDefaultsKey) }
     }
@@ -75,14 +159,57 @@ final class AppModel {
     }
     private(set) var backgroundActivities: [UUID: BackgroundActivity] = [:]
     private(set) var pinnedTrackIDs: Set<UUID> = []
+    private(set) var ratingOverrides: [UUID: Int] = [:]
+    private(set) var favoriteOverrides: [UUID: Bool] = [:]
     let playback: NativePlaybackEngine
     let videoSession: VideoPlaybackSession
-    /// 非音訊曲目由原生 AVPlayer 表面呈現；URL 存在期間保留來源 lease。
     private(set) var videoURL: URL?
     private(set) var videoTrack: Track?
     private(set) var currentTrackID: UUID?
+    @ObservationIgnored let audioEnergy = AudioEnergyState()
+    private(set) var playbackRevision = 0
+    private(set) var playlistRevision = 0
+    private(set) var mixedMediaShuffleEnabled = false
 
-    var currentTrack: Track? { videoTrack ?? playback.queue.current }
+    var currentTrack: Track? {
+        _ = playbackRevision
+        return videoTrack ?? playback.queue.current
+    }
+    var displayQueue: PlaybackQueue {
+        _ = playbackRevision
+        guard let mixedQueue, !mixedQueue.isEmpty else { return playback.queue }
+        let index = currentTrackID.flatMap { id in mixedQueue.firstIndex(where: { $0.id == id }) }
+            ?? playback.queue.currentIndex
+        return PlaybackQueue(tracks: mixedQueue, currentIndex: index)
+    }
+    var isCurrentMediaPlaying: Bool {
+        _ = playbackRevision
+        return videoURL != nil ? videoSession.isPlaying : playback.isPlaying
+    }
+    var currentOutputVolume: Float {
+        _ = playbackRevision
+        return videoURL != nil ? videoSession.outputVolume : playback.outputVolume
+    }
+    var currentMediaElapsed: TimeInterval {
+        _ = playbackRevision
+        return videoURL != nil ? videoSession.currentTime : playback.elapsed
+    }
+    var currentMediaDuration: TimeInterval {
+        _ = playbackRevision
+        return videoURL != nil ? videoSession.duration : (playback.queue.current?.duration ?? 0)
+    }
+    var canAdjustQueueOrder: Bool {
+        videoURL == nil && !(mixedQueue?.contains { $0.mediaKind == .video } ?? false)
+    }
+    var canShuffleQueue: Bool { displayQueue.tracks.count > 1 }
+    var isShuffleEnabled: Bool {
+        guard let mixedQueue, routeContainsVideo(mixedQueue) else { return playback.isShuffleEnabled }
+        return mixedMediaShuffleEnabled
+    }
+    var canSkipVideoBackward: Bool { videoURL != nil && playback.queue.currentIndex > 0 }
+    var canSkipVideoForward: Bool {
+        videoURL != nil && playback.queue.currentIndex + 1 < playback.queue.tracks.count
+    }
 
     var primaryBackgroundActivity: BackgroundActivity? {
         backgroundActivities.values.sorted {
@@ -90,7 +217,6 @@ final class AppModel {
             return $0.startedAt < $1.startedAt
         }.first
     }
-
     var additionalBackgroundActivityCount: Int { max(0, backgroundActivities.count - 1) }
 
     private let sourceProvider = SecurityScopedMediaSourceProvider()
@@ -100,11 +226,27 @@ final class AppModel {
     private let analyzer = NativeAudioAnalyzer()
     private let smartDJ = NativeSmartDJService()
     private let cacheStore: FileOfflineCacheStore?
-    /// 保持佇列涉及的 security-scoped lease 到目前播放結束，避免 NAS／檔案 App 權限在解碼中途失效。
     private var playbackAccessLeases: [SecurityScopedResourceLease] = []
     private var videoAccessLeases: [SecurityScopedResourceLease] = []
     private var mixedQueue: [Track]?
     private var activePlaybackContext: ModelContext?
+    @ObservationIgnored private var playbackPreparationGeneration = 0
+    @ObservationIgnored private var smartPrefetchTask: Task<Void, Never>?
+    @ObservationIgnored private var scanningSourceIDs = Set<UUID>()
+    @ObservationIgnored private var pendingRescanSourceIDs = Set<UUID>()
+    @ObservationIgnored private var ratingMutationGeneration: [UUID: Int] = [:]
+    @ObservationIgnored private var favoriteMutationGeneration: [UUID: Int] = [:]
+    @ObservationIgnored private var ratingMutationTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var favoriteMutationTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var playbackObservation: AnyCancellable?
+    @ObservationIgnored private var libraryRepository: SwiftDataLibraryRepository?
+
+    private func repository(for context: ModelContext) -> SwiftDataLibraryRepository {
+        if let libraryRepository { return libraryRepository }
+        let repository = SwiftDataLibraryRepository(container: context.container)
+        libraryRepository = repository
+        return repository
+    }
 
     init() {
         selectedTheme = UserDefaults.standard.string(forKey: Self.themeDefaultsKey)
@@ -129,11 +271,38 @@ final class AppModel {
                 nextGainLinear: plan.nextGainLinear
             )
         }
-        playback.onCurrentTrackChanged = { [weak self] track in
-            self?.currentTrackID = track?.id
+        playback.onCurrentTrackChanged = { [weak self] track in self?.currentTrackID = track?.id }
+        playback.onQueueFinished = { [weak self] in self?.advanceAfterAudioQueue() }
+        playback.onOutputLevelChanged = { [weak self] level in self?.receiveOutputLevel(level) }
+        playback.onPlaybackError = { [weak self] error in
+            self?.errorMessage = "播放管線發生錯誤：\(error.localizedDescription)"
         }
-        playback.onQueueFinished = { [weak self] in
-            self?.advanceAfterAudioQueue()
+        playbackObservation = playback.objectWillChange.sink { [weak self] _ in self?.playbackRevision &+= 1 }
+        playback.onRemotePlayRequested = { [weak self] in
+            guard let self else { return }
+            if self.videoURL != nil {
+                self.videoSession.player.play()
+            } else {
+                do { try self.playback.play() } catch { self.errorMessage = error.localizedDescription }
+            }
+        }
+        playback.onRemotePauseRequested = { [weak self] in
+            guard let self else { return }
+            if self.videoURL != nil { self.videoSession.player.pause() } else { self.playback.pause() }
+        }
+        playback.onRemoteNextRequested = { [weak self] in
+            guard let self, let context = self.activePlaybackContext else { return }
+            self.skipCurrentMediaForward(context: context)
+        }
+        playback.onRemotePreviousRequested = { [weak self] in
+            guard let self, let context = self.activePlaybackContext else { return }
+            self.skipCurrentMediaBackward(context: context)
+        }
+        playback.onRemoteSeekRequested = { [weak self] seconds in self?.seekCurrentMedia(to: seconds) }
+        playback.onSleepTimerElapsed = { [weak self] in
+            guard let self else { return }
+            if self.videoURL != nil { self.videoSession.player.pause() }
+            self.playback.pause()
         }
         videoSession.onPlaybackEnded = { [weak self] in
             guard let self, let context = self.activePlaybackContext else {
@@ -142,18 +311,28 @@ final class AppModel {
             }
             self.advanceAfterVideo(context: context)
         }
+        videoSession.onOutputLevelChanged = { [weak self] level in
+            guard let self, self.videoURL != nil else { return }
+            self.receiveOutputLevel(level)
+        }
+        videoSession.onStateChanged = { [weak self] in
+            guard let self, self.videoURL != nil else { return }
+            if !self.videoSession.isPlaying { self.audioEnergy.pause() }
+            self.playback.updateExternalNowPlaying(
+                isPlaying: self.videoSession.isPlaying,
+                elapsed: self.videoSession.currentTime,
+                duration: self.videoSession.duration
+            )
+            self.playbackRevision &+= 1
+        }
     }
+
+    private func receiveOutputLevel(_ level: Float) { audioEnergy.receive(level) }
 
     @discardableResult
     func beginBackgroundActivity(kind: BackgroundActivityKind, title: String, detail: String? = nil) -> UUID {
         let id = UUID()
-        backgroundActivities[id] = BackgroundActivity(
-            id: id,
-            kind: kind,
-            title: title,
-            detail: detail,
-            startedAt: .now
-        )
+        backgroundActivities[id] = BackgroundActivity(id: id, kind: kind, title: title, detail: detail, startedAt: .now)
         return id
     }
 
@@ -162,89 +341,48 @@ final class AppModel {
         activity.detail = detail
         backgroundActivities[id] = activity
     }
+    func endBackgroundActivity(_ id: UUID) { backgroundActivities[id] = nil }
+    func addSource(_ url: URL, context: ModelContext) { addSources([url], context: context) }
 
-    func endBackgroundActivity(_ id: UUID) {
-        backgroundActivities[id] = nil
-    }
-
-    func addSource(_ url: URL, context: ModelContext) {
-        addSources([url], context: context)
-    }
-
-    /// 批次加入資料夾來源，讓 Finder／檔案 App 的多選結果只需一次存檔，
-    /// 並在同一批次內去除重複路徑。單一資料夾仍透過這個入口維持相同行為。
     func addSources(_ urls: [URL], context: ModelContext) {
         let directories = urls.filter(\.hasDirectoryPath)
         guard !directories.isEmpty else { return }
-
         let existingPaths = Set((try? context.fetch(FetchDescriptor<MediaSourceRecord>()))?.compactMap { source in
             try? sourceProvider.resolveWithRefresh(bookmark: source.bookmarkData).url.standardizedFileURL.path
         } ?? [])
         var seenPaths = existingPaths
         var pendingSources: [MediaSourceRecord] = []
         var failures: [String] = []
-
         for url in directories {
             let normalizedURL = url.standardizedFileURL
             guard seenPaths.insert(normalizedURL.path).inserted else { continue }
             do {
-                let ownsAccess = url.startAccessingSecurityScopedResource()
-                defer {
-                    if ownsAccess { url.stopAccessingSecurityScopedResource() }
-                }
-                // The URL returned by the system picker carries the sandbox
-                // grant. A newly standardized URL has the same path but can
-                // no longer be used to mint a security-scoped bookmark.
                 let bookmark = try sourceProvider.makeBookmark(for: url)
-                let source = MediaSourceRecord(
-                    displayName: normalizedURL.lastPathComponent,
-                    bookmarkData: bookmark,
-                    status: .scanning
-                )
+                let source = MediaSourceRecord(displayName: normalizedURL.lastPathComponent, bookmarkData: bookmark, status: .scanning)
                 context.insert(source)
                 pendingSources.append(source)
             } catch {
                 let cocoaError = error as NSError
-                failures.append(
-                    "\(normalizedURL.lastPathComponent)（\(cocoaError.domain) \(cocoaError.code)：\(error.localizedDescription)）"
-                )
+                failures.append("\(normalizedURL.lastPathComponent)（\(cocoaError.domain) \(cocoaError.code)：\(error.localizedDescription)）")
             }
         }
-
         guard !pendingSources.isEmpty else {
-            if !failures.isEmpty {
-                errorMessage = "無法加入資料夾：" + failures.joined(separator: "、")
-            }
+            if !failures.isEmpty { errorMessage = "無法加入資料夾：" + failures.joined(separator: "、") }
             return
         }
-
         do {
             try context.save()
         } catch {
-            // Keep unrelated pending edits intact, but never leave this failed
-            // batch queued for a later, unrelated context.save().
-            for source in pendingSources {
-                context.delete(source)
-            }
+            for source in pendingSources { context.delete(source) }
             errorMessage = error.localizedDescription
             return
         }
-
-        for source in pendingSources {
-            Task { await scan(source: source, context: context) }
-        }
-        if !failures.isEmpty {
-            errorMessage = "部分資料夾無法加入：" + failures.joined(separator: "、")
-        }
+        for source in pendingSources { scheduleScan(source, context: context) }
+        if !failures.isEmpty { errorMessage = "部分資料夾無法加入：" + failures.joined(separator: "、") }
     }
 
-    func restoreAndScan(_ source: MediaSourceRecord, context: ModelContext) {
-        Task { await scan(source: source, context: context) }
-    }
+    func restoreAndScan(_ source: MediaSourceRecord, context: ModelContext) { scheduleScan(source, context: context) }
 
-    /// Re-checks persisted sources when the app shell appears. A source that
-    /// was unavailable during the previous session is never removed, and a
-    /// stale bookmark is refreshed in place when Apple can still resolve it.
     func refreshSourceStatuses(_ sources: [MediaSourceRecord], context: ModelContext) async {
         guard !sources.isEmpty else { return }
         let activityID = beginBackgroundActivity(kind: .scanning, title: "正在確認音樂來源")
@@ -255,8 +393,10 @@ final class AppModel {
             probes.map { probe in
                 do {
                     let resolution = try provider.resolveWithRefresh(bookmark: probe.bookmark)
-                    let ownsScope = resolution.url.startAccessingSecurityScopedResource()
-                    defer { if ownsScope { resolution.url.stopAccessingSecurityScopedResource() } }
+                    guard resolution.url.startAccessingSecurityScopedResource() else {
+                        return SourceStatusProbeResult(id: probe.id, refreshedBookmark: nil, status: .permissionRequired)
+                    }
+                    defer { resolution.url.stopAccessingSecurityScopedResource() }
                     let status: MediaSourceStatus = FileManager.default.isReadableFile(atPath: resolution.url.path)
                         ? .available : .offline
                     return SourceStatusProbeResult(id: probe.id, refreshedBookmark: resolution.refreshedBookmark, status: status)
@@ -266,9 +406,16 @@ final class AppModel {
             }
         }.value
         let sourcesByID = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0) })
+        var originals: [UUID: SourceStateSnapshot] = [:]
         var didChange = false
         for result in results {
             guard let source = sourcesByID[result.id] else { continue }
+            originals[source.id] = SourceStateSnapshot(
+                bookmarkData: source.bookmarkData,
+                status: source.status,
+                lastSuccessfulScan: source.lastSuccessfulScan,
+                updatedAt: source.updatedAt
+            )
             if let refreshedBookmark = result.refreshedBookmark {
                 source.bookmarkData = refreshedBookmark
                 source.updatedAt = .now
@@ -279,33 +426,51 @@ final class AppModel {
                 didChange = true
             }
         }
-        if didChange {
-            try? context.save()
+        guard didChange else { return }
+        do {
+            try context.save()
+        } catch {
+            for (id, original) in originals {
+                guard let source = sourcesByID[id] else { continue }
+                source.bookmarkData = original.bookmarkData
+                source.status = original.status
+                source.lastSuccessfulScan = original.lastSuccessfulScan
+                source.updatedAt = original.updatedAt
+            }
+            errorMessage = "無法保存音樂來源狀態：\(error.localizedDescription)"
         }
     }
 
-    /// 讓使用者以原生資料夾選擇器更新過期／撤銷的 bookmark，保留既有曲目與歌單。
     func reauthorizeSource(_ source: MediaSourceRecord, with url: URL, context: ModelContext) {
+        let original = SourceStateSnapshot(
+            bookmarkData: source.bookmarkData,
+            status: source.status,
+            lastSuccessfulScan: source.lastSuccessfulScan,
+            updatedAt: source.updatedAt
+        )
         do {
             source.bookmarkData = try sourceProvider.makeBookmark(for: url)
             source.status = .scanning
             source.updatedAt = .now
             try context.save()
-            Task { await scan(source: source, context: context) }
+            scheduleScan(source, context: context)
         } catch {
+            source.bookmarkData = original.bookmarkData
+            source.status = original.status
+            source.lastSuccessfulScan = original.lastSuccessfulScan
+            source.updatedAt = original.updatedAt
             errorMessage = error.localizedDescription
         }
     }
 
-    /// 從曲目所屬來源解析實體 URL，再交給原生雙節點播放管線。
-    /// UI 只需要呼叫這個入口，不得自行拼接或繞過 security-scoped bookmark。
-    func play(track: Track, context: ModelContext) {
-        play(tracks: [track], startingAt: 0, context: context)
-    }
+    func play(track: Track, context: ModelContext) { play(tracks: [track], startingAt: 0, context: context) }
 
-    /// 關閉目前影片並釋放其 security-scoped 存取權。影片 utility window
-    /// 或 iPad sheet 消失時呼叫，確保 lease 不會提早結束也不會永久佔用。
-    func stopVideoPlayback() {
+    func stopVideoPlayback(invalidatePendingPreparation: Bool = true) {
+        if invalidatePendingPreparation {
+            playbackPreparationGeneration &+= 1
+            smartPrefetchTask?.cancel()
+            smartPrefetchTask = nil
+        }
         let wasVideoPlayback = videoURL != nil || videoTrack != nil
         videoSession.stop()
         videoURL = nil
@@ -314,22 +479,132 @@ final class AppModel {
         if wasVideoPlayback {
             mixedQueue = nil
             if !playback.queue.tracks.isEmpty { playback.clearQueue() }
+            playbackAccessLeases.removeAll()
         }
     }
 
-    /// Plays a movie chosen directly from the system picker. The security
-    /// scope is retained by the same session used for indexed library videos.
+    func toggleCurrentMediaPlayback(context: ModelContext) {
+        if videoURL != nil {
+            videoSession.togglePlayback()
+        } else if playback.isPlaying {
+            playback.pause()
+            smartPrefetchTask?.cancel()
+            smartPrefetchTask = nil
+        } else {
+            playOrResume(context: context)
+        }
+    }
+
+    func skipCurrentMediaForward(context: ModelContext) {
+        smartPrefetchTask?.cancel()
+        smartPrefetchTask = nil
+        if videoURL != nil {
+            guard canSkipVideoForward else { return }
+            advanceAfterVideo(context: context)
+            return
+        }
+        if playback.queue.currentIndex + 1 < playback.queue.tracks.count {
+            do { try playback.skipForward() } catch { errorMessage = error.localizedDescription }
+            return
+        }
+        guard let mixedQueue, let currentTrackID,
+              let currentIndex = mixedQueue.firstIndex(where: { $0.id == currentTrackID }),
+              mixedQueue.indices.contains(currentIndex + 1) else { return }
+        play(tracks: mixedQueue, startingAt: currentIndex + 1, context: context)
+    }
+
+    private var shouldReturnToPreviousMixedMedia: Bool {
+        playback.elapsed <= 3 && playback.queue.currentIndex == 0
+    }
+
+    private func playPreviousMixedMedia(context: ModelContext) -> Bool {
+        guard shouldReturnToPreviousMixedMedia,
+              let mixedQueue, let currentTrackID,
+              let currentIndex = mixedQueue.firstIndex(where: { $0.id == currentTrackID }),
+              mixedQueue.indices.contains(currentIndex - 1) else { return false }
+        play(tracks: mixedQueue, startingAt: currentIndex - 1, context: context)
+        return true
+    }
+
+    func skipCurrentMediaBackward(context: ModelContext) {
+        smartPrefetchTask?.cancel()
+        smartPrefetchTask = nil
+        guard videoURL != nil else {
+            if !playPreviousMixedMedia(context: context) {
+                do { try playback.skipBackward() } catch { errorMessage = error.localizedDescription }
+            }
+            return
+        }
+        let queue = playback.queue
+        let previousIndex = queue.currentIndex - 1
+        guard queue.tracks.indices.contains(previousIndex) else { return }
+        play(tracks: queue.tracks, startingAt: previousIndex, context: context)
+    }
+
+    func setCurrentMediaVolume(_ value: Float) {
+        if videoURL != nil { videoSession.setVolume(value) } else { playback.setVolume(value) }
+    }
+    func seekCurrentMedia(to seconds: TimeInterval) {
+        if videoURL != nil { videoSession.seek(to: seconds) } else { playback.seek(to: seconds) }
+    }
+
+    func toggleShuffle() {
+        guard canShuffleQueue else { return }
+        guard var route = mixedQueue,
+              routeContainsVideo(route),
+              let currentTrackID,
+              let currentIndex = route.firstIndex(where: { $0.id == currentTrackID }) else {
+            playback.toggleShuffle()
+            return
+        }
+        mixedMediaShuffleEnabled.toggle()
+        guard mixedMediaShuffleEnabled else { playbackRevision &+= 1; return }
+        let protectedEndIndex: Int
+        if videoURL != nil {
+            protectedEndIndex = currentIndex
+        } else {
+            let preparedAudioIDs = Set(playback.queue.tracks.map(\.id))
+            protectedEndIndex = route.lastIndex(where: { preparedAudioIDs.contains($0.id) }) ?? currentIndex
+        }
+        let shuffleStart = protectedEndIndex + 1
+        if shuffleStart < route.count {
+            var upcoming = Array(route[shuffleStart...])
+            upcoming.shuffle()
+            route.replaceSubrange(shuffleStart..., with: upcoming)
+            mixedQueue = route
+            if videoURL != nil { playback.setQueue(PlaybackQueue(tracks: route, currentIndex: currentIndex)) }
+        }
+        playbackRevision &+= 1
+    }
+
+    private func routeContainsVideo(_ tracks: [Track]) -> Bool {
+        let movieExtensions: Set<String> = ["mp4", "mov", "m4v"]
+        return tracks.contains { track in
+            track.mediaKind == .video || movieExtensions.contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+        }
+    }
+
     func playStandaloneVideo(url: URL) {
+        smartPrefetchTask?.cancel()
+        smartPrefetchTask = nil
+        playbackPreparationGeneration &+= 1
+        let requestGeneration = playbackPreparationGeneration
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let lease = try await sourceAccess.lease(for: url)
+                guard requestGeneration == playbackPreparationGeneration else { return }
                 playback.clearQueue()
                 playbackAccessLeases.removeAll()
                 videoAccessLeases = [lease]
                 mixedQueue = nil
                 activePlaybackContext = nil
-                videoTrack = nil
+                let metadata = Track(
+                    sourceID: UUID(), relativePath: url.lastPathComponent, fileIdentifier: url.path,
+                    title: url.deletingPathExtension().lastPathComponent, fileSize: 0, modifiedAt: .now, mediaKind: .video
+                )
+                playback.setQueue(PlaybackQueue(tracks: [metadata]))
+                videoTrack = metadata
                 videoURL = url
                 videoSession.load(url: url, autoplay: true)
             } catch {
@@ -338,15 +613,12 @@ final class AppModel {
         }
     }
 
-    /// Transport controls use this entry point so an empty queue still has a
-    /// useful, accessible action instead of silently swallowing an engine
-    /// error.
     func playOrResume(context: ModelContext) {
         guard videoURL == nil else { return }
         if playback.queue.current == nil {
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let repository = SwiftDataLibraryRepository(container: context.container)
+                let repository = repository(for: context)
                 do {
                     let candidates = try await repository.tracks(matching: "", limit: 200, offset: 0)
                     guard let first = candidates.first(where: { $0.availability == .available }) else {
@@ -360,40 +632,52 @@ final class AppModel {
             }
             return
         }
-        do {
-            try playback.play()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        do { try playback.play() } catch { errorMessage = error.localizedDescription }
     }
 
-    /// AVPlayer 結束目前影片後，沿用相同佇列銜接下一首；下一首若是
-    /// 音訊，會回到原生音訊引擎，若仍是影片則更新影片表面。
     func advanceAfterVideo(context: ModelContext) {
         guard videoURL != nil else { return }
         let queue = playback.queue
         let nextIndex = queue.currentIndex + 1
-        guard queue.tracks.indices.contains(nextIndex) else {
-            stopVideoPlayback()
-            return
-        }
+        guard queue.tracks.indices.contains(nextIndex) else { stopVideoPlayback(); return }
         play(tracks: queue.tracks, startingAt: nextIndex, context: context)
     }
 
     private func advanceAfterAudioQueue() {
+        if mixedQueue == nil {
+            guard let context = activePlaybackContext else { playbackAccessLeases.removeAll(); return }
+            let audioQueue = playback.queue
+            let nextIndex = audioQueue.currentIndex + 1
+            guard audioQueue.tracks.indices.contains(nextIndex) else {
+                playbackAccessLeases.removeAll()
+                activePlaybackContext = nil
+                return
+            }
+            play(tracks: audioQueue.tracks, startingAt: nextIndex, context: context)
+            return
+        }
         guard let mixedQueue, let context = activePlaybackContext,
               let currentID = currentTrackID,
-              let currentIndex = mixedQueue.firstIndex(where: { $0.id == currentID }) else { return }
+              let currentIndex = mixedQueue.firstIndex(where: { $0.id == currentID }) else {
+            playbackAccessLeases.removeAll()
+            return
+        }
         let nextIndex = currentIndex + 1
         guard mixedQueue.indices.contains(nextIndex) else {
             self.mixedQueue = nil
+            mixedMediaShuffleEnabled = false
+            playbackAccessLeases.removeAll()
             return
         }
         play(tracks: mixedQueue, startingAt: nextIndex, context: context)
     }
 
-    /// 播放整個佇列（歌單可跨多個來源）；所有來源都在播放生命週期內持有 lease。
     func play(tracks: [Track], startingAt: Int = 0, context: ModelContext) {
+        if mixedQueue?.map(\.id) != tracks.map(\.id) { mixedMediaShuffleEnabled = false }
+        smartPrefetchTask?.cancel()
+        smartPrefetchTask = nil
+        playbackPreparationGeneration &+= 1
+        let requestGeneration = playbackPreparationGeneration
         Task { @MainActor [weak self] in
             guard let self else { return }
             let activityID = beginBackgroundActivity(kind: .playback, title: "正在準備播放")
@@ -405,62 +689,50 @@ final class AppModel {
                 var roots: [UUID: URL] = [:]
                 var leases: [SecurityScopedResourceLease] = []
                 var resolvedURLs: [UUID: URL] = [:]
+                var cachedTrackIDs = Set<UUID>()
                 guard tracks.indices.contains(startingAt) else { return }
                 let selectedTrack = tracks[startingAt]
-                activePlaybackContext = context
                 let selectedURL: URL
                 if let cacheStore, let cachedURL = await cacheStore.cachedURL(trackID: selectedTrack.id) {
                     selectedURL = cachedURL
+                    cachedTrackIDs.insert(selectedTrack.id)
                 } else {
-                    guard let source = sourcesByID[selectedTrack.sourceID] else {
-                        throw MediaSourceAccessError.accessDenied
-                    }
+                    guard let source = sourcesByID[selectedTrack.sourceID] else { throw MediaSourceAccessError.accessDenied }
                     let root = try resolve(source: source, context: context)
                     roots[selectedTrack.sourceID] = root
                     leases.append(try await sourceAccess.lease(for: root))
                     selectedURL = try Self.safeTrackURL(root: root, relativePath: selectedTrack.relativePath)
                 }
+                guard requestGeneration == playbackPreparationGeneration else { return }
                 resolvedURLs[selectedTrack.id] = selectedURL
                 let selectedAsset = AVURLAsset(url: selectedURL)
                 let selectedAssetTracks: [AVAssetTrack]
-                do {
-                    selectedAssetTracks = try await selectedAsset.load(.tracks)
-                } catch {
-                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
-                }
-                guard !selectedAssetTracks.isEmpty else {
-                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
-                }
+                do { selectedAssetTracks = try await selectedAsset.load(.tracks) }
+                catch { throw MediaScanError.unreadableFile(path: selectedTrack.relativePath) }
+                guard requestGeneration == playbackPreparationGeneration else { return }
+                guard !selectedAssetTracks.isEmpty else { throw MediaScanError.unreadableFile(path: selectedTrack.relativePath) }
                 let selectedAssetIsPlayable: Bool
-                do {
-                    selectedAssetIsPlayable = try await selectedAsset.load(.isPlayable)
-                } catch {
-                    throw MediaScanError.unreadableFile(path: selectedTrack.relativePath)
-                }
-                guard selectedAssetIsPlayable else {
-                    throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
-                }
+                do { selectedAssetIsPlayable = try await selectedAsset.load(.isPlayable) }
+                catch { throw MediaScanError.unreadableFile(path: selectedTrack.relativePath) }
+                guard requestGeneration == playbackPreparationGeneration else { return }
+                guard selectedAssetIsPlayable else { throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath) }
                 if selectedAssetTracks.contains(where: { $0.mediaType == .video }) {
-                    let selectedVideoTrack = selectedTrack
-                    let url = selectedURL
+                    disableAudioOnlyQueueModesForMixedMedia(tracks)
                     playback.clearQueue()
                     playback.setQueue(PlaybackQueue(tracks: tracks, currentIndex: startingAt))
                     mixedQueue = tracks
                     playbackAccessLeases.removeAll()
                     videoAccessLeases = leases
-                    videoTrack = selectedVideoTrack
-                    videoURL = url
-                    videoSession.load(url: url, autoplay: true)
-                    let repository = SwiftDataLibraryRepository(container: context.container)
-                    try? await repository.recordPlayback(trackID: selectedVideoTrack.id, skipped: false)
+                    activePlaybackContext = context
+                    videoTrack = selectedTrack
+                    videoURL = selectedURL
+                    videoSession.load(url: selectedURL, autoplay: true)
+                    let repository = repository(for: context)
+                    try? await repository.recordPlayback(trackID: selectedTrack.id, skipped: false)
                     return
                 }
 
-                stopVideoPlayback()
-                // Newly scanned records carry an explicit media kind. Legacy
-                // records default to audio, so movie-container extensions are
-                // kept out of a later audio-only queue unless they are the
-                // selected item that was just probed as audio-only above.
+                stopVideoPlayback(invalidatePendingPreparation: false)
                 let movieContainerExtensions: Set<String> = ["mp4", "mov", "m4v"]
                 let nextVideoIndex = tracks.indices.dropFirst(startingAt + 1).first { index in
                     let track = tracks[index]
@@ -470,20 +742,18 @@ final class AppModel {
                 let audioTracks = Array(tracks[startingAt..<nextVideoIndex]).filter { track in
                     track.id == selectedTrack.id || track.mediaKind != .video
                 }
-                guard !audioTracks.isEmpty else {
-                    throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
-                }
+                guard !audioTracks.isEmpty else { throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath) }
                 guard let audioIndex = audioTracks.firstIndex(of: selectedTrack) else {
                     throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
                 }
                 for track in audioTracks.dropFirst() {
                     if let cacheStore, let cachedURL = await cacheStore.cachedURL(trackID: track.id) {
                         resolvedURLs[track.id] = cachedURL
+                        cachedTrackIDs.insert(track.id)
+                        guard requestGeneration == playbackPreparationGeneration else { return }
                         continue
                     }
-                    guard let source = sourcesByID[track.sourceID] else {
-                        throw MediaSourceAccessError.accessDenied
-                    }
+                    guard let source = sourcesByID[track.sourceID] else { throw MediaSourceAccessError.accessDenied }
                     let root: URL
                     if let cached = roots[track.sourceID] {
                         root = cached
@@ -491,31 +761,49 @@ final class AppModel {
                         root = try resolve(source: source, context: context)
                         roots[track.sourceID] = root
                         leases.append(try await sourceAccess.lease(for: root))
+                        guard requestGeneration == playbackPreparationGeneration else { return }
                     }
                     resolvedURLs[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 }
-                try playback.load(PlaybackQueue(tracks: audioTracks, currentIndex: audioIndex), resolvedURLs: resolvedURLs)
+                guard requestGeneration == playbackPreparationGeneration else { return }
+                if nextVideoIndex < tracks.count { disableAudioOnlyQueueModesForMixedMedia(tracks) }
+                if nextVideoIndex == tracks.count, mixedMediaShuffleEnabled {
+                    if !playback.isShuffleEnabled { playback.toggleShuffle() }
+                    mixedMediaShuffleEnabled = false
+                }
+                try await playback.load(PlaybackQueue(tracks: audioTracks, currentIndex: audioIndex), resolvedURLs: resolvedURLs)
                 mixedQueue = nextVideoIndex < tracks.count ? tracks : nil
+                activePlaybackContext = context
                 playbackAccessLeases = leases
                 try playback.play()
-                let repository = SwiftDataLibraryRepository(container: context.container)
+                let repository = repository(for: context)
                 try? await repository.recordPlayback(trackID: selectedTrack.id, skipped: false)
                 if let cacheStore {
                     let policy = CachePolicy()
-                    let prefetchTracks = Array(audioTracks.dropFirst().prefix(policy.prefetchCount))
+                    let prefetchTracks = Array(audioTracks.dropFirst().filter { !cachedTrackIDs.contains($0.id) }.prefix(policy.prefetchCount))
+                    guard !prefetchTracks.isEmpty else { return }
                     let prefetchURLs = resolvedURLs
-                    let cacheActivityID = beginBackgroundActivity(
-                        kind: .cache,
-                        title: "正在更新智慧快取",
-                        detail: "預取接下來的歌曲"
-                    )
-                    Task.detached(priority: .utility) { [weak self] in
+                    let cacheActivityID = beginBackgroundActivity(kind: .cache, title: "正在更新智慧快取", detail: "預取接下來的歌曲")
+                    smartPrefetchTask = Task.detached(priority: .utility) { [weak self] in
                         defer {
                             Task { @MainActor [weak self] in
                                 self?.endBackgroundActivity(cacheActivityID)
+                                if self?.playbackPreparationGeneration == requestGeneration { self?.smartPrefetchTask = nil }
                             }
                         }
+                        do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                        let shouldPrefetch = await MainActor.run { [weak self] in
+                            guard let self else { return false }
+                            return self.playbackPreparationGeneration == requestGeneration && self.playback.isPlaying
+                        }
+                        guard shouldPrefetch else { return }
                         for track in prefetchTracks {
+                            guard !Task.isCancelled else { return }
+                            let shouldContinue = await MainActor.run { [weak self] in
+                                guard let self else { return false }
+                                return self.playbackPreparationGeneration == requestGeneration && self.playback.isPlaying
+                            }
+                            guard shouldContinue else { return }
                             guard let url = prefetchURLs[track.id] else { continue }
                             _ = try? await cacheStore.prefetch(trackID: track.id, sourceURL: url)
                         }
@@ -523,9 +811,19 @@ final class AppModel {
                     }
                 }
             } catch {
+                guard requestGeneration == playbackPreparationGeneration else { return }
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private func disableAudioOnlyQueueModesForMixedMedia(_ tracks: [Track]) {
+        let movieExtensions: Set<String> = ["mp4", "mov", "m4v"]
+        guard tracks.contains(where: { track in
+            track.mediaKind == .video || movieExtensions.contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+        }) else { return }
+        if playback.isShuffleEnabled { playback.toggleShuffle() }
+        if playback.isRepeatEnabled { playback.toggleRepeat() }
     }
 
     private static func safeTrackURL(root: URL, relativePath: String) throws -> URL {
@@ -537,33 +835,63 @@ final class AppModel {
         return candidate
     }
 
-    /// 來源仍可使用時自動更新 stale bookmark；只有無法刷新才需要使用者重新授權。
     private func resolve(source: MediaSourceRecord, context: ModelContext) throws -> URL {
         let resolution = try sourceProvider.resolveWithRefresh(bookmark: source.bookmarkData)
         if let refreshedBookmark = resolution.refreshedBookmark {
+            let oldBookmark = source.bookmarkData
+            let oldUpdatedAt = source.updatedAt
             source.bookmarkData = refreshedBookmark
             source.updatedAt = .now
-            try context.save()
+            do {
+                try context.save()
+            } catch {
+                source.bookmarkData = oldBookmark
+                source.updatedAt = oldUpdatedAt
+                throw error
+            }
         }
         return resolution.url
     }
 
+    private func scheduleScan(_ source: MediaSourceRecord, context: ModelContext) {
+        guard !scanningSourceIDs.contains(source.id) else {
+            pendingRescanSourceIDs.insert(source.id)
+            return
+        }
+        Task { await scan(source: source, context: context) }
+    }
+
     private func scan(source: MediaSourceRecord, context: ModelContext) async {
-        let activityID = beginBackgroundActivity(
-            kind: .scanning,
-            title: "正在索引「\(source.displayName)」",
-            detail: "準備讀取來源"
-        )
+        guard scanningSourceIDs.insert(source.id).inserted else {
+            pendingRescanSourceIDs.insert(source.id)
+            return
+        }
+        defer {
+            scanningSourceIDs.remove(source.id)
+            if pendingRescanSourceIDs.remove(source.id) != nil { scheduleScan(source, context: context) }
+        }
+        let activityID = beginBackgroundActivity(kind: .scanning, title: "正在索引「\(source.displayName)」", detail: "準備讀取來源")
         defer { endBackgroundActivity(activityID) }
+        let original = SourceStateSnapshot(
+            bookmarkData: source.bookmarkData,
+            status: source.status,
+            lastSuccessfulScan: source.lastSuccessfulScan,
+            updatedAt: source.updatedAt
+        )
         do {
             let url = try resolve(source: source, context: context)
             let accessLease = try await sourceAccess.lease(for: url)
             let sourceID = source.id
             source.status = .scanning
-            let repository = SwiftDataLibraryRepository(container: context.container)
+            let repository = repository(for: context)
             let existing = try await repository.tracks(sourceID: sourceID)
-            let existingByIdentifier = existing.reduce(into: [String: RustTrackSnapshot]()) { result, track in
-                if result[track.fileIdentifier] == nil { result[track.fileIdentifier] = RustTrackSnapshot(track: track) }
+            var existingByIdentifier = [String: RustTrackSnapshot]()
+            existingByIdentifier.reserveCapacity(existing.count)
+            for track in existing {
+                guard existingByIdentifier[track.fileIdentifier] == nil else {
+                    throw LibraryRepositoryError.invalidReconciliation
+                }
+                existingByIdentifier[track.fileIdentifier] = RustTrackSnapshot(track: track)
             }
             let scanID = await repository.beginScan(sourceID: sourceID)
             let batchState = ScanBatchState()
@@ -580,9 +908,7 @@ final class AppModel {
                         try rustCore.reconcile(existing: existingBatch, scanned: scannedBatch, sourceReachable: true)
                     }.value
                     var byIdentifier = [String: ScannedMediaFile]()
-                    for file in batch where byIdentifier[file.fileIdentifier] == nil {
-                        byIdentifier[file.fileIdentifier] = file
-                    }
+                    for file in batch where byIdentifier[file.fileIdentifier] == nil { byIdentifier[file.fileIdentifier] = file }
                     let upserts = reconciliation.upserts.compactMap { byIdentifier[$0.file.identifier] }
                     try await repository.applyScanBatch(upserts, sourceID: sourceID, scanID: scanID)
                 },
@@ -591,38 +917,58 @@ final class AppModel {
                         let path = progress.currentPath.isEmpty ? nil : progress.currentPath
                         self?.updateBackgroundActivity(
                             activityID,
-                            detail: path.map { "已處理 \(progress.processed) 首 · \($0)" }
-                                ?? "已處理 \(progress.processed) 首"
+                            detail: path.map { "已處理 \(progress.processed) 首 · \($0)" } ?? "已處理 \(progress.processed) 首"
                         )
                     }
                 },
                 onIssue: { [weak self] issue in
                     let shouldPresent = await batchState.registerIssue()
                     guard shouldPresent else { return }
-                    await MainActor.run {
-                        self?.errorMessage = issue.localizedDescription
-                    }
+                    await MainActor.run { self?.errorMessage = issue.localizedDescription }
                 }
             )
             _ = accessLease
             let scanCompletedWithoutIssues = await batchState.completedWithoutIssues()
-            try await repository.finishScan(
-                sourceID: sourceID,
-                scanID: scanID,
-                sourceWasReachable: scanCompletedWithoutIssues
-            )
-            source.status = .available
-            source.lastSuccessfulScan = .now
-            source.updatedAt = .now
-            try context.save()
-        } catch {
-            if case MediaSourceAccessError.staleBookmark = error {
-                source.status = .permissionRequired
-            } else {
-                source.status = .offline
+            if scanCompletedWithoutIssues {
+                let seenIdentifiers = await batchState.identifierSnapshot()
+                let missingIdentifiers = ScanCompletionPlanner.missingIdentifiers(
+                    existing: existing,
+                    seenIdentifiers: seenIdentifiers,
+                    completedWithoutIssues: true
+                )
+                try await repository.applyReconciliation(
+                    upserts: [],
+                    missingIdentifiers: missingIdentifiers,
+                    sourceID: sourceID
+                )
             }
-            errorMessage = error.localizedDescription
-            try? context.save()
+            source.status = .available
+            if scanCompletedWithoutIssues { source.lastSuccessfulScan = .now }
+            source.updatedAt = .now
+            do {
+                try context.save()
+            } catch {
+                source.status = original.status
+                source.lastSuccessfulScan = original.lastSuccessfulScan
+                source.updatedAt = original.updatedAt
+                errorMessage = "索引已完成，但無法保存來源狀態：\(error.localizedDescription)"
+            }
+        } catch {
+            let scanError = error
+            source.status = scanError is MediaSourceAccessError && (scanError as? MediaSourceAccessError) == .staleBookmark
+                ? .permissionRequired : .offline
+            source.updatedAt = .now
+            do {
+                try context.save()
+                errorMessage = scanError.localizedDescription
+            } catch {
+                let saveError = error
+                source.bookmarkData = original.bookmarkData
+                source.status = original.status
+                source.lastSuccessfulScan = original.lastSuccessfulScan
+                source.updatedAt = original.updatedAt
+                errorMessage = "來源錯誤：\(scanError.localizedDescription)；且無法保存狀態：\(saveError.localizedDescription)"
+            }
         }
     }
 
@@ -634,133 +980,215 @@ final class AppModel {
         limit: Int = 200,
         offset: Int = 0
     ) async -> [Track] {
-        let repository = SwiftDataLibraryRepository(container: context.container)
+        libraryReadError = nil
+        let repository = repository(for: context)
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let safeLimit = max(1, limit)
         let safeOffset = max(0, offset)
         if let sort {
-            return (try? await repository.tracks(
-                matching: normalizedQuery,
-                sort: sort,
-                ascending: ascending,
-                limit: safeLimit,
-                offset: safeOffset
-            )) ?? []
+            do {
+                return try await repository.tracks(matching: normalizedQuery, sort: sort, ascending: ascending, limit: safeLimit, offset: safeOffset)
+            } catch {
+                let message = "無法讀取曲庫：\(error.localizedDescription)"
+                errorMessage = message
+                libraryReadError = message
+                return []
+            }
         }
         if normalizedQuery.isEmpty {
-            return (try? await repository.tracks(matching: "", limit: safeLimit, offset: safeOffset)) ?? []
+            do { return try await repository.tracks(matching: "", limit: safeLimit, offset: safeOffset) }
+            catch {
+                let message = "無法讀取曲庫：\(error.localizedDescription)"
+                errorMessage = message
+                libraryReadError = message
+                return []
+            }
         }
-        let candidateLimit = max(safeLimit + safeOffset, 500)
-        let snapshot = (try? await repository.tracks(
-            matching: query, limit: candidateLimit, offset: 0
-        )) ?? []
+        let candidates: [LibrarySearchCandidate]
+        do { candidates = try await repository.searchCandidates(matching: normalizedQuery) }
+        catch {
+            let message = "無法搜尋曲庫：\(error.localizedDescription)"
+            errorMessage = message
+            libraryReadError = message
+            return []
+        }
         let core = rustCore
-        let rustTracks = snapshot.map(RustSearchTrack.init(track:))
+        let rustTracks = candidates.map(RustSearchTrack.init(candidate:))
+        let canonicalQuery = canonicalSearchValue(normalizedQuery)
         let ranked: [RustSearchResult]
         do {
             ranked = try await Task.detached(priority: .userInitiated) {
-                try core.search(query: query, tracks: rustTracks, limit: safeLimit + safeOffset)
+                try core.search(query: canonicalQuery, tracks: rustTracks, limit: safeLimit + safeOffset)
             }.value
         } catch {
-            let normalized = normalizedQuery.lowercased()
-            return snapshot.filter { normalized.isEmpty ||
-                [$0.title, $0.artist, $0.album].contains(where: {
-                    $0.range(of: normalized, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-                })
-            }.dropFirst(safeOffset).prefix(safeLimit).map { $0 }
+            let tokens = canonicalQuery.split(whereSeparator: \.isWhitespace).map(String.init)
+            let sorted = candidates.sorted { lhs, rhs in
+                let lhsScore = Self.fallbackSearchScore(lhs, tokens: tokens)
+                let rhsScore = Self.fallbackSearchScore(rhs, tokens: tokens)
+                if lhsScore != rhsScore { return lhsScore > rhsScore }
+                let titleOrder = lhs.title.localizedStandardCompare(rhs.title)
+                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            let pageIDs = sorted.dropFirst(safeOffset).prefix(safeLimit).map(\.id)
+            do { return try await repository.tracks(ids: pageIDs) }
+            catch {
+                let message = "無法載入搜尋結果：\(error.localizedDescription)"
+                errorMessage = message
+                libraryReadError = message
+                return []
+            }
         }
-        let byID = Dictionary(uniqueKeysWithValues: snapshot.map { ($0.id.uuidString, $0) })
-        return ranked.dropFirst(safeOffset).prefix(safeLimit).compactMap { byID[$0.identifier] }
-    }
-
-    func trackIDs(
-        matching query: String,
-        context: ModelContext,
-        sort: LibraryTrackSort = .title,
-        ascending: Bool = true
-    ) async -> [UUID] {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        do {
-            return try await repository.trackIDs(matching: query, sort: sort, ascending: ascending)
-        } catch {
-            errorMessage = error.localizedDescription
+        let pageIDs = ranked.dropFirst(safeOffset).prefix(safeLimit).compactMap { UUID(uuidString: $0.identifier) }
+        do { return try await repository.tracks(ids: pageIDs) }
+        catch {
+            let message = "無法載入搜尋結果：\(error.localizedDescription)"
+            errorMessage = message
+            libraryReadError = message
             return []
         }
+    }
+
+    func trackIDs(matching query: String, context: ModelContext, sort: LibraryTrackSort = .title, ascending: Bool = true) async -> [UUID] {
+        let repository = repository(for: context)
+        do { return try await repository.trackIDs(matching: query, sort: sort, ascending: ascending) }
+        catch { errorMessage = error.localizedDescription; return [] }
     }
 
     func tracks(ids: [UUID], context: ModelContext) async -> [Track] {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        do {
-            return try await repository.tracks(ids: ids)
-        } catch {
-            errorMessage = error.localizedDescription
-            return []
-        }
+        let repository = repository(for: context)
+        do { return try await repository.tracks(ids: ids) }
+        catch { errorMessage = error.localizedDescription; return [] }
     }
 
     func excludeTracks(ids: Set<UUID>, context: ModelContext) async -> Bool {
         guard !ids.isEmpty else { return true }
-        let activityID = beginBackgroundActivity(
-            kind: .library,
-            title: "正在從 CMV 移出曲目",
-            detail: "保留原始檔案 · \(ids.count) 首"
-        )
+        let activityID = beginBackgroundActivity(kind: .library, title: "正在從 CMV 移出曲目", detail: "保留原始檔案 · \(ids.count) 首")
         defer { endBackgroundActivity(activityID) }
         do {
-            let repository = SwiftDataLibraryRepository(container: context.container)
+            let repository = repository(for: context)
             try await repository.excludeTracks(ids: Array(ids))
             pinnedTrackIDs.subtract(ids)
             return true
-        } catch {
-            errorMessage = error.localizedDescription
-            return false
-        }
+        } catch { errorMessage = error.localizedDescription; return false }
     }
 
     func favoriteTracks(context: ModelContext, limit: Int = 200, offset: Int = 0) async -> [Track] {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        return (try? await repository.favoriteTracks(limit: limit, offset: max(0, offset))) ?? []
+        libraryReadError = nil
+        let repository = repository(for: context)
+        do { return try await repository.favoriteTracks(limit: limit, offset: max(0, offset)) }
+        catch {
+            let message = "無法讀取最愛歌曲：\(error.localizedDescription)"
+            errorMessage = message
+            libraryReadError = message
+            return []
+        }
     }
 
     func play(playlist: Playlist, context: ModelContext) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            guard let tracks = try? await repository.tracks(ids: playlist.trackIDs) else { return }
-            play(tracks: tracks, context: context)
+            let repository = repository(for: context)
+            do { play(tracks: try await repository.tracks(ids: playlist.trackIDs), context: context) }
+            catch { errorMessage = "無法播放「\(playlist.name)」：\(error.localizedDescription)" }
         }
     }
 
+    func addToPlaybackQueue(_ tracks: [Track], context: ModelContext) {
+        guard !tracks.isEmpty else { return }
+        guard currentTrackID != nil, !displayQueue.tracks.isEmpty else { play(tracks: tracks, context: context); return }
+        var updated = displayQueue.tracks
+        var queuedIDs = Set(updated.map(\.id))
+        let additions = tracks.filter { queuedIDs.insert($0.id).inserted }
+        guard !additions.isEmpty else { return }
+        updated.append(contentsOf: additions)
+        mixedQueue = updated
+        activePlaybackContext = context
+        if videoURL != nil {
+            let currentIndex = currentTrackID.flatMap { id in updated.firstIndex(where: { $0.id == id }) } ?? 0
+            playback.setQueue(PlaybackQueue(tracks: updated, currentIndex: currentIndex))
+        }
+    }
+
+    func addPlaylistToPlaybackQueue(_ playlist: Playlist, context: ModelContext) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let activityID = beginBackgroundActivity(kind: .playback, title: "正在加入接下來播放", detail: playlist.name)
+            defer { endBackgroundActivity(activityID) }
+            let repository = repository(for: context)
+            do {
+                let tracks = try await repository.tracks(ids: playlist.trackIDs)
+                guard !tracks.isEmpty else { return }
+                addToPlaybackQueue(tracks, context: context)
+            } catch { errorMessage = "無法將「\(playlist.name)」加入佇列：\(error.localizedDescription)" }
+        }
+    }
+
+    func clearPlaybackQueue() {
+        smartPrefetchTask?.cancel()
+        smartPrefetchTask = nil
+        mixedQueue = nil
+        mixedMediaShuffleEnabled = false
+        activePlaybackContext = nil
+        if videoURL != nil { stopVideoPlayback() }
+        else { playback.clearQueue(); playbackAccessLeases.removeAll() }
+    }
+
     func setFavorite(_ track: Track, context: ModelContext) {
-        Task {
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            try? await repository.setFavorite(trackID: track.id, isFavorite: !track.isFavorite)
+        let previous = isFavorite(for: track)
+        let desired = !previous
+        favoriteOverrides[track.id] = desired
+        let generation = (favoriteMutationGeneration[track.id] ?? 0) &+ 1
+        favoriteMutationGeneration[track.id] = generation
+        let prior = favoriteMutationTasks[track.id]
+        favoriteMutationTasks[track.id] = Task { @MainActor [weak self] in
+            await prior?.value
+            guard let self else { return }
+            do { try await repository(for: context).setFavorite(trackID: track.id, isFavorite: desired) }
+            catch {
+                if favoriteMutationGeneration[track.id] == generation {
+                    favoriteOverrides[track.id] = previous
+                    errorMessage = "無法更新最愛：\(error.localizedDescription)"
+                }
+            }
+            if favoriteMutationGeneration[track.id] == generation { favoriteMutationTasks[track.id] = nil }
         }
     }
 
     func setRating(_ track: Track, rating: Int, context: ModelContext) {
-        Task {
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            try? await repository.setRating(trackID: track.id, rating: rating)
+        let previous = self.rating(for: track)
+        let desired = min(5, max(0, rating))
+        ratingOverrides[track.id] = desired
+        let generation = (ratingMutationGeneration[track.id] ?? 0) &+ 1
+        ratingMutationGeneration[track.id] = generation
+        let prior = ratingMutationTasks[track.id]
+        ratingMutationTasks[track.id] = Task { @MainActor [weak self] in
+            await prior?.value
+            guard let self else { return }
+            do { try await repository(for: context).setRating(trackID: track.id, rating: desired) }
+            catch {
+                if ratingMutationGeneration[track.id] == generation {
+                    ratingOverrides[track.id] = previous
+                    errorMessage = "無法更新評分：\(error.localizedDescription)"
+                }
+            }
+            if ratingMutationGeneration[track.id] == generation { ratingMutationTasks[track.id] = nil }
         }
     }
+
+    func rating(for track: Track) -> Int { ratingOverrides[track.id] ?? track.rating }
+    func isFavorite(for track: Track) -> Bool { favoriteOverrides[track.id] ?? track.isFavorite }
 
     func refreshPinnedStatus(for tracks: [Track]) async {
         guard let cacheStore else { return }
         for track in tracks {
-            if await cacheStore.isPinned(trackID: track.id) {
-                pinnedTrackIDs.insert(track.id)
-            } else {
-                pinnedTrackIDs.remove(track.id)
-            }
+            if await cacheStore.isPinned(trackID: track.id) { pinnedTrackIDs.insert(track.id) }
+            else { pinnedTrackIDs.remove(track.id) }
         }
     }
 
     func togglePinned(_ track: Track, context: ModelContext) {
-        guard let cacheStore else {
-            errorMessage = "無法建立離線快取。"
-            return
-        }
+        guard let cacheStore else { errorMessage = "無法建立離線快取。"; return }
         Task { @MainActor [weak self] in
             guard let self else { return }
             let activityID = beginBackgroundActivity(
@@ -775,69 +1203,66 @@ final class AppModel {
                     pinnedTrackIDs.remove(track.id)
                     return
                 }
-                let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { source in
-                    source.id == track.sourceID
-                })
-                guard let source = try context.fetch(descriptor).first else {
-                    throw MediaSourceAccessError.accessDenied
-                }
+                let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { source in source.id == track.sourceID })
+                guard let source = try context.fetch(descriptor).first else { throw MediaSourceAccessError.accessDenied }
                 let root = try resolve(source: source, context: context)
                 let lease = try await sourceAccess.lease(for: root)
                 let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 _ = try await cacheStore.pin(trackID: track.id, sourceURL: url)
                 _ = lease
                 pinnedTrackIDs.insert(track.id)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+            } catch { errorMessage = error.localizedDescription }
         }
     }
 
     func playlists(context: ModelContext) async -> [Playlist] {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        return (try? await repository.playlists()) ?? []
+        libraryReadError = nil
+        let repository = repository(for: context)
+        do { return try await repository.playlists() }
+        catch {
+            let message = "無法讀取歌單：\(error.localizedDescription)"
+            errorMessage = message
+            libraryReadError = message
+            return []
+        }
     }
 
-    func createPlaylist(context: ModelContext) {
-        Task {
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            _ = try? await repository.createPlaylist(name: "新歌單")
-        }
+    func createPlaylist(context: ModelContext) async -> Playlist? {
+        let repository = repository(for: context)
+        do {
+            let playlist = try await repository.createPlaylist(name: "新歌單")
+            playlistRevision &+= 1
+            return playlist
+        } catch { errorMessage = "無法建立歌單：\(error.localizedDescription)"; return nil }
     }
 
     func renamePlaylist(_ playlist: Playlist, name: String, context: ModelContext) async {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        try? await repository.renamePlaylist(id: playlist.id, name: name)
+        do { try await repository(for: context).renamePlaylist(id: playlist.id, name: name); playlistRevision &+= 1 }
+        catch { errorMessage = "無法重新命名歌單：\(error.localizedDescription)" }
     }
-
     func deletePlaylist(_ playlist: Playlist, context: ModelContext) async {
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        try? await repository.deletePlaylist(id: playlist.id)
+        do { try await repository(for: context).deletePlaylist(id: playlist.id); playlistRevision &+= 1 }
+        catch { errorMessage = "無法刪除歌單：\(error.localizedDescription)" }
     }
-
-    func addTrack(_ track: Track, to playlist: Playlist, context: ModelContext) {
-        Task {
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            try? await repository.addTrack(trackID: track.id, toPlaylist: playlist.id)
-        }
-    }
-
-    func addTracks(_ tracks: [Track], to playlist: Playlist, context: ModelContext) async -> Bool {
-        guard !tracks.isEmpty else { return true }
-        let activityID = beginBackgroundActivity(
-            kind: .library,
-            title: "正在加入歌單",
-            detail: "\(tracks.count) 首 · \(playlist.name)"
-        )
-        defer { endBackgroundActivity(activityID) }
+    func addTrack(_ track: Track, to playlist: Playlist, context: ModelContext) async -> Bool {
         do {
-            let repository = SwiftDataLibraryRepository(container: context.container)
-            try await repository.addTracks(trackIDs: tracks.map(\.id), toPlaylist: playlist.id)
+            try await repository(for: context).addTrack(trackID: track.id, toPlaylist: playlist.id)
+            playlistRevision &+= 1
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "無法將「\(track.title)」加入「\(playlist.name)」：\(error.localizedDescription)"
             return false
         }
+    }
+    func addTracks(_ tracks: [Track], to playlist: Playlist, context: ModelContext) async -> Bool {
+        guard !tracks.isEmpty else { return true }
+        let activityID = beginBackgroundActivity(kind: .library, title: "正在加入歌單", detail: "\(tracks.count) 首 · \(playlist.name)")
+        defer { endBackgroundActivity(activityID) }
+        do {
+            try await repository(for: context).addTracks(trackIDs: tracks.map(\.id), toPlaylist: playlist.id)
+            playlistRevision &+= 1
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
     }
 
     #if os(macOS)
@@ -846,55 +1271,64 @@ final class AppModel {
             guard let self else { return }
             do {
                 let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { $0.id == track.sourceID })
-                guard let source = try context.fetch(descriptor).first else {
-                    throw MediaSourceAccessError.accessDenied
-                }
+                guard let source = try context.fetch(descriptor).first else { throw MediaSourceAccessError.accessDenied }
                 let root = try resolve(source: source, context: context)
                 let lease = try await sourceAccess.lease(for: root)
                 let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 NSWorkspace.shared.activateFileViewerSelecting([url])
                 _ = lease
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+            } catch { errorMessage = error.localizedDescription }
         }
     }
 
     func moveToTrash(_ track: Track, context: ModelContext) async -> Bool {
-        let activityID = beginBackgroundActivity(
-            kind: .library,
-            title: "正在移至垃圾桶",
-            detail: track.title
-        )
+        let activityID = beginBackgroundActivity(kind: .library, title: "正在移至垃圾桶", detail: track.title)
         defer { endBackgroundActivity(activityID) }
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        let containingPlaylists = ((try? await repository.playlists()) ?? [])
-            .filter { $0.trackIDs.contains(track.id) }
-        let playlistSnapshot = Dictionary(uniqueKeysWithValues: containingPlaylists.map { ($0.id, $0.trackIDs) })
+        let repository = repository(for: context)
+        let playlistSnapshot: [UUID: [UUID]]
+        do {
+            let containingPlaylists = try await repository.playlists().filter { $0.trackIDs.contains(track.id) }
+            playlistSnapshot = Dictionary(uniqueKeysWithValues: containingPlaylists.map { ($0.id, $0.trackIDs) })
+        } catch {
+            errorMessage = "無法讀取歌單狀態，已取消移至垃圾桶：\(error.localizedDescription)"
+            return false
+        }
         do {
             let descriptor = FetchDescriptor<MediaSourceRecord>(predicate: #Predicate { $0.id == track.sourceID })
-            guard let source = try context.fetch(descriptor).first else {
-                throw MediaSourceAccessError.accessDenied
-            }
+            guard let source = try context.fetch(descriptor).first else { throw MediaSourceAccessError.accessDenied }
             let root = try resolve(source: source, context: context)
             let lease = try await sourceAccess.lease(for: root)
             let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
-            // Persist the CMV-side removal before moving the physical file. A
-            // database failure therefore cannot leave a deleted file visible.
             try await repository.excludeTracks(ids: [track.id])
             var trashedURL: NSURL?
             do {
                 try FileManager.default.trashItem(at: url, resultingItemURL: &trashedURL)
             } catch {
-                try await repository.restoreTracks(ids: [track.id], playlistTrackIDs: playlistSnapshot)
-                throw error
+                let trashError = error
+                do {
+                    try await repository.restoreTracks(ids: [track.id], playlistTrackIDs: playlistSnapshot)
+                } catch {
+                    errorMessage = "移至垃圾桶失敗，且 CMV 資料回復也失敗：\(trashError.localizedDescription)；\(error.localizedDescription)"
+                    return false
+                }
+                throw trashError
             }
             _ = lease
-            if let cacheStore { try? await cacheStore.unpin(trackID: track.id) }
-            pinnedTrackIDs.remove(track.id)
+            if let cacheStore {
+                do {
+                    try await cacheStore.unpin(trackID: track.id)
+                    pinnedTrackIDs.remove(track.id)
+                } catch {
+                    errorMessage = "檔案已移至垃圾桶，但離線副本清理失敗：\(error.localizedDescription)"
+                }
+            } else {
+                pinnedTrackIDs.remove(track.id)
+            }
             return true
         } catch {
-            errorMessage = "無法將「\(track.title)」移至垃圾桶：\(error.localizedDescription)"
+            if errorMessage == nil || !(errorMessage?.contains("回復也失敗") ?? false) {
+                errorMessage = "無法將「\(track.title)」移至垃圾桶：\(error.localizedDescription)"
+            }
             return false
         }
     }
@@ -905,21 +1339,37 @@ final class AppModel {
         defer { endBackgroundActivity(activityID) }
         return try await analyzer.analyze(trackID: trackID, url: url)
     }
-
     func analyzeAndPersist(trackID: UUID, url: URL, context: ModelContext) async throws -> AnalysisProfile {
         let activityID = beginBackgroundActivity(kind: .analysis, title: "正在分析音訊", detail: url.lastPathComponent)
         defer { endBackgroundActivity(activityID) }
         let profile = try await analyzer.analyze(trackID: trackID, url: url)
-        let repository = SwiftDataLibraryRepository(container: context.container)
-        try await repository.setAnalysis(trackID: trackID, profile: profile)
+        try await repository(for: context).setAnalysis(trackID: trackID, profile: profile)
         return profile
     }
-
     func makeSmartQueue(tracks: [Track], profiles: [UUID: AnalysisProfile],
                         history: [UUID: ListeningSignal], limit: Int = 25) async -> [DJSelection] {
         let activityID = beginBackgroundActivity(kind: .analysis, title: "智慧 DJ 正在選歌")
         defer { endBackgroundActivity(activityID) }
         return await smartDJ.makeQueue(from: tracks, profiles: profiles, history: history, limit: limit)
+    }
+
+    private static func fallbackSearchScore(_ candidate: LibrarySearchCandidate, tokens: [String]) -> Int {
+        var score = (candidate.isFavorite ? 50 : 0) + min(5, max(0, candidate.rating)) * 10
+        let fields = [
+            (canonicalSearchValue(candidate.title), 1_000),
+            (canonicalSearchValue(candidate.artist), 600),
+            (canonicalSearchValue(candidate.album), 500)
+        ]
+        for token in tokens {
+            var matched = false
+            for (field, weight) in fields {
+                if field == token { score += weight; matched = true }
+                else if field.split(whereSeparator: \.isWhitespace).contains(where: { $0 == token }) { score += weight / 2; matched = true }
+                else if field.contains(token) { score += weight / 3; matched = true }
+            }
+            if !matched { return 0 }
+        }
+        return score
     }
 }
 
@@ -929,36 +1379,23 @@ private extension RustTrackSnapshot {
             identifier: track.fileIdentifier,
             relativePath: track.relativePath,
             fileSize: UInt64(max(0, track.fileSize)),
-            modifiedAtMillis: Int64(track.modifiedAt.timeIntervalSince1970 * 1_000),
+            modifiedAtMillis: epochMilliseconds(track.modifiedAt),
             title: track.title,
             availability: RustTrackAvailability(track.availability)
         )
     }
 }
-
 private extension RustTimelineTrack {
     init(_ track: PlaybackTimelineTrack) {
-        self.init(
-            sampleRateHz: track.sampleRateHz,
-            totalFrames: track.totalFrames,
-            startFrame: track.startFrame,
-            replayGainDB: track.replayGainDB,
-            peak: track.peak
-        )
+        self.init(sampleRateHz: track.sampleRateHz, totalFrames: track.totalFrames, startFrame: track.startFrame,
+                  replayGainDB: track.replayGainDB, peak: track.peak)
     }
 }
-
 private extension RustScannedFile {
     init(file: ScannedMediaFile) {
-        self.init(
-            identifier: file.fileIdentifier,
-            relativePath: file.relativePath,
-            fileSize: UInt64(max(0, file.fileSize)),
-            modifiedAtMillis: Int64(file.modifiedAt.timeIntervalSince1970 * 1_000),
-            title: file.title
-        )
+        self.init(identifier: file.fileIdentifier, relativePath: file.relativePath,
+                  fileSize: UInt64(max(0, file.fileSize)), modifiedAtMillis: epochMilliseconds(file.modifiedAt), title: file.title)
     }
-
     var scannedMediaFile: ScannedMediaFile {
         ScannedMediaFile(
             relativePath: relativePath,
@@ -969,7 +1406,6 @@ private extension RustScannedFile {
         )
     }
 }
-
 private extension RustTrackAvailability {
     init(_ availability: MediaAvailability) {
         switch availability {
@@ -980,12 +1416,15 @@ private extension RustTrackAvailability {
         }
     }
 }
-
 private extension RustSearchTrack {
     init(track: Track) {
         self.init(identifier: track.id.uuidString, title: track.title, artist: track.artist,
-                  album: track.album, favorite: track.isFavorite,
-                  rating: UInt8(clamping: max(0, track.rating)))
+                  album: track.album, favorite: track.isFavorite, rating: UInt8(clamping: max(0, track.rating)))
+    }
+    init(candidate: LibrarySearchCandidate) {
+        self.init(identifier: candidate.id.uuidString, title: canonicalSearchValue(candidate.title),
+                  artist: canonicalSearchValue(candidate.artist), album: canonicalSearchValue(candidate.album),
+                  favorite: candidate.isFavorite, rating: UInt8(clamping: max(0, candidate.rating)))
     }
 }
 

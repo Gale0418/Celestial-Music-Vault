@@ -100,7 +100,7 @@ struct ErrorStatusBanner: View {
                     .accessibilityHidden(true)
                 Text(message)
                     .font(.callout)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("關閉", systemImage: "xmark") { appModel.errorMessage = nil }
                     .labelStyle(.iconOnly)
@@ -112,6 +112,7 @@ struct ErrorStatusBanner: View {
             .background(.regularMaterial)
             .overlay(alignment: .bottom) { Divider() }
             .accessibilityElement(children: .contain)
+            .accessibilityLabel("錯誤：\(message)")
         }
     }
 }
