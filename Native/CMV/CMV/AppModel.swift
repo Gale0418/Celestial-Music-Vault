@@ -893,6 +893,7 @@ final class AppModel {
                 }
                 existingByIdentifier[track.fileIdentifier] = RustTrackSnapshot(track: track)
             }
+            let existingByIdentifierSnapshot = existingByIdentifier
             let scanID = await repository.beginScan(sourceID: sourceID)
             let batchState = ScanBatchState()
             let rustCore = rustCore
@@ -903,7 +904,7 @@ final class AppModel {
                 onBatch: { batch in
                     try await batchState.accept(batch.map(\.fileIdentifier))
                     let scannedBatch = batch.map(RustScannedFile.init(file:))
-                    let existingBatch = batch.compactMap { existingByIdentifier[$0.fileIdentifier] }
+                    let existingBatch = batch.compactMap { existingByIdentifierSnapshot[$0.fileIdentifier] }
                     let reconciliation = try await Task.detached(priority: .utility) {
                         try rustCore.reconcile(existing: existingBatch, scanned: scannedBatch, sourceReachable: true)
                     }.value
