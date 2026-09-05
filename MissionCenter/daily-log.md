@@ -1,6 +1,9 @@
 # 每日紀錄
 
-- 最後整理： 2026-09-01
+- 最後整理： 2026-09-05
+
+## 2026-09-05
+- 2026-09-05 20:45 +08:00｜變更：補做 8b704a4「queue hitches／moon-ring motion」歷史更新的 CodeRabbit 審查｜原因：使用者要求把上一次更新也送兔子，並遵守每小時 3 次、每次最多 150 檔與排除大檔規則｜影響：在隔離 worktree 以 `--base-commit f90da0c078696d985b7fdf9cbbdd3cde260a3bab` 審查 5 個小型變更檔（MissionCenter notes、3 個 SwiftUI 檔、效能報告），未送入 PNG／影音建置產物；CodeRabbit 回報 0 issues，沒有需要修改的項目。AERO-F26 維持 Review，感知／實機 gate 不提前關閉。
 
 ## 2026-09-01
 - 2026-09-01 06:48 +08:00｜變更：AERO-F26 補修月環 cadence 與播放／快取 I/O 競爭｜原因：使用者將音樂移至本機後月環仍卡，確認 2048-frame tap＋15 Hz 門檻實際量化至約 11 Hz，且明確要求月環只保留音軌效果、不顯示播放進度弧｜影響：改為 1024-frame meter、60 Hz 上限能量狀態與 30 FPS Canvas，預算 80 段幾何並移除進度弧；智慧預取延後兩秒、可取消、跳過已快取曲目，smart cache 保留 SHA-256 完整驗證並以 digest＋size＋mtime 降低熱路徑 I/O。Swift 27/27、Mac／iPad Debug build 與 diff check 通過；AERO-F26 回 Review 等待感知驗收，未覆蓋桌面舊 App。
