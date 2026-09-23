@@ -1,0 +1,28 @@
+{
+  "identifier": "CMV-PRO-LOCAL-ONLY",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "1.00",
+      "familyShareable": false,
+      "internalID": "CMVLOCALPRO1",
+      "localizations": [
+        {
+          "description": "僅供本機購買流程測試，不是正式商品或價格。",
+          "displayName": "CMV Pro 本機測試",
+          "locale": "zh_TW"
+        }
+      ],
+      "productID": "local.cmv.pro.test",
+      "referenceName": "CMV Pro Local Test Only",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "zh_TW",
+    "_storefront": "TWN"
+  },
+  "subscriptionGroups": [],
+  "version": { "major": 4, "minor": 0 }
+}

@@ -78,3 +78,9 @@ xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV \
 
 完成上述實機項目並取得可驗證 arbiter 回覆後，才可將 AERO-V3 轉 Done，
 再由 AERO-R3 執行 TestFlight、送審與 Electron 退場審批。
+
+## 一次性 Pro 發行 gate（AERO-MON30）
+
+- 核對正式 non-consumable 商品與封裝後 Info.plist 的 `CMVProProductID`；空值、未展開 build variable 或 `local.cmv.pro.test` 不能作為發行候選。
+- 核定價格、平台購買權益與商品說明；恢復、退款／撤銷、pending、失敗、已購離線冷啟動須有兩平台證據。
+- [Pro 實作紀錄](PRO_IMPLEMENTATION.md) 的 48 項純邏輯／package 測試和 Debug 編譯不能取代 Apple Sandbox、實機或正式簽章驗收。

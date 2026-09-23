@@ -10,6 +10,9 @@ public final class MediaSourceRecord {
     public var statusRaw: String
     public var lastSuccessfulScan: Date?
     public var updatedAt: Date
+    public var pendingReimportRestore: Bool = false
+    /// Last picker path is a duplicate-prevention hint, not an authorization.
+    public var rootPath: String = ""
 
     public init(id: UUID = UUID(), displayName: String, bookmarkData: Data,
                 status: MediaSourceStatus = .available, now: Date = .now) {
@@ -74,10 +77,13 @@ public final class TrackRecord {
         self.integratedLoudnessLUFS = nil; self.energy = 0; self.brightness = 0
     }
 
-    public var domain: Track {
+    public var domain: Track { domain(includeArtwork: true) }
+
+    public func domain(includeArtwork: Bool) -> Track {
         Track(id: id, sourceID: sourceID, relativePath: relativePath,
               fileIdentifier: fileIdentifier, title: title, artist: artist,
-              album: album, albumArtist: albumArtist, artworkData: artworkData,
+              album: album, albumArtist: albumArtist,
+              artworkData: includeArtwork ? artworkData : nil,
               trackNumber: trackNumber, discNumber: discNumber, duration: duration,
               fileSize: fileSize, modifiedAt: modifiedAt, replayGainDB: replayGainDB,
               isFavorite: isFavorite, rating: rating,

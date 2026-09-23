@@ -3,7 +3,7 @@ import AVFoundation
 import SwiftData
 import CMVDomain
 import CMVLibrary
-import CMVPlayback
+@testable import CMVPlayback
 
 final class ReliabilityRegressionTests: XCTestCase {
     private func makeRepository() throws -> SwiftDataLibraryRepository {
@@ -177,6 +177,72 @@ final class ReliabilityRegressionTests: XCTestCase {
             XCTAssertEqual(engine.elapsed, 0.25, accuracy: 0.01)
             XCTAssertFalse(engine.isPlaying)
         }
+    }
+
+    @MainActor
+    func testAppendSkipsTrackWhoseFileDisappearedBeforeScheduling() async throws {
+        let currentURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: currentURL) }
+        let sourceID = UUID()
+        let current = Track(sourceID: sourceID, relativePath: currentURL.lastPathComponent,
+                            fileIdentifier: "current", title: "Current", duration: 1,
+                            fileSize: 1, modifiedAt: .now)
+        let missing = Track(sourceID: sourceID, relativePath: "missing.caf",
+                            fileIdentifier: "missing", title: "Missing", duration: 1,
+                            fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+        try await engine.load(PlaybackQueue(tracks: [current]), resolvedURLs: [current.id: currentURL])
+        let reportedFailure = expectation(description: "unplayable appended track reported")
+        engine.onPlaybackError = { _ in reportedFailure.fulfill() }
+        engine.appendToQueue([missing], resolvedURLs: [missing.id: currentURL.deletingLastPathComponent()
+            .appendingPathComponent("CMV-missing-\(UUID().uuidString).caf")])
+        await fulfillment(of: [reportedFailure], timeout: 5)
+        XCTAssertEqual(engine.queue.tracks.map(\.id), [current.id])
+    }
+
+    @MainActor
+    func testAppendAfterQueueEndMakesNewTrackCurrent() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let first = Track(sourceID: sourceID, relativePath: "first.caf",
+                          fileIdentifier: "first", title: "First", duration: 1,
+                          fileSize: 1, modifiedAt: .now)
+        let second = Track(sourceID: sourceID, relativePath: "second.caf",
+                           fileIdentifier: "second", title: "Second", duration: 1,
+                           fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+        try await engine.load(PlaybackQueue(tracks: [first]), resolvedURLs: [first.id: audioURL])
+        let finished = expectation(description: "first queue finishes")
+        engine.onQueueFinished = { finished.fulfill() }
+        try engine.play()
+        await fulfillment(of: [finished], timeout: 5)
+
+        engine.appendToQueue([second], resolvedURLs: [second.id: audioURL])
+        XCTAssertEqual(engine.queue.current?.id, second.id)
+        XCTAssertEqual(engine.elapsed, 0, accuracy: 0.01)
+    }
+
+    @MainActor
+    func testShuffledTransitionDoesNotReusePreparedFileForDifferentTrack() throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let file = try AVAudioFile(forReading: audioURL)
+        let sourceID = UUID()
+        let tracks = (0..<3).map { index in
+            Track(sourceID: sourceID, relativePath: "\(index).caf",
+                  fileIdentifier: "track-\(index)", title: "Track \(index)",
+                  fileSize: 1, modifiedAt: .now)
+        }
+        let original = PlaybackQueue(tracks: tracks)
+        let shuffled = PlaybackQueue(tracks: [tracks[0], tracks[2], tracks[1]])
+        let reusable = NativePlaybackEngine.reusablePreparedFiles(
+            [0: file, 1: file], from: original, for: shuffled
+        )
+        XCTAssertEqual(Set(reusable.keys), [0])
+        XCTAssertEqual(Set(NativePlaybackEngine.reusablePreparedFiles(
+            [0: file, 1: file], from: original, for: original
+        ).keys), [0, 1])
     }
 
     func testMissingTrackMutationFailsInsteadOfReportingFalseSuccess() async throws {

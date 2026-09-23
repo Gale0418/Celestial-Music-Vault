@@ -4,8 +4,10 @@ public struct ScanProgress: Sendable, Equatable {
     public var discovered: Int
     public var processed: Int
     public var currentPath: String
-    public init(discovered: Int, processed: Int, currentPath: String) {
+    public var currentFileElapsedSeconds: Int?
+    public init(discovered: Int, processed: Int, currentPath: String, currentFileElapsedSeconds: Int? = nil) {
         self.discovered = discovered; self.processed = processed; self.currentPath = currentPath
+        self.currentFileElapsedSeconds = currentFileElapsedSeconds
     }
 }
 
@@ -26,6 +28,7 @@ public protocol LibraryRepository: Sendable {
     func tracks(matching query: String, sort: LibraryTrackSort, ascending: Bool, limit: Int, offset: Int) async throws -> [Track]
     func trackIDs(matching query: String, sort: LibraryTrackSort, ascending: Bool) async throws -> [UUID]
     func tracks(ids: [UUID]) async throws -> [Track]
+    func catalogGroups(kind: LibraryCatalogKind) async throws -> [LibraryCatalogGroup]
     func excludeTracks(ids: [UUID]) async throws
     func restoreTracks(ids: [UUID]) async throws
     func restoreTracks(ids: [UUID], playlistTrackIDs: [UUID: [UUID]]) async throws

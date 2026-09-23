@@ -1,5 +1,8 @@
 # 決策
 
+- 2026-09-08｜AERO-MON29：使用者核准 CMV 採免費下載＋一次性 Pro。免費保留本機／基本 NAS 播放、基本曲庫與歌單、背景播放、預設主題／月環；Pro 聚焦智慧離線與批次釘選、進階整理、視覺自訂及本機 Smart DJ。資料保護、穩定性與無障礙不作收費門檻；本機檔案播放不因「離線」名義鎖付費。價格、兩平台購買權益、家庭共享、主題分配與未來版本範圍未定。
+- 2026-09-08｜AERO-MON29：依使用者補充，SheepStory 文案以任務中心既定功能全完成為正式上市情境，寫成面向使用者的完整產品介紹；假設集中註記，不逐段使用施工語氣。該假設不改變現行任務狀態／測試結果，不自動承諾 X14 尚在評估的功能。方案文件不等於已建商品、已接付費牆或已發布商店。
+
 - 2026-08-12：採「保守維護」；修正可重現問題與明確安全風險，不進行 AudioContext 拆分、列表虛擬化或新增依賴。
 - 2026-08-12：保留既有三個僅有換行格式差異的工作樹修改，不回復或覆寫。
 - 2026-08-12：依 Electron 官方建議，以自訂安全協定取代 `file://` 與 `webSecurity: false`，且只允許已核准音樂根目錄。
@@ -24,3 +27,5 @@
 - 2026-08-27：完成全任務蟹化邊界盤點。L3 scan diff、P3 sample timeline／gain、M3 搜尋排序、A3 聲學／DJ、C3 cache policy 進 Rust；SwiftUI、SwiftData、security-scoped URL、AVFoundation／AVKit／MediaPlayer、檔案協調與 SHA-256 留在 Swift。U3 不為追求 Rust 比例硬跨 FFI，避免增加平台維護成本。
 - 2026-09-01：使用者核准 AERO-R3 上架任務草案並授權先完成安全可逆工作。發布採 IOS／MAC_OS 分平台 lane；Release Candidate、Apple／App Record 唯讀盤點、簽章、實機、Metadata／Review Kit、Build、TestFlight、submission health、dry-run、正式送審、審核監控、Electron 退場依序設閘門。任何上傳／提交的 `--confirm` 與 Electron 刪除仍需 action-time 明確核准。
 - 2026-09-01：沿用 MediBuddy 的 App Review 實戰：Waiting for Review／In Review 不視為完成；Guideline 2.1 的資訊要求先補 Review Notes／實機影片／操作說明，不在沒有程式缺陷證據時重建 Build。CMV 不內建 NAS 掃描或帳密，因此不新增 Bonjour、區網掃描、測試 NAS 帳密或 Keychain 功能。
+
+- 2026-09-08｜AERO-MON30：依使用者施工授權，以 StoreKit 2 verified non-consumable 實作購買，商品 ID 由 build setting 提供且預設空。緋紅星雲免費、另三款新選用需 Pro；已選主題、既有快取播放與取消釘選保留。進階分析／預取檢查放動作層。正式商品、價格、平台共購／家庭共享與 Apple Sandbox 仍是發行 gate；完整 queue 日常操作免費。

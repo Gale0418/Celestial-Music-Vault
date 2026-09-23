@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-08",
+  "task": "AERO-MON30",
+  "files": {
+    "Native/CMV/CMV/ProStore.swift": "7579cb0d059fb6523876c6a00feeba237a0c9778e9d807cfa18e51426b69f35f",
+    "Native/CMV/CMV/ProUpgradeView.swift": "6676b4000679da17781342b86eec83051501547e6c5db5112b7e2dbddff7e125",
+    "Native/CMV/CMV/AppModel.swift": "6c16c279da0737828e007af8316528480f5053fa852716d53647676de40293a4",
+    "Native/CMV/CMV/RootView.swift": "978f008edd248b4a7500c1674b6432093698f50aabe3f471e1829ff1ec7786b5",
+    "Native/CMV/CMV/LibraryViews.swift": "cbd9d1dfef1d324029802129b2a28d97610a0cb2e3bfd91f3e1973251ed256ac",
+    "Native/CMVCore/Sources/CMVDomain/ProAccess.swift": "8b46316e5e4b73a0f8548ebdb0ba6730ed9b5c85e332801e2d842261946e6176",
+    "Native/CMVCore/Tests/CMVCoreTests/ProAccessTests.swift": "b65ef3c9a11b064637b1d52e08a7ac4aaa4fd475a31ccc3ade891a4924c3c673"
+  },
+  "swiftTests": {
+    "count": 48,
+    "failures": 0,
+    "exitCode": 0,
+    "command": "swift test --package-path Native/CMVCore --scratch-path /private/tmp/cmv-pro-swift-tests"
+  },
+  "storeKitStandaloneHost": {
+    "exitCode": 1,
+    "error": "SKInternalErrorDomain Code=3; Product.products=[]",
+    "transactionVerification": "not passed"
+  },
+  "macUI": "final isolated local.cmv.pro.qa; unavailable-product copy, entry, Escape dismissal confirmed; earlier restore/theme gate smoke passed",
+  "ipadUI": "not completed; temporary simulator initialization interrupted by disk full",
+  "independentReview": {
+    "finding": "同一程序中舊 purchase verified 可能覆蓋已處理退款",
+    "disposition": "resolved",
+    "regressionTests": 3,
+    "scope": "Pro entitlement/action gates/source review; Mac screenshot only"
+  },
+  "finalMacBuild": {
+    "configuration": "Debug",
+    "destination": "generic/platform=macOS",
+    "arch": "arm64",
+    "exitCode": 0,
+    "codeSigningAllowed": false
+  },
+  "finalIPadBuild": {
+    "configuration": "Debug",
+    "destination": "generic/platform=iOS Simulator",
+    "arch": "arm64",
+    "exitCode": 0,
+    "codeSigningAllowed": false
+  }
+}

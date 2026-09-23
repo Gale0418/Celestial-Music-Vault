@@ -79,7 +79,10 @@ public actor IncrementalScanner {
         let effectiveBatchSize = max(1, batchSize)
         var batch: [ScannedMediaFile] = []
         batch.reserveCapacity(effectiveBatchSize)
+        var batchArtworkBytes = 0
+        let artworkBatchBudget = 32 * 1_024 * 1_024
         var processed = 0
+        var lastProgressAt = Date.distantPast
         while let url = enumerator.nextObject() as? URL {
             try Task.checkCancellation()
             if cancelled { throw CancellationError() }
@@ -93,18 +96,46 @@ public actor IncrementalScanner {
             processed += 1
             let relative = String(url.path.dropFirst(root.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             let identifier = values.fileResourceIdentifier.map { String(describing: $0) } ?? relative
+            // Report the file being opened before AVFoundation loads its
+            // metadata. A slow movie on a NAS can otherwise leave the UI
+            // showing the previously completed file for minutes.
+            let now = Date()
+            if processed == 1 || now.timeIntervalSince(lastProgressAt) >= 0.5 {
+                await onProgress(ScanProgress(discovered: processed, processed: processed - 1, currentPath: relative))
+                lastProgressAt = now
+            }
             let metadata: ExtractedMetadata
+            let fileNumber = processed
+            let heartbeat = Task {
+                var elapsed = 0
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard !Task.isCancelled else { return }
+                    elapsed += 5
+                    await onProgress(ScanProgress(discovered: fileNumber, processed: fileNumber - 1,
+                                                  currentPath: relative, currentFileElapsedSeconds: elapsed))
+                }
+            }
             do {
                 metadata = try await Self.extractMetadata(from: url, fallbackTitle: url.deletingPathExtension().lastPathComponent)
             } catch let issue as MediaScanError {
+                heartbeat.cancel()
                 // A single damaged file must not invalidate an otherwise
                 // usable source. Keep scanning and let the app surface the
                 // actionable filename to the user.
                 await onIssue(issue)
                 continue
             } catch {
+                heartbeat.cancel()
                 await onIssue(.unreadableFile(path: url.lastPathComponent))
                 continue
+            }
+            heartbeat.cancel()
+            let artworkBytes = metadata.artworkData?.count ?? 0
+            if !batch.isEmpty, batchArtworkBytes + artworkBytes > artworkBatchBudget {
+                try await onBatch(batch)
+                batch.removeAll(keepingCapacity: true)
+                batchArtworkBytes = 0
             }
             batch.append(ScannedMediaFile(relativePath: relative, fileIdentifier: identifier,
                                           fileSize: Int64(values.fileSize ?? 0),
@@ -115,12 +146,15 @@ public actor IncrementalScanner {
                                           trackNumber: metadata.trackNumber, discNumber: metadata.discNumber,
                                           duration: metadata.duration, replayGainDB: metadata.replayGainDB,
                                           mediaKind: metadata.mediaKind))
+            batchArtworkBytes += artworkBytes
             if batch.count == effectiveBatchSize {
                 try await onBatch(batch)
                 batch.removeAll(keepingCapacity: true)
+                batchArtworkBytes = 0
             }
-            if processed == 1 || processed.isMultiple(of: 128) {
+            if processed.isMultiple(of: 128) {
                 await onProgress(ScanProgress(discovered: processed, processed: processed, currentPath: relative))
+                lastProgressAt = .now
             }
         }
         if !batch.isEmpty { try await onBatch(batch) }

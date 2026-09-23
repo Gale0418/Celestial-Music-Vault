@@ -12,6 +12,7 @@ private func isFileImporterCancellation(_ error: Error) -> Bool {
 
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(VideoWindowStore.self) private var videoWindowStore
     @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
@@ -38,6 +39,20 @@ struct RootView: View {
             }
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
+            .overlay(alignment: .top) {
+                BackgroundActivityToast()
+                    .padding(.top, 12)
+                    .allowsHitTesting(false)
+            }
+            .sheet(isPresented: $appModel.showingProUpgrade) {
+                ProUpgradeView()
+                    .environment(appModel)
+                    .environment(\.cmvTheme, .palette(appModel.selectedTheme))
+            }
+            .task { await appModel.proStore.start() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await appModel.proStore.refresh() } }
+            }
             .fileImporter(
                 isPresented: $appModel.showingImporter,
                 allowedContentTypes: [.folder],
@@ -58,7 +73,7 @@ struct RootView: View {
             .onChange(of: appModel.videoPresentationMode) { _, _ in
                 updateVideoPresentation()
             }
-            .task {
+            .task(id: sources.map(\.id)) {
                 let model = appModel
                 model.videoSession.onPlaybackError = { [weak model] error in
                     model?.errorMessage = "影片播放失敗：\(error.localizedDescription)"
@@ -138,23 +153,21 @@ private struct WideRootView: View {
 
     var body: some View {
         @Bindable var appModel = appModel
-        ZStack {
-            CelestialBackground()
-            NavigationSplitView {
-                SidebarView()
-                    .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
-            } detail: {
-                detailColumn(showingQueue: $appModel.showingQueue)
-            }
-            .navigationSplitViewStyle(.balanced)
-            .modifier(TransparentNavigationSplitBackground())
-            .background(.clear)
+        NavigationSplitView {
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
+        } detail: {
+            detailColumn(showingQueue: $appModel.showingQueue)
         }
+        .navigationSplitViewStyle(.balanced)
+        .modifier(TransparentNavigationSplitBackground())
+        // Artwork follows the navigation's size; it does not propose its own
+        // scaled-to-fill dimensions back into the primary layout.
+        .background { CelestialBackground() }
         #if os(macOS)
         .dropDestination(for: URL.self) { urls, _ in
-            let directories = urls.filter(\.hasDirectoryPath)
-            appModel.addSources(directories, context: modelContext)
-            return !directories.isEmpty
+            appModel.addSources(urls, context: modelContext)
+            return !urls.isEmpty
         }
         #endif
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -243,9 +256,9 @@ private struct CompactRootView: View {
             NavigationStack { CompactLibraryView() }
                 .tabItem { Label("曲庫", systemImage: "music.note") }
                 .tag(LibraryDestination.songs)
-            NavigationStack { PlaylistHubView() }
+            NavigationStack { QueueView() }
                 .tabItem { Label("歌單", systemImage: "music.note.list") }
-                .tag(LibraryDestination.playlists)
+                .tag(LibraryDestination.queue)
             NavigationStack { SettingsView() }
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(LibraryDestination.settings)
@@ -267,7 +280,7 @@ private struct CompactRootView: View {
             guard let destination else { return }
             switch destination {
             case .nowPlaying: selectedTab = .nowPlaying
-            case .playlists: selectedTab = .playlists
+            case .queue: selectedTab = .queue
             case .settings: selectedTab = .settings
             default: selectedTab = .songs
             }
@@ -288,10 +301,11 @@ private struct CompactLibraryView: View {
     var body: some View {
         List {
             Section("瀏覽") {
-                NavigationLink { ScrollView { TrackListView() } } label: { Label("歌曲", systemImage: "music.note") }
+                NavigationLink { ScrollView { TrackListView() } } label: { Label("全部曲目", systemImage: "music.note") }
                 NavigationLink { CatalogView(kind: .album) } label: { Label("專輯", systemImage: "square.stack") }
                 NavigationLink { CatalogView(kind: .artist) } label: { Label("歌手", systemImage: "person.2") }
                 NavigationLink { FavoriteTracksView() } label: { Label("最愛", systemImage: "heart.fill") }
+                NavigationLink { PlaylistHubView() } label: { Label("我的歌單", systemImage: "music.note.list") }
             }
             Section("曲庫") {
                 Button { appModel.showingImporter = true } label: {

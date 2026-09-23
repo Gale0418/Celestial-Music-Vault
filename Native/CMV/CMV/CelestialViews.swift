@@ -10,16 +10,46 @@ import AppKit
 #endif
 
 struct CelestialBackground: View {
-    var starCount = 58
+    var starCount = 180
     var starSeedOffset = 0
+
+    private struct SkyStar: Sendable {
+        let x: Double
+        let y: Double
+        let radius: Double
+        let opacity: Double
+        let amplitude: Double
+        let speed: Double
+        let phase: Double
+    }
+
+    // Generate the sky once. The frame loop changes brightness only, not
+    // positions or random seeds, so the constellation never flickers away.
+    private static let skyStars: [SkyStar] = (0..<256).map { index in
+        let size = pseudo(index * 29)
+        return SkyStar(
+            x: pseudo(index * 17 + 1), y: pseudo(index * 43 + 2),
+            radius: index.isMultiple(of: 19) ? 1.8 + size * 0.8 : 0.35 + size * size * 1.1,
+            opacity: 0.16 + pseudo(index * 71 + 3) * 0.36,
+            amplitude: 0.06 + pseudo(index * 31 + 4) * 0.20,
+            speed: 0.25 + pseudo(index * 47 + 5) * 0.75,
+            phase: pseudo(index * 97 + 6) * .pi * 2
+        )
+    }
 
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
+    @State private var skyElapsed: TimeInterval = 0
+    @State private var skyAnchor: TimeInterval?
+
+    private var shouldAnimate: Bool {
+        !reduceMotion && scenePhase == .active
+    }
 
     var body: some View {
-        let shouldAnimate = !reduceMotion && scenePhase == .active
+        GeometryReader { geometry in
         ZStack {
             if reduceTransparency {
                 theme.background
@@ -27,34 +57,54 @@ struct CelestialBackground: View {
                 Image(backgroundAssetName)
                     .resizable()
                     .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
                     .saturation(1.05)
                     .overlay(theme.background.opacity(0.12))
             }
-            TimelineView(.animation(minimumInterval: 1 / 12, paused: !shouldAnimate)) { timeline in
-                let time = shouldAnimate ? timeline.date.timeIntervalSinceReferenceDate : 0
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
+                let now = timeline.date.timeIntervalSinceReferenceDate
+                let time = reduceMotion ? 0 : skyElapsed + (skyAnchor.map { max(0, now - $0) } ?? 0)
                 Canvas { context, size in
-                    for localIndex in 0..<starCount {
-                        let index = localIndex + starSeedOffset
-                        let x = pseudo(index * 17) * size.width
-                        let y = pseudo(index * 43) * size.height
-                        let baseOpacity = 0.20 + pseudo(index * 71) * 0.24
-                        let amplitude = 0.10 + pseudo(index * 31) * 0.22
-                        let speed = 0.30 + pseudo(index * 47) * 0.55
-                        let offset = pseudo(index * 97) * .pi * 2
-                        let pulse = baseOpacity + amplitude * (0.5 + 0.5 * sin(time * speed + offset))
-                        let radius = 0.55 + pseudo(index * 29) * 1.45
+                    for localIndex in 0..<min(256, max(0, starCount)) {
+                        let offset = ((starSeedOffset % 256) + 256) % 256
+                        let index = (localIndex + offset) % 256
+                        let star = Self.skyStars[index]
+                        let x = star.x * size.width
+                        let y = star.y * size.height
+                        let pulse = star.opacity + star.amplitude * (0.5 + 0.5 * sin(time * star.speed + star.phase))
+                        let radius = star.radius
                         let starColor = index.isMultiple(of: 5) ? theme.starSecondary : theme.starPrimary
                         context.fill(
-                            Path(ellipseIn: CGRect(x: x, y: y, width: radius * 2, height: radius * 2)),
+                            Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
                             with: .color(starColor.opacity(pulse))
                         )
+                        if index.isMultiple(of: 19) {
+                            var sparkle = Path()
+                            sparkle.move(to: CGPoint(x: x - radius * 2.0, y: y))
+                            sparkle.addLine(to: CGPoint(x: x + radius * 2.0, y: y))
+                            sparkle.move(to: CGPoint(x: x, y: y - radius * 2.8))
+                            sparkle.addLine(to: CGPoint(x: x, y: y + radius * 2.8))
+                            context.stroke(sparkle, with: .color(starColor.opacity(pulse * 0.38)),
+                                           style: StrokeStyle(lineWidth: 0.65, lineCap: .round))
+                        }
                     }
-                    if shouldAnimate { drawMeteorShower(in: &context, size: size, time: time) }
+                    if !reduceMotion {
+                        StarfallRenderer.draw(in: &context, size: size, time: time,
+                                              theme: theme, seedOffset: starSeedOffset)
+                    }
                 }
             }
+            .isolatedAnimationSurface()
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .ignoresSafeArea()
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .onAppear { updateSkyClock(running: shouldAnimate) }
+        .onChange(of: shouldAnimate) { _, running in updateSkyClock(running: running) }
+        .onDisappear { updateSkyClock(running: false) }
     }
 
     private var backgroundAssetName: String {
@@ -66,34 +116,21 @@ struct CelestialBackground: View {
         }
     }
 
-    private func pseudo(_ seed: Int) -> Double {
-        Double((seed &* 1_103_515_245 &+ 12_345) & 0x7fffffff) / Double(0x7fffffff)
+    private static func pseudo(_ seed: Int) -> Double {
+        var value = UInt64(bitPattern: Int64(seed)) &+ 0x9E37_79B9_7F4A_7C15
+        value = (value ^ (value >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        value = (value ^ (value >> 27)) &* 0x94D0_49BB_1331_11EB
+        value ^= value >> 31
+        return Double(value >> 11) / 9_007_199_254_740_992.0
     }
 
-    private func drawMeteorShower(in context: inout GraphicsContext, size: CGSize, time: TimeInterval) {
-        let cycle = 22.0
-        for index in 0..<5 {
-            let localTime = (time + cycle - Double(index) * 0.19)
-                .truncatingRemainder(dividingBy: cycle)
-            guard localTime >= 0, localTime < 1.35 else { continue }
-            let progress = localTime / 1.35
-            let startX = size.width * (0.52 + pseudo(700 + index * 41) * 0.42)
-            let startY = size.height * (0.04 + pseudo(900 + index * 37) * 0.22)
-            let head = CGPoint(
-                x: startX - size.width * 0.20 * progress,
-                y: startY + size.height * 0.15 * progress
-            )
-            let tail = CGPoint(x: head.x + 105, y: head.y - 64)
-            var path = Path()
-            path.move(to: tail)
-            path.addLine(to: head)
-            let opacity = sin(.pi * progress) * (0.45 + pseudo(1_100 + index * 23) * 0.45)
-            context.stroke(path, with: .color(theme.starSecondary.opacity(opacity * 0.28)),
-                           style: StrokeStyle(lineWidth: 5, lineCap: .round))
-            context.stroke(path, with: .color(Color.white.opacity(opacity)),
-                           style: StrokeStyle(lineWidth: 1.25, lineCap: .round))
-            context.fill(Path(ellipseIn: CGRect(x: head.x - 2, y: head.y - 2, width: 4, height: 4)),
-                         with: .color(theme.metal.opacity(opacity)))
+    private func updateSkyClock(running: Bool) {
+        let now = Date.timeIntervalSinceReferenceDate
+        if running {
+            if skyAnchor == nil { skyAnchor = now }
+        } else if let skyAnchor {
+            skyElapsed += max(0, now - skyAnchor)
+            self.skyAnchor = nil
         }
     }
 }
@@ -182,11 +219,12 @@ struct AlbumWorldView: View {
     }
 }
 
-/// A mirrored linear equalizer bent around the moon. Bars grow inward and
-/// outward from one circular baseline while the complete waveform rotates.
+/// Audio-driven moonlight: curved, tapered beams dissolve outward from the
+/// circular baseline while the complete waveform rotates.
 private struct AudioEnergyRing: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
     @State private var accumulatedRotationTime: TimeInterval = 0
     @State private var rotationAnchor: TimeInterval?
@@ -194,12 +232,17 @@ private struct AudioEnergyRing: View {
     let energyState: AudioEnergyState
     let isActive: Bool
 
-    // The old 120-segment/4-second pair advanced exactly one 3-degree segment
-    // per nominal 30 fps frame, aliasing continuous motion into slot-by-slot swaps.
-    private static let scanDuration: TimeInterval = 6
-    private static let segmentCount = 80
+    // A display-clock transform rotates the whole waveform continuously; the
+    // angle is never quantized to a bar index.
+    private static let scanDuration: TimeInterval = 4
+    private static let segmentCount = 128
+    private static let renderFrameInterval: TimeInterval = 1.0 / 60.0
     private static let unitVectors: [CGVector] = (0..<segmentCount).map { index in
         let angle = Double(index) / Double(segmentCount) * .pi * 2 - .pi / 2
+        return CGVector(dx: cos(angle), dy: sin(angle))
+    }
+    private static let shadowVectors: [CGVector] = (0..<segmentCount).map { index in
+        let angle = (Double(index) + 0.5) / Double(segmentCount) * .pi * 2 - .pi / 2
         return CGVector(dx: cos(angle), dy: sin(angle))
     }
 
@@ -209,8 +252,8 @@ private struct AudioEnergyRing: View {
 
     var body: some View {
         TimelineView(.animation(
-            minimumInterval: 1.0 / 30.0,
-            paused: !shouldRotate
+            minimumInterval: reduceMotion ? 1.0 / 15.0 : Self.renderFrameInterval,
+            paused: !isActive || scenePhase != .active
         )) { timeline in
             let snapshot = energyState.snapshot
             let timelineTime = timeline.date.timeIntervalSinceReferenceDate
@@ -222,7 +265,7 @@ private struct AudioEnergyRing: View {
                     .truncatingRemainder(dividingBy: Self.scanDuration)
                     / Self.scanDuration * .pi * 2
             let elapsed = timelineTime - snapshot.publishedAt
-            let rawBlend = min(1, max(0, elapsed / (1.0 / 30.0)))
+            let rawBlend = min(1, max(0, elapsed / snapshot.interpolationDuration))
             let blend = rawBlend * rawBlend * (3 - 2 * rawBlend)
 
             Canvas { context, canvasSize in
@@ -248,8 +291,21 @@ private struct AudioEnergyRing: View {
                 context.rotate(by: .radians(rotationRadians))
                 context.translateBy(x: -center.x, y: -center.y)
 
-                var outerBars = Path()
-                var innerBars = Path()
+                var moonlightHaze = Path()
+                let beamColors = Gradient(stops: [
+                    .init(color: .white.opacity(isActive ? 0.88 : 0.25), location: 0),
+                    .init(color: theme.primary.opacity(isActive ? 0.52 : 0.15), location: 0.22),
+                    .init(color: theme.primary.opacity(isActive ? 0.18 : 0.05), location: 0.58),
+                    .init(color: .clear, location: 0.94),
+                    .init(color: .clear, location: 1)
+                ])
+                let shadowColors = Gradient(stops: [
+                    .init(color: Color(red: 0.34, green: 0.48, blue: 1.0)
+                        .opacity(isActive ? 0.30 : 0.10), location: 0),
+                    .init(color: theme.atmosphereSecondary.opacity(isActive ? 0.12 : 0.04), location: 0.45),
+                    .init(color: .clear, location: 0.92),
+                    .init(color: .clear, location: 1)
+                ])
 
                 for (index, direction) in Self.unitVectors.enumerated() {
                     let previousSample = smoothedSample(
@@ -268,57 +324,81 @@ private struct AudioEnergyRing: View {
                         x: center.x + direction.dx * baseRadius,
                         y: center.y + direction.dy * baseRadius
                     )
-                    let mirroredLength = min(40, 4 + pulse * 0.65 + energy * 32)
-                    outerBars.move(to: baseline)
-                    outerBars.addLine(to: CGPoint(
-                        x: center.x + direction.dx * (baseRadius + mirroredLength),
-                        y: center.y + direction.dy * (baseRadius + mirroredLength)
-                    ))
-                    innerBars.move(to: baseline)
-                    innerBars.addLine(to: CGPoint(
-                        x: center.x + direction.dx * (baseRadius - mirroredLength),
-                        y: center.y + direction.dy * (baseRadius - mirroredLength)
+                    // Fixed spatial variation gives the light an irregular
+                    // silhouette; only measured PCM controls its movement.
+                    let variation = CGFloat((index * 37) % 23) / 22
+                    let length = min(156, (28 + pulse + energy * 110) * (0.78 + variation * 0.48))
+                    let halfWidth = min(4.4, baseRadius * 0.024) * (0.55 + variation * 0.45)
+                    let tip = CGPoint(
+                        x: center.x + direction.dx * (baseRadius + length),
+                        y: center.y + direction.dy * (baseRadius + length)
+                    )
+                    let beam = Self.beamPath(start: baseline, direction: direction,
+                                             length: length, halfWidth: halfWidth)
+                    moonlightHaze.addPath(beam)
+                    context.fill(beam, with: .linearGradient(beamColors, startPoint: baseline, endPoint: tip))
+
+                    let shadowDirection = Self.shadowVectors[index]
+                    let shadowStart = CGPoint(
+                        x: center.x + shadowDirection.dx * baseRadius,
+                        y: center.y + shadowDirection.dy * baseRadius
+                    )
+                    let shadowLength = length * 0.74
+                    let shadow = Self.beamPath(start: shadowStart, direction: shadowDirection,
+                                               length: shadowLength, halfWidth: halfWidth * 0.48)
+                    context.fill(shadow, with: .linearGradient(
+                        shadowColors, startPoint: shadowStart, endPoint: CGPoint(
+                            x: shadowStart.x + shadowDirection.dx * shadowLength,
+                            y: shadowStart.y + shadowDirection.dy * shadowLength
+                        )
                     ))
                 }
-
-                context.stroke(
-                    outerBars,
-                    with: .linearGradient(
-                        Gradient(colors: [
-                            theme.primary.opacity(isActive ? 0.94 : 0.40),
-                            theme.starPrimary.opacity(isActive ? 0.98 : 0.42),
-                            theme.starSecondary.opacity(isActive ? 0.92 : 0.36),
-                            theme.primary.opacity(isActive ? 0.94 : 0.40)
-                        ]),
-                        startPoint: .zero,
-                        endPoint: CGPoint(x: canvasSize.width, y: canvasSize.height)
-                    ),
-                    style: StrokeStyle(lineWidth: 1.75, lineCap: .round)
+                let rayGradient = GraphicsContext.Shading.radialGradient(
+                    Gradient(stops: [
+                        .init(color: .white.opacity(isActive ? 0.98 : 0.42), location: 0),
+                        .init(color: theme.primary.opacity(isActive ? 0.95 : 0.36), location: 0.3),
+                        .init(color: theme.primary.opacity(isActive ? 0.65 : 0.24), location: 0.75),
+                        .init(color: theme.primary.opacity(0), location: 1)
+                    ]),
+                    center: center, startRadius: baseRadius, endRadius: baseRadius + 156
                 )
-                context.stroke(
-                    innerBars,
-                    with: .linearGradient(
-                        Gradient(colors: [
-                            Color(red: 0.34, green: 0.48, blue: 1.0)
-                                .opacity(isActive ? 0.92 : 0.34),
-                            theme.atmosphereSecondary.opacity(isActive ? 0.88 : 0.32),
-                            Color(red: 0.55, green: 0.72, blue: 1.0)
-                                .opacity(isActive ? 0.96 : 0.36)
-                        ]),
-                        startPoint: CGPoint(x: canvasSize.width, y: 0),
-                        endPoint: CGPoint(x: 0, y: canvasSize.height)
-                    ),
-                    style: StrokeStyle(lineWidth: 1.45, lineCap: .round)
-                )
+                // One bounded haze pass for all rays, never one filter per bar.
+                if !reduceTransparency {
+                    context.drawLayer { haze in
+                        haze.addFilter(.blur(radius: 2.5))
+                        haze.opacity = 0.22
+                        haze.fill(moonlightHaze, with: rayGradient)
+                    }
+                }
             }
         }
-        .frame(width: diameter + 88, height: diameter + 88)
+        .frame(width: diameter + 336, height: diameter + 336)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onAppear { updateRotationClock(rotating: shouldRotate) }
         .onChange(of: shouldRotate) { _, rotating in
             updateRotationClock(rotating: rotating)
         }
+    }
+
+    /// A curved taper rather than a stroked line or hard triangular spike.
+    /// The per-beam gradient becomes transparent before the geometric tip.
+    private static func beamPath(start: CGPoint, direction: CGVector,
+                                 length: CGFloat, halfWidth: CGFloat) -> Path {
+        func point(_ distance: CGFloat, _ width: CGFloat) -> CGPoint {
+            CGPoint(x: start.x + direction.dx * distance - direction.dy * width,
+                    y: start.y + direction.dy * distance + direction.dx * width)
+        }
+        var path = Path()
+        path.move(to: point(0, halfWidth))
+        path.addCurve(to: point(length, 0),
+                      control1: point(length * 0.32, halfWidth * 0.92),
+                      control2: point(length * 0.76, halfWidth * 0.12))
+        path.addCurve(to: point(0, -halfWidth),
+                      control1: point(length * 0.76, -halfWidth * 0.12),
+                      control2: point(length * 0.32, -halfWidth * 0.92))
+        path.closeSubpath()
+        return path
     }
 
     private func updateRotationClock(rotating: Bool) {

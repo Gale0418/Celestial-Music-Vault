@@ -41,7 +41,10 @@ public actor LocalAudioAnalyzer: AudioAnalyzer {
                 throw CocoaError(.fileReadCorruptFile)
             }
             let frames = Int(buffer.frameLength)
-            guard frames > 0 else { throw CocoaError(.fileReadCorruptFile) }
+            // Some decoders report a longer nominal length than the readable
+            // stream. A zero-frame read is EOF; the sampleCount guard below
+            // still rejects files that yielded no audio at all.
+            guard frames > 0 else { break }
             for channel in 0..<Int(format.channelCount) {
                 var rms: Float = 0
                 vDSP_rmsqv(channels[channel], 1, &rms, vDSP_Length(frames))

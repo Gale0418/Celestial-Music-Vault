@@ -1,0 +1,115 @@
+Test Suite 'All tests' started at 2026-09-08 21:13:53.731.
+Test Suite 'CMVCorePackageTests.xctest' started at 2026-09-08 21:13:53.733.
+Test Suite 'CMVCoreTests' started at 2026-09-08 21:13:53.733.
+Test Case '-[CMVCoreTests.CMVCoreTests testAnalyzerCancellationMarkerOnlyAppliesToInFlightAnalysis]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testAnalyzerCancellationMarkerOnlyAppliesToInFlightAnalysis]' passed (0.021 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testApplyScanBatchRejectsDuplicateFileIdentifiers]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testApplyScanBatchRejectsDuplicateFileIdentifiers]' passed (0.024 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testAudioMetadataParserHonorsExplicitReplayGainTags]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testAudioMetadataParserHonorsExplicitReplayGainTags]' passed (0.001 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testBatchedScanPreservesStableRecordsAndMarksOnlyUnseenTracksMissing]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testBatchedScanPreservesStableRecordsAndMarksOnlyUnseenTracksMissing]' passed (2.288 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testCancelledPrefetchRollsBackStagingAndPreservesExistingCache]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testCancelledPrefetchRollsBackStagingAndPreservesExistingCache]' passed (0.018 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testCancelledScannerStopsBeforePublishingBatch]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testCancelledScannerStopsBeforePublishingBatch]' passed (0.006 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testCatalogGroupsAreCompleteSortedAndExcludeHiddenTracks]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testCatalogGroupsAreCompleteSortedAndExcludeHiddenTracks]' passed (0.856 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testCorruptedOfflineMediaIsRejectedBeforePlayback]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testCorruptedOfflineMediaIsRejectedBeforePlayback]' passed (0.015 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testExcludedTracksStayHiddenAfterRescanAndLeavePlaylists]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testExcludedTracksStayHiddenAfterRescanAndLeavePlaylists]' passed (0.052 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testFiftyThousandTrackReconciliationPersistsInBatches]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testFiftyThousandTrackReconciliationPersistsInBatches]' passed (64.728 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testIncompleteReachableScanPreservesTracksWhoseMetadataFailed]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testIncompleteReachableScanPreservesTracksWhoseMetadataFailed]' passed (0.018 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testLibraryOperationsPersistFavoritesRatingsHistoryAndPlaylists]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testLibraryOperationsPersistFavoritesRatingsHistoryAndPlaylists]' passed (0.039 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testLibrarySortFieldsRemainBidirectionalAndPageStable]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testLibrarySortFieldsRemainBidirectionalAndPageStable]' passed (0.058 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testLibrarySortingIsStableAcrossPagesAndSearch]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testLibrarySortingIsStableAcrossPagesAndSearch]' passed (0.028 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testLoadedSearchIndexUpdatesAfterLaterScanOnSameRepository]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testLoadedSearchIndexUpdatesAfterLaterScanOnSameRepository]' passed (0.015 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testMediaKindSurvivesReconciliationAndLegacyDefaultsToAudio]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testMediaKindSurvivesReconciliationAndLegacyDefaultsToAudio]' passed (0.011 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testMediaSourceSurvivesPersistentStoreReopen]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testMediaSourceSurvivesPersistentStoreReopen]' passed (0.042 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testMetadataFieldsSurviveReconciliation]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testMetadataFieldsSurviveReconciliation]' passed (0.013 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testOfflineCacheReplacesSameTrackWithNewExtension]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testOfflineCacheReplacesSameTrackWithNewExtension]' passed (0.021 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testOfflineCacheVerifiesContentAndNeverTrimsPinnedMedia]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testOfflineCacheVerifiesContentAndNeverTrimsPinnedMedia]' passed (0.010 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testPinnedStatusRequiresMediaAndChecksumSidecar]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testPinnedStatusRequiresMediaAndChecksumSidecar]' passed (0.006 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testPlaybackRoutePositionPreservesRepeatedOccurrences]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testPlaybackRoutePositionPreservesRepeatedOccurrences]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testPrefetchStagesOffActorAndKeepsExistingCacheAvailable]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testPrefetchStagesOffActorAndKeepsExistingCacheAvailable]' passed (0.014 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testQueueClampsIndex]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testQueueClampsIndex]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSameSizeSmartCacheMutationFallsBackToFullVerification]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSameSizeSmartCacheMutationFallsBackToFullVerification]' passed (0.008 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchCandidatesFoldDiacriticsWhilePreservingDisplayMetadata]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchCandidatesFoldDiacriticsWhilePreservingDisplayMetadata]' passed (0.010 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchCandidatesReturnMatchesBeyondFiveHundred]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchCandidatesReturnMatchesBeyondFiveHundred]' passed (0.472 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchMatchesEveryTokenAcrossDifferentMetadataFields]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchMatchesEveryTokenAcrossDifferentMetadataFields]' passed (0.014 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchReusesIndexAcrossQueriesAndNormalizesWhitespaceNoResultsAndDuplicateTokens]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchReusesIndexAcrossQueriesAndNormalizesWhitespaceNoResultsAndDuplicateTokens]' passed (0.015 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchSnapshotReflectsTrackMutations]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSearchSnapshotReflectsTrackMutations]' passed (0.025 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSmartDJIsExplainableAndPenalizesSkips]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSmartDJIsExplainableAndPenalizesSkips]' passed (0.001 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSupersededPrefetchDoesNotPublishOlderStaging]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSupersededPrefetchDoesNotPublishOlderStaging]' passed (0.012 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testSwiftRepositoryMatchesSharedRustReconciliationFixture]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testSwiftRepositoryMatchesSharedRustReconciliationFixture]' passed (0.134 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testTracksByIDsChunksLargePredicatesAndPreservesRequestedOrder]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testTracksByIDsChunksLargePredicatesAndPreservesRequestedOrder]' passed (0.322 seconds).
+Test Case '-[CMVCoreTests.CMVCoreTests testUnreachableSourceDoesNotClearExistingLibrary]' started.
+Test Case '-[CMVCoreTests.CMVCoreTests testUnreachableSourceDoesNotClearExistingLibrary]' passed (0.009 seconds).
+Test Suite 'CMVCoreTests' passed at 2026-09-08 21:15:03.047.
+	 Executed 35 tests, with 0 failures (0 unexpected) in 69.305 (69.314) seconds
+Test Suite 'ProAccessTests' started at 2026-09-08 21:15:03.047.
+Test Case '-[CMVCoreTests.ProAccessTests testEqualTimestampPrefersRevocation]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testEqualTimestampPrefersRevocation]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testFreeStateAllowsNoProFeature]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testFreeStateAllowsNoProFeature]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testNewPurchaseCanGrantAndOlderRevocationCannotOverwriteIt]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testNewPurchaseCanGrantAndOlderRevocationCannotOverwriteIt]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testPendingAndFailedTransitionsPreserveExistingEntitlement]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testPendingAndFailedTransitionsPreserveExistingEntitlement]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testRevocationRejectsDelayedSuccessForSameTransaction]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testRevocationRejectsDelayedSuccessForSameTransaction]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testRevocationRemovesOnlyProAccess]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testRevocationRemovesOnlyProAccess]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testStaleTransitionCannotOverwriteNewerVerifiedState]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testStaleTransitionCannotOverwriteNewerVerifiedState]' passed (0.000 seconds).
+Test Case '-[CMVCoreTests.ProAccessTests testVerifiedTransitionGrantsEveryProFeature]' started.
+Test Case '-[CMVCoreTests.ProAccessTests testVerifiedTransitionGrantsEveryProFeature]' passed (0.001 seconds).
+Test Suite 'ProAccessTests' passed at 2026-09-08 21:15:03.052.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'ReliabilityRegressionTests' started at 2026-09-08 21:15:03.052.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testFailedQueueReplacementRestoresPreviousTimelinePosition]' started.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testFailedQueueReplacementRestoresPreviousTimelinePosition]' passed (0.521 seconds).
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testMissingTrackMutationFailsInsteadOfReportingFalseSuccess]' started.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testMissingTrackMutationFailsInsteadOfReportingFalseSuccess]' passed (0.014 seconds).
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testPlaylistRejectsMissingTracksAndMissingPlaylistMutations]' started.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testPlaylistRejectsMissingTracksAndMissingPlaylistMutations]' passed (0.015 seconds).
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testScanCompletionUsesPresenceRatherThanMetadataMutation]' started.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testScanCompletionUsesPresenceRatherThanMetadataMutation]' passed (0.001 seconds).
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testSubstringSearchDoesNotDependOnExactTokensElsewhereInLibrary]' started.
+Test Case '-[CMVCoreTests.ReliabilityRegressionTests testSubstringSearchDoesNotDependOnExactTokensElsewhereInLibrary]' passed (0.016 seconds).
+Test Suite 'ReliabilityRegressionTests' passed at 2026-09-08 21:15:03.620.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.567 (0.568) seconds
+Test Suite 'CMVCorePackageTests.xctest' passed at 2026-09-08 21:15:03.620.
+	 Executed 48 tests, with 0 failures (0 unexpected) in 69.875 (69.887) seconds
+Test Suite 'All tests' passed at 2026-09-08 21:15:03.620.
+	 Executed 48 tests, with 0 failures (0 unexpected) in 69.875 (69.889) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

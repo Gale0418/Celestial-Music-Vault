@@ -17,6 +17,9 @@
 
 ## Core jobs
 
+These jobs describe the intended complete product. Completion evidence and open
+release gates remain in `MissionCenter/tasks.md`.
+
 1. Authorize a local or NAS-mounted folder through the system folder picker.
 2. Index and search collections of up to 50,000 tracks without blocking browsing or playback.
 3. Preserve library records when a NAS sleeps, Wi-Fi drops, a bookmark expires, or access is revoked.
@@ -39,6 +42,24 @@
   AVFoundation, AVKit, or MediaPlayer objects.
 - No cloud AI, analytics tracker, account system, or audio upload. Diagnostics use OSLog and MetricKit.
 - Import, analysis, cache maintenance, and reconnect work never block the main actor.
+
+## 免費與 Pro（2026-09-08 核准方向）
+
+CMV 採免費下載＋一次性 Pro 解鎖。免費版提供可日常使用的本機影音、基本 NAS
+來源播放、搜尋、基本歌單、收藏評分、日常佇列操作、背景播放、預設主題與月環。
+穩定性、資料保護及無障礙由兩個版本共同提供。
+
+Pro 的價值在於智慧離線快取與批次釘選、進階曲庫整理與批次工具、更多主題與
+視覺自訂，以及本機 Smart DJ／聲學探索。裝置上原本就有的可存取檔案仍可免費
+播放；NAS 基本播放與維持正常播放所需的暫存，不改成 Pro 才能使用。
+
+一次性購買不自動續訂。價格、Mac／iPad 購買權益是否共用、家庭共享、未來大版本更新範圍尚未定案，不承諾所有未來功能終身免費。CMV 不建立
+自己的帳號系統；購買與恢復購買仍須另行完成平台驗證。
+
+商業方案與上市文案見 [免費＋一次性 Pro 草案](Native/MONETIZATION_DRAFT.md)。
+使用者指定文案以任務中心既定功能全部完成為上市情境；該假設不能作為功能、
+付費解鎖或上架驗收已通過的證據。2026-09-08 施工切片以緋紅星雲為免費主題，其他三款的新選用由 Pro 解鎖；
+保留使用者目前已選的主題及既有離線內容。StoreKit 商品尚未設定時不開放付款。
 
 ## Information architecture
 

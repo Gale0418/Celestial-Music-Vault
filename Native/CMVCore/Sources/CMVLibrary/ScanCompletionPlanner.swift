@@ -5,6 +5,18 @@ import CMVDomain
 /// convert unseen records into missing tracks.
 public enum ScanCompletionPlanner {
     public static func missingIdentifiers(
+        existing: [ScanTrackSnapshot],
+        seenIdentifiers: Set<String>,
+        completedWithoutIssues: Bool
+    ) -> [String] {
+        guard completedWithoutIssues else { return [] }
+        return existing.lazy
+            .filter { $0.availability != .missing && !seenIdentifiers.contains($0.fileIdentifier) }
+            .map(\.fileIdentifier)
+            .sorted()
+    }
+
+    public static func missingIdentifiers(
         existing: [Track],
         seenIdentifiers: Set<String>,
         completedWithoutIssues: Bool

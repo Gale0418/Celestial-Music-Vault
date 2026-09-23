@@ -8,6 +8,7 @@ struct PlayerBar: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
+        let _ = appModel.playbackControlsRevision
         ViewThatFits(in: .horizontal) {
             fullLayout.frame(minWidth: 920)
             compactLayout
@@ -104,6 +105,7 @@ struct SleepTimerMenu: View {
     @Environment(AppModel.self) private var appModel
 
     var body: some View {
+        let _ = appModel.playbackControlsRevision
         Menu {
             Section("睡眠計時器") {
                 Button("15 分鐘") { appModel.playback.setSleepTimer(minutes: 15) }

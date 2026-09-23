@@ -88,6 +88,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     @Published public private(set) var sleepTimerEndDate: Date?
     public var requiresTimelineReschedule: Bool { timelineNeedsReschedule }
     public var onCurrentTrackChanged: ((Track?) -> Void)?
+    public var onQueueChanged: (() -> Void)?
     public var onQueueFinished: (() -> Void)?
     public var onOutputLevelChanged: ((Float) -> Void)?
     public var onPlaybackStateChanged: ((Bool) -> Void)?
@@ -122,6 +123,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     private var loadGeneration = 0
     private var timelineStarted = false
     private var timelineNeedsReschedule = false
+    private var queueReachedEnd = false
     private var currentTrackStartEngineFrame: UInt64 = 0
     private var currentSourceStartSeconds: TimeInterval = 0
     private var engineSampleRate: Double = 48_000
@@ -217,6 +219,27 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     public func setQueue(_ queue: PlaybackQueue) {
         self.queue = queue
         onCurrentTrackChanged?(self.queue.current)
+        updateNowPlaying()
+    }
+
+    /// Extend the active audio timeline without restarting the current song.
+    public func appendToQueue(_ tracks: [Track], resolvedURLs additions: [UUID: URL]) {
+        guard !tracks.isEmpty else { return }
+        let oldCount = queue.tracks.count
+        queue.tracks.append(contentsOf: tracks)
+        resolvedURLs.merge(additions) { _, latest in latest }
+        if queueReachedEnd {
+            // The old last song has already completed. The newly appended song
+            // is the next current item; play() prepares it without replaying
+            // the completed track.
+            queue.currentIndex = oldCount
+            queueReachedEnd = false
+            publishElapsed(0)
+            onCurrentTrackChanged?(queue.current)
+        } else if !timelineNeedsReschedule && queue.currentIndex == oldCount - 1 && scheduledFiles[oldCount] == nil {
+            scheduleFollowingTrack()
+        }
+        onQueueChanged?()
         updateNowPlaying()
     }
 
@@ -327,6 +350,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         scheduledEngineStartFrames.removeAll(keepingCapacity: true)
         timelineStarted = false
         timelineNeedsReschedule = false
+        queueReachedEnd = false
         publishPlaybackState(false)
         publishElapsed(0)
         publishOutputLevel(0)
@@ -390,6 +414,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         let oldQueue = queue
         let oldElapsed = elapsed
         let oldFiles = scheduledFiles
+        let reusableFiles = Self.reusablePreparedFiles(oldFiles, from: oldQueue, for: candidateQueue)
         let oldFrame = scheduledFiles[oldQueue.currentIndex]
             .flatMap { boundedSourceFrame(for: oldElapsed, file: $0) } ?? 0
 
@@ -398,7 +423,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 sourceStartFrame: 0,
                 for: candidateQueue,
                 resolvedURLs: resolvedURLs,
-                preparedFiles: oldFiles
+                preparedFiles: reusableFiles
             )
             queue = candidateQueue
             publishElapsed(0)
@@ -415,6 +440,18 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 resume: resume
             )
             throw primaryError
+        }
+    }
+
+    // Scheduled files are keyed by queue position. Shuffle can put a different
+    // track at the same position, so only reuse files whose track ID still fits.
+    static func reusablePreparedFiles(
+        _ files: [Int: AVAudioFile], from oldQueue: PlaybackQueue, for candidateQueue: PlaybackQueue
+    ) -> [Int: AVAudioFile] {
+        files.filter { index, _ in
+            oldQueue.tracks.indices.contains(index) &&
+            candidateQueue.tracks.indices.contains(index) &&
+            oldQueue.tracks[index].id == candidateQueue.tracks[index].id
         }
     }
 
@@ -449,6 +486,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             scheduledEngineStartFrames.removeAll(keepingCapacity: true)
             timelineStarted = false
             timelineNeedsReschedule = false
+            queueReachedEnd = false
             publishPlaybackState(false)
             publishElapsed(0)
             publishOutputLevel(0)
@@ -559,6 +597,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         scheduleGeneration &+= 1
         timelineStarted = false
         timelineNeedsReschedule = false
+        queueReachedEnd = false
         activeNodeIsFirst = true
         currentTrackStartEngineFrame = 0
         scheduledFiles.removeAll(keepingCapacity: true)
@@ -619,10 +658,26 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         let generation = scheduleGeneration
         Task { [weak self] in
             guard let self else { return }
+            let nextFile: AVAudioFile
             do {
-                let nextFile = try await fileOpener.open(nextURL)
+                nextFile = try await fileOpener.open(nextURL)
+            } catch {
                 guard generation == scheduleGeneration,
-                      queue.currentIndex == currentIndex else { return }
+                      queue.currentIndex == currentIndex,
+                      queue.tracks.indices.contains(nextIndex),
+                      queue.tracks[nextIndex].id == nextTrack.id else { return }
+                // A file can disappear after its path was resolved. Remove the
+                // unplayable queue entry and try the following song instead of
+                // leaving a permanent ghost at the next position.
+                queue.tracks.remove(at: nextIndex)
+                onQueueChanged?()
+                onPlaybackError?(error)
+                scheduleFollowingTrack()
+                return
+            }
+            guard generation == scheduleGeneration,
+                  queue.currentIndex == currentIndex else { return }
+            do {
                 try scheduleFollowingTrack(
                     currentFile: currentFile,
                     nextFile: nextFile,
@@ -694,6 +749,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 publishPlaybackState(false)
                 timelineStarted = false
                 timelineNeedsReschedule = true
+                queueReachedEnd = true
                 publishElapsed(queue.current?.duration ?? elapsed)
                 onQueueFinished?()
                 updateNowPlaying()
@@ -732,6 +788,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             publishPlaybackState(false)
             timelineStarted = false
             timelineNeedsReschedule = true
+            queueReachedEnd = true
             publishElapsed(queue.current?.duration ?? elapsed)
             onQueueFinished?()
             updateNowPlaying()

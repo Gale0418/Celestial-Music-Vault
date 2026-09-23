@@ -977,7 +977,8 @@ mod tests {
         assert_eq!(status, CMVStatusV1::Ok as i32);
         let response = unsafe { std::slice::from_raw_parts(output.ptr, output.len) };
         assert_eq!(&response[..4], MAGIC);
-        assert_eq!(u32::from_le_bytes(response[6..10].try_into().unwrap()), 2);
+        // Analysis profile v3 is independent of the unchanged v1 ABI envelope.
+        assert_eq!(u32::from_le_bytes(response[6..10].try_into().unwrap()), 3);
         unsafe { cmv_core_buffer_free_v1(output) };
     }
 

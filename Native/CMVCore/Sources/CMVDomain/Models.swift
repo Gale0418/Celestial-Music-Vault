@@ -109,6 +109,25 @@ public struct PlaybackQueue: Hashable, Codable, Sendable {
     }
 }
 
+/// Resolves a full mixed-media route position without collapsing repeated IDs
+/// to the first occurrence. The preferred index is the occurrence tracked by
+/// the playback coordinator; ID lookup is only a legacy/fallback path.
+public enum PlaybackRoutePosition {
+    public static func resolve(
+        routeIDs: [UUID],
+        currentID: UUID?,
+        preferredIndex: Int?
+    ) -> Int? {
+        if let preferredIndex,
+           routeIDs.indices.contains(preferredIndex),
+           (currentID == nil || routeIDs[preferredIndex] == currentID) {
+            return preferredIndex
+        }
+        guard let currentID else { return nil }
+        return routeIDs.firstIndex(of: currentID)
+    }
+}
+
 public struct AnalysisProfile: Hashable, Codable, Sendable {
     public var version: Int
     public var bpm: Double?
@@ -148,4 +167,33 @@ public enum LibraryTrackSort: String, CaseIterable, Codable, Hashable, Sendable 
     case artist
     case album
     case modifiedAt
+}
+
+public enum LibraryCatalogKind: String, Codable, Hashable, Sendable {
+    case artist
+    case album
+}
+
+public struct LibraryCatalogGroup: Identifiable, Hashable, Sendable {
+    public let key: String
+    public let count: Int
+    public let previewTitles: [String]
+    public let sampleArtist: String
+    public let sampleAlbum: String
+
+    public var id: String { key }
+
+    public init(
+        key: String,
+        count: Int,
+        previewTitles: [String],
+        sampleArtist: String,
+        sampleAlbum: String
+    ) {
+        self.key = key
+        self.count = count
+        self.previewTitles = previewTitles
+        self.sampleArtist = sampleArtist
+        self.sampleAlbum = sampleAlbum
+    }
 }

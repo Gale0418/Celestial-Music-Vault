@@ -13,11 +13,12 @@ import CMVThemes
 private final class QueuePanelSnapshot {
     private(set) var tracks: [Track] = []
     private(set) var currentTrackID: UUID?
+    private(set) var currentIndex = 0
+    private(set) var revision = 0
 
     @ObservationIgnored private weak var appModel: AppModel?
     @ObservationIgnored private var isBound = false
     @ObservationIgnored private var observationGeneration = 0
-    @ObservationIgnored private var currentIndex = 0
 
     func bind(to appModel: AppModel) {
         if self.appModel !== appModel {
@@ -41,7 +42,7 @@ private final class QueuePanelSnapshot {
         let generation = observationGeneration
 
         let observed = withObservationTracking {
-            (appModel.displayQueue, appModel.currentTrackID)
+            (appModel.queuePanelDisplayQueue, appModel.currentTrackID)
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self,
@@ -58,6 +59,7 @@ private final class QueuePanelSnapshot {
         if queueNeedsRefresh(queue) {
             currentIndex = queue.currentIndex
             tracks = queue.tracks
+            revision &+= 1
         }
         if self.currentTrackID != currentTrackID {
             self.currentTrackID = currentTrackID
@@ -88,19 +90,49 @@ private final class QueuePanelSnapshot {
 }
 
 struct PerformantQueueView: View {
+    var expanded = false
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
     @State private var snapshot = QueuePanelSnapshot()
+    @State private var search = ""
+    @State private var filteredIndices: [Int] = []
+    @State private var filteredRevision = -1
+    @State private var filteredQuery = ""
+
+    private struct SearchKey: Hashable {
+        let revision: Int
+        let query: String
+    }
 
     var body: some View {
         let tracks = snapshot.tracks
+        let isSearching = expanded && !search.isEmpty
+        let searchIsCurrent = filteredRevision == snapshot.revision && filteredQuery == search
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("接下來播放").font(.title2.bold())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(expanded ? "歌單" : "接下來播放").font(.title2.bold())
+                    if expanded {
+                        Text("與接下來播放同步 · \(tracks.count.formatted()) 首")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
                 Button("清除") { appModel.clearPlaybackQueue() }
                     .disabled(tracks.isEmpty)
+            }
+
+            if expanded && !tracks.isEmpty {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("搜尋目前歌單", text: $search)
+                        .textFieldStyle(.plain)
+                        .accessibilityLabel("搜尋目前歌單")
+                }
+                .padding(8)
+                .background(theme.surface.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
             }
 
             if tracks.isEmpty {
@@ -110,25 +142,63 @@ struct PerformantQueueView: View {
                     description: Text("從歌曲、多選工具列或歌單選擇「加入接下來播放」。")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if isSearching && searchIsCurrent && filteredIndices.isEmpty {
+                ContentUnavailableView("找不到歌單曲目", systemImage: "magnifyingglass",
+                                       description: Text("試試其他歌名、歌手或專輯關鍵字。"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 4) {
+                List {
+                    if isSearching {
+                        if searchIsCurrent {
+                            ForEach(filteredIndices, id: \.self) { index in
+                                queueRow(tracks[index], index: index, tracks: tracks)
+                                    .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                            }
+                        }
+                    } else {
                         ForEach(tracks.indices, id: \.self) { index in
                             queueRow(tracks[index], index: index, tracks: tracks)
+                                .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                         }
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 12)
         .background(.clear)
         .task { snapshot.bind(to: appModel) }
+        .task(id: SearchKey(revision: snapshot.revision, query: search)) {
+            guard expanded, !search.isEmpty else { filteredIndices = []; return }
+            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+            let currentTracks = snapshot.tracks
+            let query = search
+            let matches = await Task.detached(priority: .userInitiated) {
+                currentTracks.indices.filter { index in
+                    let track = currentTracks[index]
+                    return track.title.localizedCaseInsensitiveContains(query)
+                        || track.artist.localizedCaseInsensitiveContains(query)
+                        || track.album.localizedCaseInsensitiveContains(query)
+                }
+            }.value
+            guard !Task.isCancelled else { return }
+            filteredIndices = matches
+            filteredRevision = snapshot.revision
+            filteredQuery = query
+        }
         .onDisappear { snapshot.unbind() }
     }
 
     private func queueRow(_ track: Track, index: Int, tracks: [Track]) -> some View {
-        let isCurrent = track.id == snapshot.currentTrackID
+        let isCurrent = index == snapshot.currentIndex && track.id == snapshot.currentTrackID
+        let durationSeconds = max(0, Int(track.duration))
+        let durationLabel = "\(durationSeconds / 60):\(String(format: "%02d", durationSeconds % 60))"
         return HStack(spacing: 12) {
             Button { appModel.play(tracks: tracks, startingAt: index, context: context) } label: {
                 HStack(spacing: 12) {
@@ -150,6 +220,10 @@ struct PerformantQueueView: View {
                                 .font(.caption2)
                                 .foregroundStyle(theme.metal)
                                 .lineLimit(1)
+                        }
+                        if expanded {
+                            Text("第 \(index + 1) 首 · \(track.mediaKind == .video ? "影片" : "音樂") · \(durationLabel)")
+                                .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
                     Spacer(minLength: 4)
@@ -200,7 +274,7 @@ private struct QueueStarRatingControl: View {
         .frame(width: width, height: 44)
         .contentShape(Rectangle())
         .gesture(
-            DragGesture(minimumDistance: 0)
+            SpatialTapGesture()
                 .onEnded { gesture in
                     let safeWidth = max(1, width)
                     let selected = min(5, max(1, Int(gesture.location.x / safeWidth * 5) + 1))

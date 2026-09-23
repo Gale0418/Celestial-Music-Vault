@@ -3,6 +3,66 @@ import CryptoKit
 import CMVDomain
 
 public actor FileOfflineCacheStore: OfflineCacheStore {
+    private final class FileManagerBox: @unchecked Sendable {
+        let value: FileManager
+
+        init(_ value: FileManager) {
+            self.value = value
+        }
+    }
+
+    private actor CacheIOWorker {
+        private let fileManager: FileManagerBox
+
+        init(fileManager: FileManagerBox) {
+            self.fileManager = fileManager
+        }
+
+        func stage(
+            sourceURL: URL,
+            stagingURL: URL,
+            stagingChecksumURL: URL
+        ) throws -> StagedCopy {
+            try Task.checkCancellation()
+            let ownsSecurityScope = sourceURL.startAccessingSecurityScopedResource()
+            var stagedSuccessfully = false
+            defer {
+                if ownsSecurityScope { sourceURL.stopAccessingSecurityScopedResource() }
+                if !stagedSuccessfully {
+                    try? fileManager.value.removeItem(at: stagingURL)
+                    try? fileManager.value.removeItem(at: stagingChecksumURL)
+                }
+            }
+
+            try fileManager.value.copyItem(at: sourceURL, to: stagingURL)
+            let digest = try hashFile(stagingURL)
+            try Task.checkCancellation()
+            try Data(digest.utf8).write(to: stagingChecksumURL, options: .atomic)
+            let values = try? stagingURL.resourceValues(
+                forKeys: [.fileSizeKey, .contentModificationDateKey]
+            )
+            stagedSuccessfully = true
+            return StagedCopy(
+                mediaURL: stagingURL,
+                checksumURL: stagingChecksumURL,
+                size: Int64(values?.fileSize ?? 0),
+                digest: digest,
+                modificationDate: values?.contentModificationDate
+            )
+        }
+
+        private func hashFile(_ url: URL) throws -> String {
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            var digest = SHA256()
+            while let chunk = try handle.read(upToCount: 1_048_576), !chunk.isEmpty {
+                try Task.checkCancellation()
+                digest.update(data: chunk)
+            }
+            return digest.finalize().map { String(format: "%02x", $0) }.joined()
+        }
+    }
+
     private struct ManifestEntry: Codable {
         var fileName: String
         var size: Int64
@@ -39,6 +99,14 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         var modificationDate: Date?
     }
 
+    private struct StagedCopy {
+        var mediaURL: URL
+        var checksumURL: URL
+        var size: Int64
+        var digest: String
+        var modificationDate: Date?
+    }
+
     private struct SmartManifest: Codable {
         var entries: [String: ManifestEntry] = [:]
     }
@@ -62,6 +130,8 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
     private var manifestFlushTask: Task<Void, Never>?
     private var pinnedDirectoryIndex: DirectoryIndex?
     private var smartDirectoryIndex: DirectoryIndex?
+    private let ioWorker: CacheIOWorker
+    private var prefetchGenerations: [UUID: UUID] = [:]
 
     public init(
         fileManager: FileManager = .default,
@@ -86,6 +156,7 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         self.evictionPlanner = evictionPlanner
         try fileManager.createDirectory(at: pinnedRoot, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: smartRoot, withIntermediateDirectories: true)
+        ioWorker = CacheIOWorker(fileManager: FileManagerBox(fileManager))
     }
 
     /// Explicit roots make cache behavior independently testable and allow a
@@ -103,6 +174,7 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         self.evictionPlanner = evictionPlanner
         try fileManager.createDirectory(at: self.pinnedRoot, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: self.smartRoot, withIntermediateDirectories: true)
+        ioWorker = CacheIOWorker(fileManager: FileManagerBox(fileManager))
     }
 
     public func pin(trackID: UUID, sourceURL: URL) async throws -> URL {
@@ -125,6 +197,14 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
             return false
         }
         return files.contains { fileManager.fileExists(atPath: checksumURL(for: $0).path) }
+    }
+
+    /// Resolve a whole playlist's missing tracks with one directory-index pass.
+    public func pinnedTrackIDs(in candidates: [UUID]) async -> Set<UUID> {
+        let resolved = resolveCachedURLs(trackIDs: candidates, requireFullHash: false)
+        return Set(resolved.compactMap { id, url in
+            url.deletingLastPathComponent().standardizedFileURL == pinnedRoot.standardizedFileURL ? id : nil
+        })
     }
 
     /// Resolves one checksum-validated local copy. Repeated single lookups share
@@ -218,9 +298,7 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
                    let entry = manifest.entries[identifier],
                    entry.fileName == url.lastPathComponent,
                    entry.digest == expected {
-                    resourceValues = try? url.resourceValues(
-                        forKeys: [.fileSizeKey, .contentModificationDateKey]
-                    )
+                    resourceValues = freshResourceValues(for: url)
                     if let resourceValues,
                        Int64(resourceValues.fileSize ?? -1) == entry.size,
                        resourceValues.contentModificationDate == entry.modificationDate {
@@ -237,9 +315,7 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
 
                 if isSmart, manifestAvailable {
                     if resourceValues == nil {
-                        resourceValues = try? url.resourceValues(
-                            forKeys: [.fileSizeKey, .contentModificationDateKey]
-                        )
+                        resourceValues = freshResourceValues(for: url)
                     }
                     let previous = manifest.entries[identifier]
                     let lastAccess: Date
@@ -282,7 +358,44 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
     }
 
     public func prefetch(trackID: UUID, sourceURL: URL) async throws -> URL {
-        let copied = try copy(trackID: trackID, sourceURL: sourceURL, root: smartRoot)
+        try await prefetch(trackID: trackID, sourceURL: sourceURL, onAdmission: {})
+    }
+
+    internal func prefetch(
+        trackID: UUID,
+        sourceURL: URL,
+        onAdmission: @Sendable () -> Void
+    ) async throws -> URL {
+        let generation = UUID()
+        prefetchGenerations[trackID] = generation
+        onAdmission()
+        let stagingURL = smartRoot.appendingPathComponent(
+            ".\(trackID.uuidString).\(UUID().uuidString).part"
+        )
+        let stagingChecksumURL = checksumURL(for: stagingURL)
+        defer {
+            try? fileManager.removeItem(at: stagingURL)
+            try? fileManager.removeItem(at: stagingChecksumURL)
+            if prefetchGenerations[trackID] == generation {
+                prefetchGenerations.removeValue(forKey: trackID)
+            }
+        }
+
+        let staged = try await ioWorker.stage(
+            sourceURL: sourceURL,
+            stagingURL: stagingURL,
+            stagingChecksumURL: stagingChecksumURL
+        )
+        guard !Task.isCancelled, prefetchGenerations[trackID] == generation else {
+            throw CancellationError()
+        }
+
+        let copied = try commitStagedCopy(
+            trackID: trackID,
+            destinationName: destinationName(trackID: trackID, sourceURL: sourceURL),
+            root: smartRoot,
+            staged: staged
+        )
         try loadManifestIfNeeded()
         manifest.entries[trackID.uuidString] = ManifestEntry(
             fileName: copied.url.lastPathComponent,
@@ -367,14 +480,43 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
     private func copy(trackID: UUID, sourceURL: URL, root: URL) throws -> CopyResult {
         let ownsSecurityScope = sourceURL.startAccessingSecurityScopedResource()
         defer { if ownsSecurityScope { sourceURL.stopAccessingSecurityScopedResource() } }
-        let ext = sourceURL.pathExtension.lowercased()
-        let destinationName = ext.isEmpty ? trackID.uuidString : "\(trackID.uuidString).\(ext)"
+        let destinationName = destinationName(trackID: trackID, sourceURL: sourceURL)
+        let temporary = root.appendingPathComponent(".\(trackID.uuidString).\(UUID().uuidString).part")
+        let temporaryChecksum = checksumURL(for: temporary)
+        defer {
+            try? fileManager.removeItem(at: temporary)
+            try? fileManager.removeItem(at: temporaryChecksum)
+        }
+        try fileManager.copyItem(at: sourceURL, to: temporary)
+        let digest = try hashFile(temporary)
+        try Data(digest.utf8).write(to: temporaryChecksum, options: .atomic)
+        let values = try? temporary.resourceValues(
+            forKeys: [.fileSizeKey, .contentModificationDateKey]
+        )
+        return try commitStagedCopy(
+            trackID: trackID,
+            destinationName: destinationName,
+            root: root,
+            staged: StagedCopy(
+                mediaURL: temporary,
+                checksumURL: temporaryChecksum,
+                size: Int64(values?.fileSize ?? 0),
+                digest: digest,
+                modificationDate: values?.contentModificationDate
+            )
+        )
+    }
+
+    private func commitStagedCopy(
+        trackID: UUID,
+        destinationName: String,
+        root: URL,
+        staged: StagedCopy
+    ) throws -> CopyResult {
         let destination = root.appendingPathComponent(destinationName)
         let oldSiblings = try mediaFiles(in: root, identifiers: [trackID.uuidString])
-            .filter { $0 != destination }
-        let temporary = root.appendingPathComponent(".\(trackID.uuidString).\(UUID().uuidString).part")
+            .filter { $0 != destination && $0 != staged.mediaURL }
         let checksum = checksumURL(for: destination)
-        let temporaryChecksum = checksum.appendingPathExtension("part")
         let backupToken = UUID().uuidString
         let destinationBackup = root.appendingPathComponent(".\(trackID.uuidString).\(backupToken).destination")
         let checksumBackup = root.appendingPathComponent(".\(trackID.uuidString).\(backupToken).checksum")
@@ -391,8 +533,6 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         var movedSiblings: [(original: URL, backup: URL)] = []
         var committed = false
         defer {
-            try? fileManager.removeItem(at: temporary)
-            try? fileManager.removeItem(at: temporaryChecksum)
             if committed {
                 try? fileManager.removeItem(at: destinationBackup)
                 try? fileManager.removeItem(at: checksumBackup)
@@ -417,20 +557,17 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
                 }
             }
         }
-        try fileManager.copyItem(at: sourceURL, to: temporary)
-        let digest = try hashFile(temporary)
-        try Data(digest.utf8).write(to: temporaryChecksum, options: .atomic)
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.moveItem(at: destination, to: destinationBackup)
             destinationBackedUp = true
         }
-        try fileManager.moveItem(at: temporary, to: destination)
+        try fileManager.moveItem(at: staged.mediaURL, to: destination)
         destinationInstalled = true
         if fileManager.fileExists(atPath: checksum.path) {
             try fileManager.moveItem(at: checksum, to: checksumBackup)
             checksumBackedUp = true
         }
-        try fileManager.moveItem(at: temporaryChecksum, to: checksum)
+        try fileManager.moveItem(at: staged.checksumURL, to: checksum)
         checksumInstalled = true
         for sibling in siblingBackups {
             try fileManager.moveItem(at: sibling.original, to: sibling.backup)
@@ -438,15 +575,17 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         }
         committed = true
         invalidateDirectoryIndex(for: root)
-        let values = try? destination.resourceValues(
-            forKeys: [.fileSizeKey, .contentModificationDateKey]
-        )
         return CopyResult(
             url: destination,
-            size: Int64(values?.fileSize ?? 0),
-            digest: digest,
-            modificationDate: values?.contentModificationDate
+            size: staged.size,
+            digest: staged.digest,
+            modificationDate: staged.modificationDate
         )
+    }
+
+    private func destinationName(trackID: UUID, sourceURL: URL) -> String {
+        let ext = sourceURL.pathExtension.lowercased()
+        return ext.isEmpty ? trackID.uuidString : "\(trackID.uuidString).\(ext)"
     }
 
     private func removeFileIfPresent(at url: URL) throws {
@@ -616,6 +755,14 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         let name = url.lastPathComponent
         if UUID(uuidString: name) != nil { return name }
         return url.deletingPathExtension().lastPathComponent
+    }
+
+    private func freshResourceValues(for url: URL) -> URLResourceValues? {
+        var uncachedURL = url
+        uncachedURL.removeAllCachedResourceValues()
+        return try? uncachedURL.resourceValues(
+            forKeys: [.fileSizeKey, .contentModificationDateKey]
+        )
     }
 
     private func checksumURL(for file: URL) -> URL {
