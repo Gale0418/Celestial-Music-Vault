@@ -4,6 +4,15 @@ import Observation
 import CMVDomain
 import CMVThemes
 
+private func cmvLocalizedFormat(_ key: String, arguments: CVarArg...) -> String {
+    let preference = UserDefaults.standard.string(forKey: AppLanguage.preferenceKey) ?? "system"
+    return String(
+        format: AppLanguage.localized(key),
+        locale: AppLanguage.locale(for: preference),
+        arguments: arguments
+    )
+}
+
 /// Isolates the queue panel from AppModel's coarse playback revision bridge.
 /// AppModel still emits a revision for elapsed-time updates, but this snapshot
 /// republishes only when the queue identity/order, displayed metadata, or
@@ -112,14 +121,15 @@ struct PerformantQueueView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(expanded ? "歌單" : "接下來播放").font(.title2.bold())
+                    Text(AppLanguage.localized("接下來播放"))
+                        .font(.title2.bold())
                     if expanded {
-                        Text("與接下來播放同步 · \(tracks.count.formatted()) 首")
+                        Text(cmvLocalizedFormat("與接下來播放同步 · %lld 首", arguments: Int64(tracks.count)))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
-                Button("清除") { appModel.clearPlaybackQueue() }
+                Button(AppLanguage.localized("清除")) { appModel.clearPlaybackQueue() }
                     .disabled(tracks.isEmpty)
             }
 
@@ -127,9 +137,9 @@ struct PerformantQueueView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
-                    TextField("搜尋目前歌單", text: $search)
+                    TextField(AppLanguage.localized("搜尋歌曲、歌手或專輯"), text: $search)
                         .textFieldStyle(.plain)
-                        .accessibilityLabel("搜尋目前歌單")
+                        .accessibilityLabel(AppLanguage.localized("搜尋歌曲、歌手或專輯"))
                 }
                 .padding(8)
                 .background(theme.surface.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
@@ -137,14 +147,14 @@ struct PerformantQueueView: View {
 
             if tracks.isEmpty {
                 ContentUnavailableView(
-                    "佇列是空的",
+                    AppLanguage.localized("佇列是空的"),
                     systemImage: "music.note.list",
-                    description: Text("從歌曲、多選工具列或歌單選擇「加入接下來播放」。")
+                    description: Text(AppLanguage.localized("從歌曲、多選工具列或歌單選擇「加入接下來播放」。"))
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if isSearching && searchIsCurrent && filteredIndices.isEmpty {
-                ContentUnavailableView("找不到歌單曲目", systemImage: "magnifyingglass",
-                                       description: Text("試試其他歌名、歌手或專輯關鍵字。"))
+                ContentUnavailableView(AppLanguage.localized("找不到曲目記錄"), systemImage: "magnifyingglass",
+                                       description: Text(AppLanguage.localized("試試其他歌名、歌手或專輯關鍵字。")))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
@@ -211,7 +221,7 @@ struct PerformantQueueView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(track.title).lineLimit(1)
-                        Text("\(track.artist) · \(track.album)")
+                        Text("\(AppLanguage.localizedArtist(track.artist)) · \(AppLanguage.localizedAlbum(track.album))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -222,7 +232,9 @@ struct PerformantQueueView: View {
                                 .lineLimit(1)
                         }
                         if expanded {
-                            Text("第 \(index + 1) 首 · \(track.mediaKind == .video ? "影片" : "音樂") · \(durationLabel)")
+                            let mediaKind = AppLanguage.localized(track.mediaKind == .video ? "影片" : "音樂")
+                            Text(cmvLocalizedFormat("第 %lld 首 · %@ · %@",
+                                                   arguments: Int64(index + 1), mediaKind, durationLabel))
                                 .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
@@ -230,7 +242,8 @@ struct PerformantQueueView: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("播放 \(track.title)，\(track.artist)")
+            .accessibilityLabel(cmvLocalizedFormat("播放 %@，%@",
+                                                   arguments: track.title, AppLanguage.localizedArtist(track.artist)))
 
             QueueStarRatingControl(rating: appModel.rating(for: track), width: 100) { rating in
                 appModel.setRating(track, rating: rating, context: context)
@@ -245,13 +258,13 @@ struct PerformantQueueView: View {
 
     private func statusText(for track: Track, isCurrent: Bool) -> String? {
         var states: [String] = []
-        if isCurrent { states.append("目前播放") }
-        if appModel.pinnedTrackIDs.contains(track.id) { states.append("已釘選離線") }
+        if isCurrent { states.append(AppLanguage.localized("目前播放")) }
+        if appModel.pinnedTrackIDs.contains(track.id) { states.append(AppLanguage.localized("已釘選離線")) }
         switch track.availability {
         case .available: break
-        case .sourceOffline: states.append("來源離線")
-        case .missing: states.append("檔案遺失")
-        case .permissionRequired: states.append("需要重新授權")
+        case .sourceOffline: states.append(AppLanguage.localized("來源離線"))
+        case .missing: states.append(AppLanguage.localized("檔案遺失"))
+        case .permissionRequired: states.append(AppLanguage.localized("需要重新授權"))
         }
         return states.isEmpty ? nil : states.joined(separator: " · ")
     }
@@ -282,8 +295,10 @@ private struct QueueStarRatingControl: View {
                 }
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("評分")
-        .accessibilityValue(rating == 0 ? "未評分" : "\(rating) 顆星")
+        .accessibilityLabel(AppLanguage.localized("評分"))
+        .accessibilityValue(rating == 0
+            ? AppLanguage.localized("未評分")
+            : cmvLocalizedFormat("%lld 顆星", arguments: Int64(rating)))
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: onChange(min(5, rating + 1))

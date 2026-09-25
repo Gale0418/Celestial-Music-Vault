@@ -20,7 +20,9 @@ public final class ProStore {
     public private(set) var isChecking = false
     public private(set) var displayPrice: String?
     public private(set) var operation: Operation = .idle
-    public private(set) var message: String?
+    public var message: String? {
+        messageKey.map(AppLanguage.localized)
+    }
 
     public var isConfigured: Bool { productID != nil }
     public var canPurchase: Bool {
@@ -34,6 +36,7 @@ public final class ProStore {
     private var didStart = false
     private var accessState = ProAccessState()
     private var transactionOrder = ProTransactionOrder()
+    private var messageKey: String?
     private var revision: UInt64 = 0
     private var refreshGeneration: UInt64 = 0
 
@@ -42,8 +45,16 @@ public final class ProStore {
         if let injected {
             self.productID = injected
         } else {
+            #if DEBUG
+            // Only the dedicated Xcode StoreKit scheme sets this launch variable.
+            // Keep the shipped Info.plist product ID independent of local fixtures.
+            let localTestID = Self.validProductID(
+                ProcessInfo.processInfo.environment["CMV_LOCAL_STOREKIT_PRODUCT_ID"])
+            #else
+            let localTestID: String? = nil
+            #endif
             let configured = Bundle.main.object(forInfoDictionaryKey: "CMVProProductID") as? String
-            self.productID = Self.validProductID(configured)
+            self.productID = localTestID ?? Self.validProductID(configured)
         }
     }
 
@@ -83,12 +94,12 @@ public final class ProStore {
         guard !isChecking else { return }
         guard let productID else {
             displayPrice = nil
-            message = "目前尚未開放 Pro 購買，免費功能可照常使用。"
+            messageKey = "目前尚未開放 Pro 購買，免費功能可照常使用。"
             return
         }
 
         isChecking = true
-        message = nil
+        messageKey = nil
         let generation = refreshGeneration
         var foundVerifiedEntitlement = false
         var completedEntitlementRead = true
@@ -154,7 +165,7 @@ public final class ProStore {
         } catch {
             // 商品查詢失敗不代表已購買的權益失效；currentEntitlements 仍會
             // 繼續嘗試，價格則暫時保持 nil。
-            message = "目前無法載入 Pro 商品資訊。"
+            messageKey = "目前無法載入 Pro 商品資訊。"
         }
 
         if let loadedProduct, loadedProduct.type == .nonConsumable {
@@ -164,7 +175,7 @@ public final class ProStore {
             product = nil
             displayPrice = nil
             if message == nil {
-                message = "目前無法購買 Pro。"
+                messageKey = "目前無法購買 Pro。"
             }
         }
 
@@ -173,28 +184,28 @@ public final class ProStore {
 
     public func purchase() async {
         guard operation == .idle else {
-            message = "已有 Pro 操作正在進行。"
+            messageKey = "已有 Pro 操作正在進行。"
             return
         }
         guard !isChecking else {
-            message = "正在檢查 Pro 狀態，請稍後再試。"
+            messageKey = "正在檢查 Pro 狀態，請稍後再試。"
             return
         }
         guard let productID else {
-            message = "目前尚未開放 Pro 購買，免費功能可照常使用。"
+            messageKey = "目前尚未開放 Pro 購買，免費功能可照常使用。"
             return
         }
         guard let product else {
-            message = "目前無法載入 Pro 商品資訊。"
+            messageKey = "目前無法載入 Pro 商品資訊。"
             return
         }
         guard product.id == productID else {
-            message = "Pro 商品設定不一致，暫時無法購買。"
+            messageKey = "Pro 商品設定不一致，暫時無法購買。"
             return
         }
 
         operation = .purchasing
-        message = nil
+        messageKey = nil
         defer { operation = .idle }
 
         do {
@@ -202,56 +213,56 @@ public final class ProStore {
             case let .success(.verified(transaction)):
                 guard transaction.productID == productID,
                       transaction.productType == .nonConsumable else {
-                    message = "收到未預期的 Pro 商品。"
+                    messageKey = "收到未預期的 Pro 商品。"
                     return
                 }
                 let wasRevoked = transaction.revocationDate != nil
                 applyVerified(transaction, source: .purchase)
                 await transaction.finish()
-                if !wasRevoked, hasPro { message = "Pro 已啟用。" }
+                if !wasRevoked, hasPro { messageKey = "Pro 已啟用。" }
             case .success(.unverified(_, _)):
-                message = "Pro 交易驗證失敗，未啟用權益。"
+                messageKey = "Pro 交易驗證失敗，未啟用權益。"
             case .userCancelled:
-                message = "已取消購買。"
+                messageKey = "已取消購買。"
             case .pending:
-                message = "購買正在等待核准。"
+                messageKey = "購買正在等待核准。"
             @unknown default:
-                message = "購買未完成。"
+                messageKey = "購買未完成。"
             }
         } catch {
             // 取消、pending 或錯誤都不會清除既有 verified Pro。
-            message = "購買失敗，請稍後再試。"
+            messageKey = "購買失敗，請稍後再試。"
         }
     }
 
     /// 明確的恢復按鈕才會呼叫 AppStore.sync；一般 refresh 絕不主動同步。
     public func restore() async {
         guard operation == .idle else {
-            message = "已有 Pro 操作正在進行。"
+            messageKey = "已有 Pro 操作正在進行。"
             return
         }
         guard !isChecking else {
-            message = "正在檢查 Pro 狀態，請稍後再試。"
+            messageKey = "正在檢查 Pro 狀態，請稍後再試。"
             return
         }
         guard productID != nil else {
-            message = "目前無法恢復 Pro 購買，請稍後再試。"
+            messageKey = "目前無法恢復 Pro 購買，請稍後再試。"
             return
         }
 
         operation = .restoring
-        message = nil
+        messageKey = nil
         defer { operation = .idle }
 
         do {
             try await AppStore.sync()
             await refreshStore()
             if !hasPro, message == nil {
-                message = "找不到可恢復的 Pro 購買。"
+                messageKey = "找不到可恢復的 Pro 購買。"
             }
         } catch {
             // 恢復失敗不可抹掉既有本地已驗證權益。
-            message = "恢復購買失敗，請稍後再試。"
+            messageKey = "恢復購買失敗，請稍後再試。"
         }
     }
 
@@ -288,13 +299,13 @@ public final class ProStore {
                                       revoked: transaction.revocationDate != nil) else { return }
         if transaction.revocationDate != nil {
             applyTransition(.revoked(revision: nextRevision()))
-            message = "Pro 權益已撤銷。"
+            messageKey = "Pro 權益已撤銷。"
             return
         }
 
         applyTransition(.verified(revision: nextRevision()))
         if case .update = source {
-            message = "Pro 已啟用。"
+            messageKey = "Pro 已啟用。"
         }
     }
 

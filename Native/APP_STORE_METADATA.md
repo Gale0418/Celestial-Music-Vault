@@ -26,7 +26,7 @@
 
 1. Privacy Policy URL（公開可存取的隱私權政策）。
 2. Support URL（公開可存取的支援頁面與聯絡方式）。
-3. 繁中／英文 App subtitle、description、keywords、promotional text 與 screenshots。
+3. 繁中／英文／日文 App subtitle、description、keywords、promotional text 與 screenshots。
 4. 年齡分級、版權聲明、出口合規與 App Review notes。
 5. 內建或測試節目級音訊、字體、插圖與產生式圖示的授權／來源紀錄，以及完整
    `LICENSE`／`NOTICE` 清單。
@@ -41,8 +41,11 @@
 - 價格、跨平台購買權益、家庭共享與未來版本涵蓋範圍未定案前，不寫入確定承諾；
   素材不得將本機播放器描述成包含音樂內容的串流訂閱服務。
 
-- 第一版以 `zh-Hant` 為唯一承諾語言；在 UI 尚未完成英文在地化前，不建立會讓
-  審核者期待完整英文介面的 en-US 商店頁。
+- App 介面已有 `en`／`zh-Hant`／`ja` 三語；裝置偏好為簡中時顯示繁中，其他未支援
+  語言回退英文。三語 string catalog、Mac／iPad Simulator Debug 建置與模擬器主畫面
+  已驗，但設定頁點選、實機與完整語言 QA 仍待驗。不得把 App 內翻譯完成當成商店
+  頁已建立或送審通過；各語商店文案、截圖、權利素材與 Review Notes 由 AERO-MD4
+  分別補齊並核對凍結 RC。
 - Mac 與 iPad 截圖必須來自同一個已凍結 RC，不得混用歷史 `com.aeromusic.native`
   build、`/tmp` 臨時截圖或不同主題狀態。
 - 截圖／預覽影片只能使用自有或明確授權的音訊、影片與封面；不得出現商業專輯

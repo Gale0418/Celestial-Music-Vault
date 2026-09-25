@@ -10,8 +10,8 @@ enum VideoPresentationMode: String, CaseIterable, Identifiable {
     var id: Self { self }
     var title: String {
         switch self {
-        case .moonPortal: "月環內播放"
-        case .separatePlayer: "獨立播放器"
+        case .moonPortal: AppLanguage.localized("月環內播放")
+        case .separatePlayer: AppLanguage.localized("獨立播放器")
         }
     }
     var symbol: String {
@@ -43,6 +43,11 @@ final class VideoPlaybackSession {
     private(set) var duration: TimeInterval = 0
 
     init() {
+        #if os(iOS)
+        // Many music-library entries are movie files. Keep their audio playing
+        // when the display locks, just like the audio-only playback engine.
+        player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
+        #endif
         endObserver.onPlaybackEnded = { [weak self] item, generation in
             guard let self,
                   generation == playbackGeneration,
@@ -78,7 +83,7 @@ final class VideoPlaybackSession {
                 let error = item.error ?? NSError(
                     domain: "CMV.VideoPlayback",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "影片播放失敗。"]
+                    userInfo: [NSLocalizedDescriptionKey: AppLanguage.localized("影片播放失敗。")]
                 )
                 onPlaybackError?(error)
                 onStateChanged?()
@@ -121,7 +126,7 @@ final class VideoPlaybackSession {
             installTimeObserver(for: item, generation: generation)
             player.seek(to: .zero)
             currentTime = 0
-            if autoplay { player.play() }
+            if autoplay { play() }
             onStateChanged?()
             return
         }
@@ -154,7 +159,24 @@ final class VideoPlaybackSession {
                 }
             }
         }
-        if autoplay { player.play() }
+        if autoplay { play() }
+    }
+
+    func play() {
+        guard player.currentItem != nil else { return }
+        #if os(iOS)
+        do {
+            let session = AVAudioSession.sharedInstance()
+            // AirPlay is implicit for .playback; explicitly requesting it is
+            // valid only for .playAndRecord and can fail with paramErr (-50).
+            try session.setCategory(.playback, mode: .moviePlayback, options: [])
+            try session.setActive(true)
+        } catch {
+            onPlaybackError?(error)
+            return
+        }
+        #endif
+        player.play()
     }
 
     func stop() {
@@ -177,7 +199,7 @@ final class VideoPlaybackSession {
             player.pause()
             onOutputLevelChanged?(0)
         } else if player.currentItem != nil {
-            player.play()
+            play()
         }
     }
 
@@ -309,6 +331,7 @@ private struct PlatformVideoPlayer: NSViewRepresentable {
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.controlsStyle = showsPlaybackControls ? .floating : .none
+        view.showsFullScreenToggleButton = showsPlaybackControls
         view.videoGravity = showsPlaybackControls ? .resizeAspect : .resizeAspectFill
         view.player = player
         return view
@@ -317,6 +340,7 @@ private struct PlatformVideoPlayer: NSViewRepresentable {
     func updateNSView(_ view: AVPlayerView, context: Context) {
         view.player = player
         view.controlsStyle = showsPlaybackControls ? .floating : .none
+        view.showsFullScreenToggleButton = showsPlaybackControls
         view.videoGravity = showsPlaybackControls ? .resizeAspect : .resizeAspectFill
     }
 }

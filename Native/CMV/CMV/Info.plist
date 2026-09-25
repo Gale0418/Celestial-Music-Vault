@@ -3,8 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CMVProProductID</key><string>$(CMV_PRO_PRODUCT_ID)</string>
-    <key>CFBundleDisplayName</key><string>星穹私藏音樂庫 Celestial Music Vault</string>
+    <key>CFBundleDisplayName</key><string>Celestial Music Vault</string>
     <key>CFBundleName</key><string>CMV</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
     <key>CFBundlePackageType</key><string>APPL</string>

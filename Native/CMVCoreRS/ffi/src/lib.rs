@@ -721,16 +721,12 @@ impl<'a> Decoder<'a> {
     }
 
     fn f64(&mut self) -> Result<f64, ()> {
-        let value = f64::from_le_bytes(
-            self.take(8)?.try_into().map_err(|_| ())?,
-        );
+        let value = f64::from_le_bytes(self.take(8)?.try_into().map_err(|_| ())?);
         value.is_finite().then_some(value).ok_or(())
     }
 
     fn f32(&mut self) -> Result<f32, ()> {
-        let value = f32::from_le_bytes(
-            self.take(4)?.try_into().map_err(|_| ())?,
-        );
+        let value = f32::from_le_bytes(self.take(4)?.try_into().map_err(|_| ())?);
         value.is_finite().then_some(value).ok_or(())
     }
 
@@ -992,9 +988,8 @@ mod tests {
         pcm.u32(1);
         pcm.f32(f32::NAN);
         let mut output = CMVOwnedBufferV1::default();
-        let status = unsafe {
-            cmv_core_analyze_pcm_v1(pcm.bytes.as_ptr(), pcm.bytes.len(), &mut output)
-        };
+        let status =
+            unsafe { cmv_core_analyze_pcm_v1(pcm.bytes.as_ptr(), pcm.bytes.len(), &mut output) };
         assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
         assert!(output.ptr.is_null());
         assert_eq!(output.len, 0);
@@ -1006,11 +1001,7 @@ mod tests {
         encode_test_timeline_track(&mut playback, 44_100, 441_000, 44_100, Some(f64::NAN));
         encode_test_timeline_track(&mut playback, 48_000, 960_000, 0, None);
         let status = unsafe {
-            cmv_core_plan_playback_v1(
-                playback.bytes.as_ptr(),
-                playback.bytes.len(),
-                &mut output,
-            )
+            cmv_core_plan_playback_v1(playback.bytes.as_ptr(), playback.bytes.len(), &mut output)
         };
         assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
         assert!(output.ptr.is_null());
@@ -1018,9 +1009,8 @@ mod tests {
 
         for (bpm, energy) in [(Some(f64::NAN), 0.5), (None, f64::INFINITY)] {
             let request = encode_test_dj_request(bpm, energy);
-            let status = unsafe {
-                cmv_core_make_dj_v1(request.as_ptr(), request.len(), &mut output)
-            };
+            let status =
+                unsafe { cmv_core_make_dj_v1(request.as_ptr(), request.len(), &mut output) };
             assert_eq!(status, CMVStatusV1::InvalidPayload as i32);
             assert!(output.ptr.is_null());
             assert_eq!(output.len, 0);

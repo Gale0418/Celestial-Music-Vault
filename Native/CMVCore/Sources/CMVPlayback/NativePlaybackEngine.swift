@@ -262,7 +262,9 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     public func play() throws {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playback, mode: .default, options: [.allowAirPlay])
+        // .playback already permits AirPlay; .allowAirPlay is only an explicit
+        // option for .playAndRecord and may return paramErr (-50) here.
+        try session.setCategory(.playback, mode: .default, options: [])
         try session.setActive(true)
         #endif
         if timelineNeedsReschedule {

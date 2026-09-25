@@ -5,6 +5,15 @@ import CMVDomain
 import CMVLibrary
 import CMVThemes
 
+private func cmvLocalizedFormat(_ key: String, arguments: CVarArg...) -> String {
+    let preference = UserDefaults.standard.string(forKey: AppLanguage.preferenceKey) ?? "system"
+    return String(
+        format: AppLanguage.localized(key),
+        locale: AppLanguage.locale(for: preference),
+        arguments: arguments
+    )
+}
+
 private func isFileImporterCancellation(_ error: Error) -> Bool {
     let cocoa = error as NSError
     return cocoa.domain == NSCocoaErrorDomain && cocoa.code == CocoaError.Code.userCancelled.rawValue
@@ -12,6 +21,7 @@ private func isFileImporterCancellation(_ error: Error) -> Bool {
 
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(VideoWindowStore.self) private var videoWindowStore
@@ -48,6 +58,9 @@ struct RootView: View {
                 ProUpgradeView()
                     .environment(appModel)
                     .environment(\.cmvTheme, .palette(appModel.selectedTheme))
+                    #if os(iOS)
+                    .presentationDetents([.large])
+                    #endif
             }
             .task { await appModel.proStore.start() }
             .onChange(of: scenePhase) { _, phase in
@@ -76,38 +89,42 @@ struct RootView: View {
             .task(id: sources.map(\.id)) {
                 let model = appModel
                 model.videoSession.onPlaybackError = { [weak model] error in
-                    model?.errorMessage = "影片播放失敗：\(error.localizedDescription)"
+                    model?.errorMessage = cmvLocalizedFormat("影片播放失敗：%@", arguments: error.localizedDescription)
                 }
                 await model.refreshSourceStatuses(sources, context: modelContext)
             }
             #if os(iOS)
-            .sheet(item: $videoSelection) { selection in
-                NavigationStack {
+            .fullScreenCover(item: $videoSelection) { selection in
+                ZStack(alignment: .topTrailing) {
+                    Color.black.ignoresSafeArea()
                     VideoExperienceView(player: appModel.videoSession.player)
-                        .padding()
-                        .onDisappear {
-                            if appModel.videoURL == selection.url,
-                               appModel.videoPresentationMode == .separatePlayer {
-                                appModel.stopVideoPlayback()
-                                videoWindowStore.clear()
-                            }
+                        .ignoresSafeArea()
+                    HStack(spacing: 16) {
+                        Button("放回月環", systemImage: "moon.circle.fill") {
+                            appModel.videoPresentationMode = .moonPortal
+                            videoSelection = nil
                         }
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("完成") {
-                                    videoSelection = nil
-                                    appModel.stopVideoPlayback()
-                                    videoWindowStore.clear()
-                                }
-                            }
-                            ToolbarItem(placement: .primaryAction) {
-                                Button("放回月環", systemImage: "moon.circle.fill") {
-                                    appModel.videoPresentationMode = .moonPortal
-                                    videoSelection = nil
-                                }
-                                .accessibilityHint("保持目前進度並回到主畫面的月環播放器")
-                            }
+                        .accessibilityHint("保持目前進度並回到主畫面的月環播放器")
+                        Button("完成") {
+                            videoSelection = nil
+                            appModel.stopVideoPlayback()
+                            videoWindowStore.clear()
                         }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(12)
+                    .background(reduceTransparency
+                                ? AnyShapeStyle(Color.black.opacity(0.96))
+                                : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
+                    .padding(16)
+                }
+                .statusBarHidden()
+                .onDisappear {
+                    if appModel.videoURL == selection.url,
+                       appModel.videoPresentationMode == .separatePlayer {
+                        appModel.stopVideoPlayback()
+                        videoWindowStore.clear()
+                    }
                 }
             }
             #endif
@@ -150,10 +167,11 @@ private struct WideRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
 
     var body: some View {
         @Bindable var appModel = appModel
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
         } detail: {
@@ -161,9 +179,11 @@ private struct WideRootView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(TransparentNavigationSplitBackground())
+        #if os(macOS)
         // Artwork follows the navigation's size; it does not propose its own
         // scaled-to-fill dimensions back into the primary layout.
-        .background { CelestialBackground() }
+        .background { CelestialBackground(showsLabels: appModel.selection != .nowPlaying) }
+        #endif
         #if os(macOS)
         .dropDestination(for: URL.self) { urls, _ in
             appModel.addSources(urls, context: modelContext)
@@ -220,13 +240,25 @@ private struct WideRootView: View {
         LibraryStageView()
             .navigationSplitViewColumnWidth(min: 560, ideal: 800)
             .toolbar {
+                #if os(iOS)
+                if columnVisibility == .detailOnly {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(AppLanguage.localized("顯示側邊欄"), systemImage: "sidebar.left") {
+                            withAnimation(.snappy(duration: 0.25)) {
+                                columnVisibility = .all
+                            }
+                        }
+                        .labelStyle(.iconOnly)
+                    }
+                }
+                #endif
                 ToolbarItem(placement: .automatic) {
-                    Button(appModel.showingQueue ? "隱藏接下來播放" : "顯示接下來播放",
+                    Button(appModel.showingQueue ? AppLanguage.localized("隱藏接下來播放") : AppLanguage.localized("顯示接下來播放"),
                            systemImage: "music.note.list") {
                         appModel.showingQueue.toggle()
                     }
                     .labelStyle(.iconOnly)
-                    .accessibilityValue(appModel.showingQueue ? "已顯示" : "已隱藏")
+                    .accessibilityValue(appModel.showingQueue ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
                 }
             }
     }
@@ -256,14 +288,13 @@ private struct CompactRootView: View {
             NavigationStack { CompactLibraryView() }
                 .tabItem { Label("曲庫", systemImage: "music.note") }
                 .tag(LibraryDestination.songs)
-            NavigationStack { QueueView() }
-                .tabItem { Label("歌單", systemImage: "music.note.list") }
-                .tag(LibraryDestination.queue)
+            NavigationStack { PlaylistHubView() }
+                .tabItem { Label(AppLanguage.localized("歌單"), systemImage: "music.note.list") }
+                .tag(LibraryDestination.playlists)
             NavigationStack { SettingsView() }
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(LibraryDestination.settings)
         }
-        .background(CelestialBackground())
         .tint(theme.primary)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -280,7 +311,8 @@ private struct CompactRootView: View {
             guard let destination else { return }
             switch destination {
             case .nowPlaying: selectedTab = .nowPlaying
-            case .queue: selectedTab = .queue
+            case .queue: selectedTab = .songs
+            case .playlists: selectedTab = .playlists
             case .settings: selectedTab = .settings
             default: selectedTab = .songs
             }
@@ -300,8 +332,13 @@ private struct CompactLibraryView: View {
 
     var body: some View {
         List {
+            Section(AppLanguage.localized("播放")) {
+                NavigationLink { QueueView() } label: {
+                    Label(AppLanguage.localized("接下來播放"), systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+            }
             Section("瀏覽") {
-                NavigationLink { ScrollView { TrackListView() } } label: { Label("全部曲目", systemImage: "music.note") }
+                NavigationLink { ScrollView { TrackListView() }.celestialPageBackground() } label: { Label("全部曲目", systemImage: "music.note") }
                 NavigationLink { CatalogView(kind: .album) } label: { Label("專輯", systemImage: "square.stack") }
                 NavigationLink { CatalogView(kind: .artist) } label: { Label("歌手", systemImage: "person.2") }
                 NavigationLink { FavoriteTracksView() } label: { Label("最愛", systemImage: "heart.fill") }
@@ -313,8 +350,8 @@ private struct CompactLibraryView: View {
                 }
             }
         }
-        .scrollContentBackground(.hidden)
-        .navigationTitle("曲庫")
+        .celestialPageBackground()
+        .navigationTitle(AppLanguage.localized("曲庫"))
         .tint(theme.primary)
     }
 }
@@ -323,6 +360,7 @@ private struct CompactLibraryView: View {
 private struct SourceStatusBanner: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Query private var sources: [MediaSourceRecord]
 
     var body: some View {
@@ -332,19 +370,31 @@ private struct SourceStatusBanner: View {
                     .foregroundStyle(.orange)
                 Text(summary)
                     .font(.caption.weight(.semibold))
-                    .lineLimit(1)
+                    #if os(iOS)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    #else
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    #endif
+                    .layoutPriority(1)
                 Spacer(minLength: 12)
-                Button("前往設定") { appModel.selection = .settings }
+                Button(AppLanguage.localized("前往設定")) { appModel.selection = .settings }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    #if os(iOS)
+                    .frame(minWidth: 44, minHeight: 44)
+                    #endif
             }
             .padding(.horizontal, 12)
             #if os(macOS)
-            .frame(height: 28)
+            .frame(minHeight: 28)
             #else
             .frame(minHeight: 44)
             #endif
-            .background(.regularMaterial)
+            .background(reduceTransparency
+                        ? AnyShapeStyle(theme.background.opacity(0.98))
+                        : AnyShapeStyle(.regularMaterial))
             .overlay(alignment: .bottom) {
                 Rectangle().fill(theme.primary.opacity(0.35)).frame(height: 1)
             }
@@ -357,8 +407,17 @@ private struct SourceStatusBanner: View {
     private var offlineCount: Int { sources.count { $0.status == .offline } }
     private var summary: String {
         var parts: [String] = []
-        if permissionCount > 0 { parts.append("\(permissionCount) 個來源需要重新授權") }
-        if offlineCount > 0 { parts.append("\(offlineCount) 個來源目前離線") }
-        return parts.joined(separator: "，")
+        if permissionCount > 0 {
+            parts.append(cmvLocalizedFormat("%lld 個來源需要重新授權", arguments: Int64(permissionCount)))
+        }
+        if offlineCount > 0 {
+            parts.append(cmvLocalizedFormat("%lld 個來源目前離線", arguments: Int64(offlineCount)))
+        }
+        let separator = switch AppLanguage.currentLanguage {
+        case "en": ", "
+        case "ja": "、"
+        default: "，"
+        }
+        return parts.joined(separator: separator)
     }
 }

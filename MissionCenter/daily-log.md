@@ -10,7 +10,7 @@
 
 - 2026-09-08 21:23 +08:00｜變更：AERO-MON30 接入 StoreKit 2、升級頁、設定入口、新 Pro 操作檢查、免費資料保護與交易順序防護；正式 Mission Center 修正版安裝並在原 SMB sync／resume 通過｜原因：使用者批准免費＋一次性 Pro 施工；Gemini 架構挑戰與 Luna 複查確認離線及退款交錯盲點｜影響：Swift full48／0 failures，原交易競態 review resolved；最後版本 Mac／iPad Simulator Debug build 均 exit 0；最終 Mac 隔離升級頁及 Escape 返回設定通過。StoreKit standalone host Code=3、XCTest host未抵達交易，iPad UI及Sandbox仍待驗；未建正式商品或冒稱可上架。
 
-- 最後整理： 2026-09-15
+- 最後整理： 2026-09-26
 
 ## 2026-09-08
 

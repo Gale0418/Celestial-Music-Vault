@@ -4,10 +4,21 @@ import CMVLibrary
 
 @main
 struct CMVApp: App {
+    @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var systemLanguages = Locale.preferredLanguages
     private let container: ModelContainer?
     private let storageError: String?
     @State private var appModel = AppModel()
     @State private var videoWindowStore = VideoWindowStore()
+
+    private var displayLocale: Locale {
+        AppLanguage.locale(for: appLanguage, preferredLanguages: systemLanguages)
+    }
+
+    private func refreshSystemLanguage() {
+        systemLanguages = Locale.preferredLanguages
+    }
 
     init() {
         do {
@@ -26,14 +37,16 @@ struct CMVApp: App {
         }
         .defaultSize(width: 1_360, height: 860)
         .windowToolbarStyle(.unifiedCompact)
-        WindowGroup("影片", id: "video") {
+        WindowGroup(AppLanguage.localized("影片"), id: "video") {
             if let container {
                 VideoWindowView()
                     .environment(appModel)
                     .environment(videoWindowStore)
                     .modelContainer(container)
+                    .environment(\.locale, displayLocale)
             } else {
                 Text("無法開啟影片播放")
+                    .environment(\.locale, displayLocale)
             }
         }
         .defaultSize(width: 760, height: 520)
@@ -46,13 +59,23 @@ struct CMVApp: App {
 
     @ViewBuilder
     private var appContent: some View {
-        if let container {
-            RootView()
-                .environment(appModel)
-                .modelContainer(container)
-                .environment(videoWindowStore)
-        } else {
-            StorageRecoveryView(message: storageError ?? "未知資料庫錯誤")
+        Group {
+            if let container {
+                RootView()
+                    .environment(appModel)
+                    .modelContainer(container)
+                    .environment(videoWindowStore)
+                    .environment(\.locale, displayLocale)
+            } else {
+                StorageRecoveryView(message: storageError ?? AppLanguage.localized("未知資料庫錯誤"))
+                    .environment(\.locale, displayLocale)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            refreshSystemLanguage()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshSystemLanguage() }
         }
     }
 

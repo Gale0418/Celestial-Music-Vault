@@ -16,9 +16,12 @@
 
 ## App Review Notes 草稿
 
-Celestial Music Vault is a local and offline media-library player. No account, sign-in,
-subscription, in-app purchase, or paid content is required. The app does not implement
-SMB login, local-network discovery, cloud sync, advertising, tracking, or cloud AI.
+Celestial Music Vault is a local media-library player. Basic playback, search, playlists,
+favorites, ratings, and everyday queue controls are free. CMV Pro is an optional one-time
+in-app purchase with no subscription. It unlocks offline pinning and smart prefetch,
+Sheep Dreamland and Jupiter Deep-Space Station themes, on-device acoustic analysis,
+and Smart DJ recommendations. The app does not implement SMB login, local-network
+discovery, cloud sync, advertising, tracking, or cloud AI.
 
 To test:
 
@@ -28,17 +31,28 @@ To test:
    never asks for or stores NAS credentials.
 3. Indexing runs in the background and reports progress without blocking playback or UI.
 4. Open Songs and select a rights-cleared audio track. Test queue, shuffle, repeat,
-   favorites, five-star ratings, playlists, sleep timer, and offline pinning.
+   favorites, five-star ratings, playlists, and sleep timer.
 5. Select a rights-cleared MP4, MOV, or M4V file to test mixed audio/video playback. iPad
    uses the native player and Picture in Picture.
 6. Force-quit and reopen the app to verify that the selected source remains authorized.
+
+After purchasing Pro with an App Review Sandbox account:
+
+1. In Settings, open CMV Pro, purchase the one-time product, and use Restore Purchases
+   to verify the entitlement can be restored.
+2. Pin a rights-cleared track for offline playback and verify smart prefetch on the
+   next tracks. Disconnect the source only after the pinned file is ready.
+3. Open Smart DJ from Playlists or Settings, generate a queue, inspect its reasons,
+   and play it. Run on-device analysis from Now Playing for an audio track.
+4. Choose Sheep Dreamland or Jupiter Deep-Space Station in theme settings.
 
 The app processes media, artwork, metadata, acoustic analysis, and listening history only
 on the device. It does not upload audio, PCM, video, artwork, metadata, analysis results,
 or listening history. Removing an item from CMV does not delete the original file.
 
-No special credentials are required. Review media: `[rights-cleared download URL or
-attachment reference]`. Tested on `[device]`, `[OS version]`, on `[date]`.
+No credentials are required for free features; App Review can use a Sandbox account
+for CMV Pro. Review media: `[rights-cleared download URL or attachment reference]`.
+Tested on `[device]`, `[OS version]`, on `[date]`.
 
 ## 無剪輯實機影片 shot list
 

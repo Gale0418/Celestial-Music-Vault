@@ -292,11 +292,13 @@ public actor LibraryDataActor {
         var previewTitles: [String] = []
         var sampleArtist = ""
         var sampleAlbum = ""
+        var representativeTrackID: UUID?
 
         mutating func append(_ record: TrackRecord) {
             if count == 0 {
                 sampleArtist = record.artist
                 sampleAlbum = record.album
+                representativeTrackID = record.id
             }
             count += 1
             if previewTitles.count < 3 { previewTitles.append(record.title) }
@@ -505,7 +507,8 @@ public actor LibraryDataActor {
                 count: $0.count,
                 previewTitles: $0.previewTitles,
                 sampleArtist: $0.sampleArtist,
-                sampleAlbum: $0.sampleAlbum
+                sampleAlbum: $0.sampleAlbum,
+                representativeTrackID: $0.representativeTrackID
             )
         }
             .sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }

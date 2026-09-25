@@ -7,8 +7,7 @@ import CMVThemes
 /// while particle placement is derived from a stable hash.  This keeps redraws
 /// cheap and prevents a new random layout from being created on every frame.
 enum StarfallRenderer {
-    private static let particleCount = 36
-    private static let meteorStartIndex = 32
+    private static let particleCount = 64
     private static let twoPi = Double.pi * 2
 
     // Unit geometry is transformed by a local GraphicsContext per star.  No
@@ -26,17 +25,36 @@ enum StarfallRenderer {
         size: CGSize,
         time: TimeInterval,
         theme: CMVTheme,
-        seedOffset: Int
+        seedOffset: Int,
+        audioLevel: Double = 0
     ) {
         guard size.width.isFinite, size.height.isFinite,
               size.width > 0, size.height > 0,
               time.isFinite else { return }
 
         let seed = UInt64(bitPattern: Int64(seedOffset))
+        let clampedLevel = min(1, max(0, audioLevel.isFinite ? audioLevel : 0))
+        if theme.skyStyle == .sheepDreamland {
+            drawSheepfall(
+                in: &context,
+                size: size,
+                time: time,
+                seed: seed,
+                audioLevel: clampedLevel
+            )
+            return
+        }
+
+        // A quiet sky keeps a few ambient particles. Louder passages reveal
+        // progressively more of the fixed pool without allocating new views.
+        let density = 0.14 + pow(clampedLevel, 0.72) * 0.86
 
         for index in 0..<particleCount {
             let particleSeed = hash(seed &+ UInt64(index) &* 0xD1B5_4A32_D192_ED03)
-            let isMeteor = index >= meteorStartIndex
+            let activationThreshold = random(particleSeed, salt: 16)
+            let densityOpacity = min(1, max(0, (density - activationThreshold) * 9))
+            guard densityOpacity > 0.001 else { continue }
+            let isMeteor = index.isMultiple(of: 4)
             let lifetime = isMeteor
                 ? 12.0 + random(particleSeed, salt: 1) * 7.0
                 : 17.0 + random(particleSeed, salt: 1) * 9.0
@@ -69,7 +87,7 @@ enum StarfallRenderer {
             let fadeIn = min(1.0, progress / 0.12)
             let fadeOut = min(1.0, (1.0 - progress) / 0.14)
             let edgeFade = max(0.0, min(fadeIn, fadeOut))
-            let opacity = (0.32 + random(cycleSeed, salt: 7) * 0.36) * edgeFade
+            let opacity = (0.32 + random(cycleSeed, salt: 7) * 0.36) * edgeFade * densityOpacity
             guard opacity > 0.001 else { continue }
 
             let color = particleColor(random(cycleSeed, salt: 8), theme: theme)
@@ -121,6 +139,59 @@ enum StarfallRenderer {
                     opacity: opacity
                 )
             }
+        }
+    }
+
+    /// Sheep Dreamland replaces meteor particles with a bounded pool of
+    /// transparent mascot sprites. Loud passages reveal up to five sheep;
+    /// positions and variants stay deterministic, so no views are allocated.
+    private static func drawSheepfall(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        time: TimeInterval,
+        seed: UInt64,
+        audioLevel: Double
+    ) {
+        let sprites = [
+            context.resolve(Image("SheepSleep")),
+            context.resolve(Image("SheepUmbrella")),
+            context.resolve(Image("SheepRocket")),
+            context.resolve(Image("SheepTumble"))
+        ]
+        let visibleCount = min(5, 2 + Int((audioLevel * 3).rounded()))
+
+        for index in 0..<visibleCount {
+            let particleSeed = hash(seed &+ UInt64(index) &* 0xD1B5_4A32_D192_ED03)
+            let lifetime = 15.0 + random(particleSeed, salt: 1) * 9.0
+            let phase = random(particleSeed, salt: 2) * lifetime
+            let progress = positiveRemainder(time + phase, lifetime) / lifetime
+            let cycle = Int64(floor((time + phase) / lifetime))
+            let cycleSeed = hash(particleSeed &+ UInt64(bitPattern: cycle) &* 0x9E37_79B9_7F4A_7C15)
+
+            let start = CGPoint(
+                x: size.width * (0.05 + CGFloat(random(cycleSeed, salt: 3)) * 0.90),
+                y: -size.height * (0.10 + CGFloat(random(cycleSeed, salt: 4)) * 0.18)
+            )
+            let end = CGPoint(
+                x: start.x + size.width * CGFloat(-0.18 + random(cycleSeed, salt: 5) * 0.36),
+                y: size.height * (1.12 + CGFloat(random(cycleSeed, salt: 6)) * 0.16)
+            )
+            let center = sampleLinearPoint(start: start, end: end, progress: progress)
+            let edgeFade = min(1.0, progress / 0.10, (1.0 - progress) / 0.12)
+            let width = min(size.width, size.height) * CGFloat(0.075 + random(cycleSeed, salt: 7) * 0.045)
+            let sprite = sprites[index % sprites.count]
+            let aspect = max(0.5, min(1.8, sprite.size.height / max(1, sprite.size.width)))
+            let height = width * aspect
+
+            var transformed = context
+            transformed.opacity = 0.86 * max(0, edgeFade)
+            transformed.translateBy(x: center.x, y: center.y)
+            // Mascot illustrations already have deliberate poses; mirroring or
+            // rotating the bitmap makes faces and limbs look anatomically wrong.
+            transformed.draw(
+                sprite,
+                in: CGRect(x: -width / 2, y: -height / 2, width: width, height: height)
+            )
         }
     }
 

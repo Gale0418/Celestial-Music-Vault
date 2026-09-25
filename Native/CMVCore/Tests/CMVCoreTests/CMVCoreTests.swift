@@ -1171,12 +1171,16 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertTrue(intact)
         let batchPinned = await store.pinnedTrackIDs(in: [trackID, UUID()])
         XCTAssertEqual(batchPinned, Set([trackID]))
+        let presentPinned = await store.presentPinnedTrackIDs(in: [trackID, UUID()])
+        XCTAssertEqual(presentPinned, Set([trackID]))
 
         try Data(repeating: 6, count: 64).write(to: cachedURL, options: .atomic)
         let modifiedMediaStillPinned = await store.isPinned(trackID: trackID)
         XCTAssertTrue(modifiedMediaStillPinned)
         let batchDamaged = await store.pinnedTrackIDs(in: [trackID])
         XCTAssertTrue(batchDamaged.isEmpty)
+        let presentDamaged = await store.presentPinnedTrackIDs(in: [trackID])
+        XCTAssertEqual(presentDamaged, Set([trackID]))
 
         try Data(repeating: 5, count: 64).write(to: cachedURL, options: .atomic)
         try FileManager.default.removeItem(at: cachedURL.deletingPathExtension().appendingPathExtension("sha256"))
@@ -1184,6 +1188,13 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertFalse(missingSidecar)
         let batchMissingSidecar = await store.pinnedTrackIDs(in: [trackID])
         XCTAssertTrue(batchMissingSidecar.isEmpty)
+        let presentMissingSidecar = await store.presentPinnedTrackIDs(in: [trackID])
+        XCTAssertTrue(presentMissingSidecar.isEmpty)
+
+        let sidecarURL = cachedURL.deletingPathExtension().appendingPathExtension("sha256")
+        try Data("  \n".utf8).write(to: sidecarURL, options: .atomic)
+        let presentEmptySidecar = await store.presentPinnedTrackIDs(in: [trackID])
+        XCTAssertTrue(presentEmptySidecar.isEmpty)
 
         try await store.unpin(trackID: trackID)
     }

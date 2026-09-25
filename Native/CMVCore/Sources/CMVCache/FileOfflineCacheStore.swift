@@ -207,6 +207,24 @@ public actor FileOfflineCacheStore: OfflineCacheStore {
         })
     }
 
+    /// Lightweight UI status only. Playback and unavailable-source cleanup must
+    /// use `pinnedTrackIDs(in:)` or `cachedURL(trackID:)` to verify the media hash.
+    public func presentPinnedTrackIDs(in candidates: [UUID]) async -> Set<UUID> {
+        let identifiers = Set(candidates.map(\.uuidString))
+        guard !identifiers.isEmpty,
+              let files = try? indexedMediaFiles(in: pinnedRoot, identifiers: identifiers) else {
+            return []
+        }
+        var present = Set<UUID>()
+        for url in files where fileManager.fileExists(atPath: url.path) {
+            guard let checksum = try? String(contentsOf: checksumURL(for: url), encoding: .utf8),
+                  !checksum.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let id = UUID(uuidString: cacheIdentifier(for: url)) else { continue }
+            present.insert(id)
+        }
+        return present
+    }
+
     /// Resolves one checksum-validated local copy. Repeated single lookups share
     /// a short-lived directory index and debounce LRU persistence; queue callers
     /// can use `cachedURLs(trackIDs:)` to resolve the complete batch at once.

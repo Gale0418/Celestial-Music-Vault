@@ -1,6 +1,15 @@
 import SwiftUI
 import CMVThemes
 
+private func cmvLocalizedFormat(_ key: String, arguments: CVarArg...) -> String {
+    let preference = UserDefaults.standard.string(forKey: AppLanguage.preferenceKey) ?? "system"
+    return String(
+        format: AppLanguage.localized(key),
+        locale: AppLanguage.locale(for: preference),
+        arguments: arguments
+    )
+}
+
 enum BackgroundActivityKind: Sendable {
     case scanning
     case library
@@ -32,8 +41,16 @@ struct BackgroundActivity: Identifiable, Sendable {
     let id: UUID
     let kind: BackgroundActivityKind
     let title: String
+    var localizedTitleKey: String? = nil
+    var localizedTitleArgument: String? = nil
     var detail: String?
     let startedAt: Date
+
+    var displayTitle: String {
+        guard let localizedTitleKey else { return title }
+        guard let localizedTitleArgument else { return AppLanguage.localized(localizedTitleKey) }
+        return String(format: AppLanguage.localized(localizedTitleKey), localizedTitleArgument)
+    }
 }
 
 struct BackgroundActivityRail: View {
@@ -52,7 +69,7 @@ struct BackgroundActivityRail: View {
                     .foregroundStyle(theme.primary)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(activity.title)
+                    Text(activity.displayTitle)
                         .font(.callout.weight(.semibold))
                         .lineLimit(1)
                     if let detail = activity.detail, !detail.isEmpty {
@@ -81,7 +98,7 @@ struct BackgroundActivityRail: View {
     }
 
     private func accessibilityLabel(_ activity: BackgroundActivity) -> String {
-        return [activity.title, activity.detail, pendingWorkLabel.isEmpty ? nil : pendingWorkLabel]
+        return [activity.displayTitle, activity.detail, pendingWorkLabel.isEmpty ? nil : pendingWorkLabel]
             .compactMap { $0 }
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .joined(separator: "，")
@@ -90,9 +107,16 @@ struct BackgroundActivityRail: View {
     private var pendingWorkLabel: String {
         let queued = appModel.queuedScanCount
         let other = appModel.additionalBackgroundActivityCount
-        if queued > 0, other > 0 { return "待索引 \(queued) 個來源 · 其他工作 \(other) 項" }
-        if queued > 0 { return "待索引 \(queued) 個來源" }
-        if other > 0 { return "其他工作 \(other) 項" }
+        if queued > 0, other > 0 {
+            return cmvLocalizedFormat("待索引 %lld 個來源 · 其他工作 %lld 項",
+                                      arguments: Int64(queued), Int64(other))
+        }
+        if queued > 0 {
+            return cmvLocalizedFormat("待索引 %lld 個來源", arguments: Int64(queued))
+        }
+        if other > 0 {
+            return cmvLocalizedFormat("其他工作 %lld 項", arguments: Int64(other))
+        }
         return ""
     }
 }
@@ -110,7 +134,7 @@ struct BackgroundActivityToast: View {
                     .tint(theme.primary)
                 Image(systemName: activity.kind.symbol)
                     .foregroundStyle(theme.primary)
-                Text(activity.title)
+                Text(activity.displayTitle)
                     .font(.callout.weight(.semibold))
                     .lineLimit(1)
                 if let detail = activity.detail, !detail.isEmpty {
@@ -127,7 +151,7 @@ struct BackgroundActivityToast: View {
             .shadow(color: .black.opacity(0.24), radius: 10, y: 4)
             .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             .accessibilityElement(children: .combine)
-            .accessibilityLabel([activity.title, activity.detail].compactMap { $0 }.joined(separator: "，"))
+            .accessibilityLabel([activity.displayTitle, activity.detail].compactMap { $0 }.joined(separator: "，"))
         }
     }
 }
@@ -155,7 +179,7 @@ struct ErrorStatusBanner: View {
             .background(.regularMaterial)
             .overlay(alignment: .bottom) { Divider() }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("錯誤：\(message)")
+            .accessibilityLabel(cmvLocalizedFormat("錯誤：%@", arguments: message))
         }
     }
 }

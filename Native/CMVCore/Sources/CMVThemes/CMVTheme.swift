@@ -6,19 +6,19 @@ public enum CMVThemeID: String, CaseIterable, Codable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var name: String {
         switch self {
-        case .crimsonNebula: "緋紅星雲"
-        case .titaniumEclipse: "鈦銀月蝕"
-        case .emeraldAurora: "翠綠極光"
-        case .amberDawn: "琥珀晨曦"
+        case .crimsonNebula: "銀河月夜"
+        case .titaniumEclipse: "木星深空站"
+        case .emeraldAurora: "綿羊幻想鄉"
+        case .amberDawn: "星海晨光"
         }
     }
 }
 
-public enum CMVSkyStyle: Sendable {
-    case nebula
-    case eclipse
-    case aurora
-    case dawn
+public enum CMVSkyStyle: Sendable, Equatable {
+    case milkyWayNight
+    case jupiterStation
+    case sheepDreamland
+    case celestialDawn
 }
 
 public struct CMVTheme: Sendable {
@@ -44,21 +44,21 @@ public struct CMVTheme: Sendable {
         case .crimsonNebula:
             CMVTheme(
                 id: id,
-                background: Color(red: 0.055, green: 0.012, blue: 0.10),
-                surface: Color(red: 0.25, green: 0.055, blue: 0.19),
-                primary: Color(red: 1.0, green: 0.38, blue: 0.54),
-                secondary: Color(red: 0.70, green: 0.16, blue: 0.48),
+                background: Color(red: 0.018, green: 0.040, blue: 0.10),
+                surface: Color(red: 0.055, green: 0.10, blue: 0.20),
+                primary: Color(red: 0.62, green: 0.82, blue: 1.0),
+                secondary: Color(red: 0.31, green: 0.42, blue: 0.72),
                 text: .white,
-                mutedText: Color(red: 1.0, green: 0.78, blue: 0.84),
-                metal: Color(red: 1.0, green: 0.72, blue: 0.76),
-                skyZenith: Color(red: 0.035, green: 0.006, blue: 0.075),
-                skyMidpoint: Color(red: 0.20, green: 0.018, blue: 0.14),
-                skyHorizon: Color(red: 0.40, green: 0.055, blue: 0.20),
-                atmospherePrimary: Color(red: 1.0, green: 0.18, blue: 0.43),
-                atmosphereSecondary: Color(red: 0.66, green: 0.16, blue: 0.76),
-                starPrimary: Color(red: 1.0, green: 0.86, blue: 0.75),
-                starSecondary: Color(red: 1.0, green: 0.48, blue: 0.66),
-                skyStyle: .nebula
+                mutedText: Color(red: 0.78, green: 0.86, blue: 0.97),
+                metal: Color(red: 0.90, green: 0.95, blue: 1.0),
+                skyZenith: Color(red: 0.008, green: 0.018, blue: 0.060),
+                skyMidpoint: Color(red: 0.035, green: 0.090, blue: 0.20),
+                skyHorizon: Color(red: 0.13, green: 0.18, blue: 0.34),
+                atmospherePrimary: Color(red: 0.64, green: 0.77, blue: 1.0),
+                atmosphereSecondary: Color(red: 0.42, green: 0.48, blue: 0.82),
+                starPrimary: Color(red: 0.96, green: 0.98, blue: 1.0),
+                starSecondary: Color(red: 0.70, green: 0.84, blue: 1.0),
+                skyStyle: .milkyWayNight
             )
         case .titaniumEclipse:
             CMVTheme(
@@ -77,26 +77,26 @@ public struct CMVTheme: Sendable {
                 atmosphereSecondary: Color(red: 0.22, green: 0.50, blue: 0.78),
                 starPrimary: Color(red: 0.92, green: 0.97, blue: 1.0),
                 starSecondary: Color(red: 0.46, green: 0.84, blue: 1.0),
-                skyStyle: .eclipse
+                skyStyle: .jupiterStation
             )
         case .emeraldAurora:
             CMVTheme(
                 id: id,
-                background: Color(red: 0.003, green: 0.045, blue: 0.050),
-                surface: Color(red: 0.018, green: 0.20, blue: 0.18),
-                primary: Color(red: 0.25, green: 1.0, blue: 0.61),
-                secondary: Color(red: 0.08, green: 0.48, blue: 0.49),
+                background: Color(red: 0.10, green: 0.055, blue: 0.18),
+                surface: Color(red: 0.27, green: 0.13, blue: 0.31),
+                primary: Color(red: 1.0, green: 0.58, blue: 0.70),
+                secondary: Color(red: 0.48, green: 0.34, blue: 0.70),
                 text: .white,
-                mutedText: Color(red: 0.72, green: 0.96, blue: 0.88),
-                metal: Color(red: 0.68, green: 1.0, blue: 0.91),
-                skyZenith: Color(red: 0.002, green: 0.024, blue: 0.035),
-                skyMidpoint: Color(red: 0.002, green: 0.13, blue: 0.12),
-                skyHorizon: Color(red: 0.016, green: 0.31, blue: 0.24),
-                atmospherePrimary: Color(red: 0.20, green: 1.0, blue: 0.58),
-                atmosphereSecondary: Color(red: 0.17, green: 0.69, blue: 0.92),
-                starPrimary: Color(red: 0.81, green: 1.0, blue: 0.89),
-                starSecondary: Color(red: 0.38, green: 1.0, blue: 0.72),
-                skyStyle: .aurora
+                mutedText: Color(red: 0.96, green: 0.82, blue: 0.92),
+                metal: Color(red: 1.0, green: 0.89, blue: 0.96),
+                skyZenith: Color(red: 0.055, green: 0.030, blue: 0.13),
+                skyMidpoint: Color(red: 0.22, green: 0.11, blue: 0.31),
+                skyHorizon: Color(red: 0.46, green: 0.24, blue: 0.39),
+                atmospherePrimary: Color(red: 1.0, green: 0.55, blue: 0.70),
+                atmosphereSecondary: Color(red: 0.52, green: 0.78, blue: 0.73),
+                starPrimary: Color(red: 1.0, green: 0.94, blue: 0.98),
+                starSecondary: Color(red: 0.72, green: 0.92, blue: 0.88),
+                skyStyle: .sheepDreamland
             )
         case .amberDawn:
             CMVTheme(
@@ -115,7 +115,7 @@ public struct CMVTheme: Sendable {
                 atmosphereSecondary: Color(red: 1.0, green: 0.38, blue: 0.48),
                 starPrimary: Color(red: 1.0, green: 0.94, blue: 0.72),
                 starSecondary: Color(red: 1.0, green: 0.68, blue: 0.45),
-                skyStyle: .dawn
+                skyStyle: .celestialDawn
             )
         }
     }

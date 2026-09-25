@@ -20,6 +20,9 @@ MissionCenter/.mission-center/
 # Canonical design references live under docs/design/references/ instead.
 .impeccable/
 
+# Machine-local Codex hooks contain absolute tool paths.
+.codex/hooks.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

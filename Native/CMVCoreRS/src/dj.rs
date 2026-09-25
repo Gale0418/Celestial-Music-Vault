@@ -109,8 +109,18 @@ mod tests {
             result.first().map(|item| item.identifier.as_str()),
             Some("favorite")
         );
-        assert!(result[0].reasons.iter().any(|reason| reason.contains("最愛")));
-        assert!(result[0].reasons.iter().any(|reason| reason.contains("120")));
+        assert!(
+            result[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("最愛"))
+        );
+        assert!(
+            result[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("120"))
+        );
     }
 
     #[test]
@@ -155,6 +165,11 @@ mod tests {
         );
         assert_eq!(result.len(), 1);
         assert!((result[0].score - 3.5).abs() < f64::EPSILON);
-        assert!(result[0].reasons.iter().all(|reason| !reason.contains("BPM")));
+        assert!(
+            result[0]
+                .reasons
+                .iter()
+                .all(|reason| !reason.contains("BPM"))
+        );
     }
 }

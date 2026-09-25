@@ -1,0 +1,19 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Celestial Music Vault" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "Celestial Music Vault" }
+        },
+        "zh-Hant" : {
+          "stringUnit" : { "state" : "translated", "value" : "星穹私藏音樂庫" }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -180,6 +180,9 @@ public struct LibraryCatalogGroup: Identifiable, Hashable, Sendable {
     public let previewTitles: [String]
     public let sampleArtist: String
     public let sampleAlbum: String
+    /// An inexpensive artwork source for the group card. The artwork itself
+    /// stays on the track record and is loaded only when a card is visible.
+    public let representativeTrackID: UUID?
 
     public var id: String { key }
 
@@ -188,12 +191,14 @@ public struct LibraryCatalogGroup: Identifiable, Hashable, Sendable {
         count: Int,
         previewTitles: [String],
         sampleArtist: String,
-        sampleAlbum: String
+        sampleAlbum: String,
+        representativeTrackID: UUID? = nil
     ) {
         self.key = key
         self.count = count
         self.previewTitles = previewTitles
         self.sampleArtist = sampleArtist
         self.sampleAlbum = sampleAlbum
+        self.representativeTrackID = representativeTrackID
     }
 }

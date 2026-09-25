@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Foundation
 import ImageIO
 import CMVLibrary
 import CMVThemes
@@ -9,43 +10,31 @@ import UIKit
 import AppKit
 #endif
 
+private func cmvLocalizedFormat(_ key: String, arguments: CVarArg...) -> String {
+    let preference = UserDefaults.standard.string(forKey: AppLanguage.preferenceKey) ?? "system"
+    return String(
+        format: AppLanguage.localized(key),
+        locale: AppLanguage.locale(for: preference),
+        arguments: arguments
+    )
+}
+
 struct CelestialBackground: View {
-    var starCount = 180
     var starSeedOffset = 0
-
-    private struct SkyStar: Sendable {
-        let x: Double
-        let y: Double
-        let radius: Double
-        let opacity: Double
-        let amplitude: Double
-        let speed: Double
-        let phase: Double
-    }
-
-    // Generate the sky once. The frame loop changes brightness only, not
-    // positions or random seeds, so the constellation never flickers away.
-    private static let skyStars: [SkyStar] = (0..<256).map { index in
-        let size = pseudo(index * 29)
-        return SkyStar(
-            x: pseudo(index * 17 + 1), y: pseudo(index * 43 + 2),
-            radius: index.isMultiple(of: 19) ? 1.8 + size * 0.8 : 0.35 + size * size * 1.1,
-            opacity: 0.16 + pseudo(index * 71 + 3) * 0.36,
-            amplitude: 0.06 + pseudo(index * 31 + 4) * 0.20,
-            speed: 0.25 + pseudo(index * 47 + 5) * 0.75,
-            phase: pseudo(index * 97 + 6) * .pi * 2
-        )
-    }
+    var showsLabels = true
 
     @Environment(\.cmvTheme) private var theme
+    @Environment(AppModel.self) private var appModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
     @State private var skyElapsed: TimeInterval = 0
     @State private var skyAnchor: TimeInterval?
+    @State private var planisphereDate = Date.now
+    @State private var isVisible = false
 
     private var shouldAnimate: Bool {
-        !reduceMotion && scenePhase == .active
+        !reduceMotion && scenePhase == .active && isVisible
     }
 
     var body: some View {
@@ -60,38 +49,29 @@ struct CelestialBackground: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .clipped()
                     .saturation(1.05)
-                    .overlay(theme.background.opacity(0.12))
+                    .overlay(theme.background.opacity(backgroundOverlayOpacity))
             }
             TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let time = reduceMotion ? 0 : skyElapsed + (skyAnchor.map { max(0, now - $0) } ?? 0)
                 Canvas { context, size in
-                    for localIndex in 0..<min(256, max(0, starCount)) {
-                        let offset = ((starSeedOffset % 256) + 256) % 256
-                        let index = (localIndex + offset) % 256
-                        let star = Self.skyStars[index]
-                        let x = star.x * size.width
-                        let y = star.y * size.height
-                        let pulse = star.opacity + star.amplitude * (0.5 + 0.5 * sin(time * star.speed + star.phase))
-                        let radius = star.radius
-                        let starColor = index.isMultiple(of: 5) ? theme.starSecondary : theme.starPrimary
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
-                            with: .color(starColor.opacity(pulse))
-                        )
-                        if index.isMultiple(of: 19) {
-                            var sparkle = Path()
-                            sparkle.move(to: CGPoint(x: x - radius * 2.0, y: y))
-                            sparkle.addLine(to: CGPoint(x: x + radius * 2.0, y: y))
-                            sparkle.move(to: CGPoint(x: x, y: y - radius * 2.8))
-                            sparkle.addLine(to: CGPoint(x: x, y: y + radius * 2.8))
-                            context.stroke(sparkle, with: .color(starColor.opacity(pulse * 0.38)),
-                                           style: StrokeStyle(lineWidth: 0.65, lineCap: .round))
-                        }
-                    }
+                    // Every stationary light is astronomical data. The theme
+                    // artwork deliberately contains no baked point stars.
+                    PlanisphereRenderer.draw(
+                        in: &context,
+                        size: size,
+                        date: planisphereDate,
+                        twinkleTime: time,
+                        showsLabels: showsLabels,
+                        theme: theme
+                    )
                     if !reduceMotion {
+                        let audioLevel = appModel.isCurrentMediaPlaying
+                            ? Double(min(1, max(0, appModel.audioEnergy.snapshot.level)))
+                            : 0
                         StarfallRenderer.draw(in: &context, size: size, time: time,
-                                              theme: theme, seedOffset: starSeedOffset)
+                                              theme: theme, seedOffset: starSeedOffset,
+                                              audioLevel: audioLevel)
                     }
                 }
             }
@@ -102,9 +82,19 @@ struct CelestialBackground: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .onAppear { updateSkyClock(running: shouldAnimate) }
+        .onAppear {
+            isVisible = true
+            planisphereDate = .now
+            updateSkyClock(running: shouldAnimate)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { planisphereDate = .now }
+        }
         .onChange(of: shouldAnimate) { _, running in updateSkyClock(running: running) }
-        .onDisappear { updateSkyClock(running: false) }
+        .onDisappear {
+            isVisible = false
+            updateSkyClock(running: false)
+        }
     }
 
     private var backgroundAssetName: String {
@@ -116,12 +106,12 @@ struct CelestialBackground: View {
         }
     }
 
-    private static func pseudo(_ seed: Int) -> Double {
-        var value = UInt64(bitPattern: Int64(seed)) &+ 0x9E37_79B9_7F4A_7C15
-        value = (value ^ (value >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        value = (value ^ (value >> 27)) &* 0x94D0_49BB_1331_11EB
-        value ^= value >> 31
-        return Double(value >> 11) / 9_007_199_254_740_992.0
+    private var backgroundOverlayOpacity: Double {
+        switch theme.id {
+        case .amberDawn: 0.32
+        case .emeraldAurora: 0.24
+        case .crimsonNebula, .titaniumEclipse: 0.10
+        }
     }
 
     private func updateSkyClock(running: Bool) {
@@ -135,6 +125,29 @@ struct CelestialBackground: View {
     }
 }
 
+/// Navigation containers on iPad draw opaque backgrounds above their parent.
+/// Keep one sky inside each visible destination, including pushed pages.
+private struct CelestialPageBackground: ViewModifier {
+    let showsLabels: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content
+            .scrollContentBackground(.hidden)
+            .background { CelestialBackground(showsLabels: showsLabels) }
+        #else
+        content
+        #endif
+    }
+}
+
+extension View {
+    func celestialPageBackground(showsLabels: Bool = true) -> some View {
+        modifier(CelestialPageBackground(showsLabels: showsLabels))
+    }
+}
+
 struct AlbumWorldView: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -142,9 +155,10 @@ struct AlbumWorldView: View {
     var size: CGFloat = 260
     var artworkID: UUID?
     var artworkData: Data?
-    var albumTitle: String = "專輯"
+    var albumTitle: String = AppLanguage.localized("專輯")
     let energyState: AudioEnergyState
     var isPlaying = false
+    var tempoBPM: Double?
 
     var body: some View {
         ZStack {
@@ -174,11 +188,12 @@ struct AlbumWorldView: View {
             AudioEnergyRing(
                 diameter: size,
                 energyState: energyState,
-                isActive: isPlaying
+                isActive: isPlaying,
+                tempoBPM: tempoBPM
             )
         }
         .frame(width: size, height: size)
-        .accessibilityLabel("\(albumTitle)專輯封面")
+        .accessibilityLabel(cmvLocalizedFormat("%@專輯封面", arguments: albumTitle))
         .task(id: artworkRequestID) {
             guard let artworkData else {
                 decodedArtwork = nil
@@ -226,17 +241,23 @@ private struct AudioEnergyRing: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
-    @State private var accumulatedRotationTime: TimeInterval = 0
+    @State private var accumulatedRotationRadians: Double = 0
     @State private var rotationAnchor: TimeInterval?
+    @State private var activeRotationDuration: TimeInterval = 12
     let diameter: CGFloat
     let energyState: AudioEnergyState
     let isActive: Bool
+    let tempoBPM: Double?
 
     // A display-clock transform rotates the whole waveform continuously; the
     // angle is never quantized to a bar index.
-    private static let scanDuration: TimeInterval = 4
+    // Twenty-four beats per orbit keeps fast tracks livelier without restoring
+    // the old four-second "saw blade" motion. Missing analysis stays at 12 s.
+    private static let defaultRotationDuration: TimeInterval = 12
+    private static let beatsPerRotation = 24.0
+    private static let minimumTempoBPM = 60.0
+    private static let maximumTempoBPM = 180.0
     private static let segmentCount = 128
-    private static let renderFrameInterval: TimeInterval = 1.0 / 60.0
     private static let unitVectors: [CGVector] = (0..<segmentCount).map { index in
         let angle = Double(index) / Double(segmentCount) * .pi * 2 - .pi / 2
         return CGVector(dx: cos(angle), dy: sin(angle))
@@ -252,18 +273,17 @@ private struct AudioEnergyRing: View {
 
     var body: some View {
         TimelineView(.animation(
-            minimumInterval: reduceMotion ? 1.0 / 15.0 : Self.renderFrameInterval,
+            minimumInterval: reduceMotion ? 1.0 / 15.0 : nil,
             paused: !isActive || scenePhase != .active
         )) { timeline in
             let snapshot = energyState.snapshot
             let timelineTime = timeline.date.timeIntervalSinceReferenceDate
-            let activeRotationTime = accumulatedRotationTime
-                + (rotationAnchor.map { max(0, timelineTime - $0) } ?? 0)
+            let elapsedRotationTime = rotationAnchor.map { max(0, timelineTime - $0) } ?? 0
+            let activeRotationRadians = accumulatedRotationRadians
+                + elapsedRotationTime * Self.radiansPerSecond(for: activeRotationDuration)
             let rotationRadians = reduceMotion
                 ? 0
-                : activeRotationTime
-                    .truncatingRemainder(dividingBy: Self.scanDuration)
-                    / Self.scanDuration * .pi * 2
+                : Self.normalizedRadians(activeRotationRadians)
             let elapsed = timelineTime - snapshot.publishedAt
             let rawBlend = min(1, max(0, elapsed / snapshot.interpolationDuration))
             let blend = rawBlend * rawBlend * (3 - 2 * rawBlend)
@@ -293,21 +313,25 @@ private struct AudioEnergyRing: View {
 
                 var moonlightHaze = Path()
                 let beamColors = Gradient(stops: [
-                    .init(color: .white.opacity(isActive ? 0.88 : 0.25), location: 0),
-                    .init(color: theme.primary.opacity(isActive ? 0.52 : 0.15), location: 0.22),
-                    .init(color: theme.primary.opacity(isActive ? 0.18 : 0.05), location: 0.58),
-                    .init(color: .clear, location: 0.94),
+                    .init(color: .white.opacity(isActive ? 0.78 : 0.22), location: 0),
+                    .init(color: theme.primary.opacity(isActive ? 0.42 : 0.12), location: 0.20),
+                    .init(color: theme.primary.opacity(isActive ? 0.12 : 0.035), location: 0.50),
+                    .init(color: .clear, location: 0.80),
                     .init(color: .clear, location: 1)
                 ])
                 let shadowColors = Gradient(stops: [
                     .init(color: Color(red: 0.34, green: 0.48, blue: 1.0)
-                        .opacity(isActive ? 0.30 : 0.10), location: 0),
-                    .init(color: theme.atmosphereSecondary.opacity(isActive ? 0.12 : 0.04), location: 0.45),
-                    .init(color: .clear, location: 0.92),
+                        .opacity(isActive ? 0.24 : 0.08), location: 0),
+                    .init(color: theme.atmosphereSecondary.opacity(isActive ? 0.09 : 0.03), location: 0.42),
+                    .init(color: .clear, location: 0.78),
                     .init(color: .clear, location: 1)
                 ])
 
-                for (index, direction) in Self.unitVectors.enumerated() {
+                // One shared subpixel blur softens the geometric edges and
+                // suppresses shimmer while the dense ring moves slowly.
+                context.drawLayer { softenedBeams in
+                    softenedBeams.addFilter(.blur(radius: 1.1))
+                    for (index, direction) in Self.unitVectors.enumerated() {
                     let previousSample = smoothedSample(
                         at: index,
                         samples: snapshot.previousSamples,
@@ -336,7 +360,10 @@ private struct AudioEnergyRing: View {
                     let beam = Self.beamPath(start: baseline, direction: direction,
                                              length: length, halfWidth: halfWidth)
                     moonlightHaze.addPath(beam)
-                    context.fill(beam, with: .linearGradient(beamColors, startPoint: baseline, endPoint: tip))
+                    softenedBeams.fill(
+                        beam,
+                        with: .linearGradient(beamColors, startPoint: baseline, endPoint: tip)
+                    )
 
                     let shadowDirection = Self.shadowVectors[index]
                     let shadowStart = CGPoint(
@@ -346,12 +373,13 @@ private struct AudioEnergyRing: View {
                     let shadowLength = length * 0.74
                     let shadow = Self.beamPath(start: shadowStart, direction: shadowDirection,
                                                length: shadowLength, halfWidth: halfWidth * 0.48)
-                    context.fill(shadow, with: .linearGradient(
+                    softenedBeams.fill(shadow, with: .linearGradient(
                         shadowColors, startPoint: shadowStart, endPoint: CGPoint(
                             x: shadowStart.x + shadowDirection.dx * shadowLength,
                             y: shadowStart.y + shadowDirection.dy * shadowLength
                         )
                     ))
+                    }
                 }
                 let rayGradient = GraphicsContext.Shading.radialGradient(
                     Gradient(stops: [
@@ -365,8 +393,8 @@ private struct AudioEnergyRing: View {
                 // One bounded haze pass for all rays, never one filter per bar.
                 if !reduceTransparency {
                     context.drawLayer { haze in
-                        haze.addFilter(.blur(radius: 2.5))
-                        haze.opacity = 0.22
+                        haze.addFilter(.blur(radius: 4.0))
+                        haze.opacity = 0.26
                         haze.fill(moonlightHaze, with: rayGradient)
                     }
                 }
@@ -375,27 +403,37 @@ private struct AudioEnergyRing: View {
         .frame(width: diameter + 336, height: diameter + 336)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .onAppear { updateRotationClock(rotating: shouldRotate) }
+        .onAppear {
+            activeRotationDuration = targetRotationDuration
+            updateRotationClock(rotating: shouldRotate)
+        }
         .onChange(of: shouldRotate) { _, rotating in
             updateRotationClock(rotating: rotating)
         }
+        .onChange(of: targetRotationDuration) { _, duration in
+            updateRotationDuration(duration)
+        }
     }
 
-    /// A curved taper rather than a stroked line or hard triangular spike.
-    /// The per-beam gradient becomes transparent before the geometric tip.
+    /// A curved taper with a narrow rounded cap instead of a triangular spike.
+    /// The gradient is already transparent before this geometric cap.
     private static func beamPath(start: CGPoint, direction: CGVector,
                                  length: CGFloat, halfWidth: CGFloat) -> Path {
         func point(_ distance: CGFloat, _ width: CGFloat) -> CGPoint {
             CGPoint(x: start.x + direction.dx * distance - direction.dy * width,
                     y: start.y + direction.dy * distance + direction.dx * width)
         }
+        let tipWidth = max(0.32, halfWidth * 0.16)
+        let taperDistance = max(0, length - max(1.2, halfWidth * 0.8))
         var path = Path()
         path.move(to: point(0, halfWidth))
-        path.addCurve(to: point(length, 0),
+        path.addCurve(to: point(taperDistance, tipWidth),
                       control1: point(length * 0.32, halfWidth * 0.92),
-                      control2: point(length * 0.76, halfWidth * 0.12))
+                      control2: point(length * 0.74, tipWidth * 1.25))
+        path.addQuadCurve(to: point(taperDistance, -tipWidth),
+                          control: point(length + tipWidth, 0))
         path.addCurve(to: point(0, -halfWidth),
-                      control1: point(length * 0.76, -halfWidth * 0.12),
+                      control1: point(length * 0.74, -tipWidth * 1.25),
                       control2: point(length * 0.32, -halfWidth * 0.92))
         path.closeSubpath()
         return path
@@ -406,9 +444,43 @@ private struct AudioEnergyRing: View {
         if rotating {
             if rotationAnchor == nil { rotationAnchor = now }
         } else if let rotationAnchor {
-            accumulatedRotationTime += max(0, now - rotationAnchor)
+            accumulatedRotationRadians = Self.normalizedRadians(
+                accumulatedRotationRadians
+                    + max(0, now - rotationAnchor) * Self.radiansPerSecond(for: activeRotationDuration)
+            )
             self.rotationAnchor = nil
         }
+    }
+
+    private var targetRotationDuration: TimeInterval {
+        let resolvedTempo = tempoBPM ?? energyState.estimatedTempoBPM
+        guard let resolvedTempo, resolvedTempo.isFinite, resolvedTempo > 0 else {
+            return Self.defaultRotationDuration
+        }
+        let boundedTempo = min(Self.maximumTempoBPM, max(Self.minimumTempoBPM, resolvedTempo))
+        return Self.beatsPerRotation * 60 / boundedTempo
+    }
+
+    /// Preserve the current angle while switching to the next track's fixed
+    /// tempo. Only angular velocity changes; there is no visible phase jump.
+    private func updateRotationDuration(_ duration: TimeInterval) {
+        let now = Date.timeIntervalSinceReferenceDate
+        if let rotationAnchor {
+            accumulatedRotationRadians = Self.normalizedRadians(
+                accumulatedRotationRadians
+                    + max(0, now - rotationAnchor) * Self.radiansPerSecond(for: activeRotationDuration)
+            )
+            self.rotationAnchor = now
+        }
+        activeRotationDuration = duration
+    }
+
+    private static func radiansPerSecond(for duration: TimeInterval) -> Double {
+        .pi * 2 / max(1, duration)
+    }
+
+    private static func normalizedRadians(_ radians: Double) -> Double {
+        radians.truncatingRemainder(dividingBy: .pi * 2)
     }
 
     /// The write index points at the next slot to be written, which is also
@@ -483,7 +555,8 @@ struct VideoMoonPortalView: View {
             AudioEnergyRing(
                 diameter: size,
                 energyState: appModel.audioEnergy,
-                isActive: appModel.videoSession.isPlaying
+                isActive: appModel.videoSession.isPlaying,
+                tempoBPM: appModel.currentTrack?.analysis?.bpm
             )
         }
         .frame(width: size, height: size)
@@ -499,7 +572,7 @@ struct VideoMoonPortalView: View {
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(appModel.videoSession.isPlaying ? "暫停影片" : "播放影片")
+            .accessibilityLabel(AppLanguage.localized(appModel.videoSession.isPlaying ? "暫停影片" : "播放影片"))
             .padding(10)
         }
         .overlay(alignment: .bottomTrailing) {
