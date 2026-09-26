@@ -1,6 +1,13 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "NSMotionUsageDescription" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "CMV uses device tilt for a subtle Saturn theme parallax effect. Motion data stays on your device." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "CMVは端末の傾きを使い、土星テーマに控えめな視差効果を加えます。モーションデータは端末内に保持されます。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "CMV 使用裝置傾斜，為土星主題呈現輕微視差。動作資料只留在你的裝置上。" } }
+      }
+    },
     "CFBundleDisplayName" : {
       "localizations" : {
         "en" : {

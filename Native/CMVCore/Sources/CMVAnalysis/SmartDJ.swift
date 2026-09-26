@@ -5,7 +5,7 @@ public struct LocalSmartDJService: SmartDJService {
     public init() {}
 
     public func makeQueue(from tracks: [Track], profiles: [UUID: AnalysisProfile],
-                          history: [UUID: ListeningSignal], limit: Int) async -> [DJSelection] {
+                          history: [UUID: ListeningSignal], limit: Int) async throws -> [DJSelection] {
         tracks.map { track in
             let profile = track.analysis ?? profiles[track.id]
             let signal = history[track.id] ?? ListeningSignal()

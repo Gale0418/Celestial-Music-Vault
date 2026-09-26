@@ -54,6 +54,13 @@ private struct LibraryPlaybackContinuation: Sendable {
     var exhausted = false
 }
 
+struct BatchPinResult {
+    let pinned: Int
+    let alreadyPinned: Int
+    let failed: Int
+    let cancelled: Bool
+}
+
 private actor ScanBatchState {
     private var seenIdentifiers = Set<String>()
     private var encounteredIssue = false
@@ -246,6 +253,7 @@ final class AppModel {
     let proStore = ProStore()
     var showingProUpgrade = false
     private(set) var pendingPinTrackIDs: Set<UUID> = []
+    private(set) var batchPinProgress: (completed: Int, total: Int)?
     var showingImporter = false
     var showingQueue = true
     var errorMessage: String?
@@ -280,6 +288,7 @@ final class AppModel {
     /// does not change for elapsed-time, volume, or meter updates.
     private(set) var queueRevision = 0
     private(set) var playlistRevision = 0
+    private(set) var libraryRevision = 0
     private(set) var mixedMediaShuffleEnabled = false
 
     var currentTrack: Track? {
@@ -838,7 +847,7 @@ final class AppModel {
         libraryPlaybackContinuation = nil
     }
 
-    private var canContinueLibraryPlayback: Bool {
+    var canContinueLibraryPlayback: Bool {
         libraryPlaybackContinuation?.exhausted == false
     }
 
@@ -880,8 +889,8 @@ final class AppModel {
         smartPrefetchTask?.cancel()
         smartPrefetchTask = nil
         if videoURL != nil {
-            guard canSkipVideoForward else { return }
-            advanceAfterVideo(context: context)
+            guard canSkipVideoForward || canContinueLibraryPlayback else { return }
+            advanceAfterVideo(context: context, manualSkip: true)
             return
         }
         if playback.queue.currentIndex + 1 < playback.queue.tracks.count {
@@ -890,7 +899,7 @@ final class AppModel {
             return
         }
         if canContinueLibraryPlayback {
-            continueLibraryPlayback(context: context)
+            continueLibraryPlayback(context: context, advanceOnLoad: true)
             return
         }
         guard let mixedQueue,
@@ -1039,11 +1048,12 @@ final class AppModel {
 
     /// 在目前曲目結束後載入曲庫播放來源的下一批曲目。只在需要時建立
     /// Track，並以 preparation generation 讓新的播放或清空佇列取消工作。
-    private func continueLibraryPlayback(context: ModelContext) {
+    private func continueLibraryPlayback(context: ModelContext, advanceOnLoad: Bool = false) {
         guard libraryContinuationTask == nil,
               let continuation = libraryPlaybackContinuation,
               !continuation.exhausted else { return }
         let requestGeneration = playbackPreparationGeneration
+        let requestedTrackID = currentTrack?.id
         libraryContinuationTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { libraryContinuationTask = nil }
@@ -1079,6 +1089,9 @@ final class AppModel {
             libraryPlaybackContinuation = next
             guard !page.isEmpty else {
                 libraryPlaybackContinuation = nil
+                // A manual Next at the end of the catalog must not stop the
+                // track that is still playing while the last page is checked.
+                if advanceOnLoad { return }
                 if videoURL != nil {
                     stopVideoPlayback(invalidatePendingPreparation: false)
                 } else {
@@ -1115,13 +1128,16 @@ final class AppModel {
                      preserveLibraryPlaybackContinuation: true)
             } else {
                 await appendLibraryAudioPage(page, context: context,
-                                             requestGeneration: requestGeneration)
+                                             requestGeneration: requestGeneration,
+                                             advanceOnLoad: advanceOnLoad,
+                                             requestedTrackID: requestedTrackID)
             }
         }
     }
 
     private func appendLibraryAudioPage(_ tracks: [Track], context: ModelContext,
-                                        requestGeneration: Int) async {
+                                        requestGeneration: Int, advanceOnLoad: Bool,
+                                        requestedTrackID: UUID?) async {
         guard requestGeneration == playbackPreparationGeneration,
               activePlaybackContext === context, videoURL == nil,
               !tracks.isEmpty else { return }
@@ -1149,9 +1165,19 @@ final class AppModel {
             guard requestGeneration == playbackPreparationGeneration,
                   activePlaybackContext === context, videoURL == nil else { return }
             playbackAccessLeases.append(contentsOf: leases)
+            let previousCount = playback.queue.tracks.count
+            let stillOnRequestedTrack = playback.queue.current?.id == requestedTrackID
             playback.appendToQueue(tracks, resolvedURLs: resolvedURLs)
             markQueueChanged()
-            try playback.play()
+            if advanceOnLoad && stillOnRequestedTrack && playback.queue.currentIndex == previousCount - 1 {
+                // A manual Next switches immediately; skipForward preserves
+                // whether the player was playing or paused.
+                try playback.skipForward()
+            } else if !advanceOnLoad || playback.queue.currentIndex == previousCount {
+                // At natural EOF appendToQueue already selects the first new
+                // track. Do not skip it a second time.
+                try playback.play()
+            }
         } catch is CancellationError {
             return
         } catch {
@@ -1160,13 +1186,13 @@ final class AppModel {
         }
     }
 
-    func advanceAfterVideo(context: ModelContext) {
+    func advanceAfterVideo(context: ModelContext, manualSkip: Bool = false) {
         guard videoURL != nil else { return }
         let queue = playback.queue
         let nextIndex = queue.currentIndex + 1
         guard queue.tracks.indices.contains(nextIndex) else {
             if canContinueLibraryPlayback {
-                continueLibraryPlayback(context: context)
+                continueLibraryPlayback(context: context, advanceOnLoad: manualSkip)
             } else {
                 stopVideoPlayback()
             }
@@ -2187,6 +2213,144 @@ final class AppModel {
         }
     }
 
+    /// Pin selected library records one at a time so a large selection never
+    /// starts thousands of file copies or materializes their artwork at once.
+    func pinTracks(ids: [UUID], context: ModelContext) async -> BatchPinResult {
+        guard batchPinProgress == nil else {
+            return BatchPinResult(pinned: 0, alreadyPinned: 0, failed: 0, cancelled: false)
+        }
+        guard requirePro(.smartOfflineCache) else {
+            return BatchPinResult(pinned: 0, alreadyPinned: 0, failed: 0, cancelled: false)
+        }
+        var seen = Set<UUID>()
+        let uniqueIDs = ids.filter { seen.insert($0).inserted }
+        guard !uniqueIDs.isEmpty else {
+            return BatchPinResult(pinned: 0, alreadyPinned: 0, failed: 0, cancelled: false)
+        }
+        guard let cacheStore else {
+            errorMessage = cmvLocalized("無法建立離線快取。")
+            return BatchPinResult(pinned: 0, alreadyPinned: 0, failed: uniqueIDs.count, cancelled: false)
+        }
+
+        let activityID = beginBackgroundActivity(kind: .cache,
+                                                 title: cmvLocalized("正在儲存離線內容"),
+                                                 detail: "0/\(uniqueIDs.count)")
+        batchPinProgress = (0, uniqueIDs.count)
+        defer {
+            batchPinProgress = nil
+            endBackgroundActivity(activityID)
+        }
+        let repository = repository(for: context)
+        let sources: [UUID: MediaSourceRecord]
+        do {
+            sources = Dictionary(uniqueKeysWithValues: try context.fetch(FetchDescriptor<MediaSourceRecord>())
+                .map { ($0.id, $0) })
+        } catch {
+            errorMessage = cmvLocalized("離線內容處理失敗：%@", arguments: error.localizedDescription)
+            return BatchPinResult(pinned: 0, alreadyPinned: 0, failed: uniqueIDs.count, cancelled: false)
+        }
+
+        var roots: [UUID: URL] = [:]
+        var leases: [UUID: SecurityScopedResourceLease] = [:]
+        var unavailableSources = Set<UUID>()
+        var pinnedCount = 0
+        var alreadyPinnedCount = 0
+        var failedCount = 0
+        var completed = 0
+        for start in stride(from: 0, to: uniqueIDs.count, by: 64) {
+            if Task.isCancelled || !proStore.hasPro { break }
+            let chunk = Array(uniqueIDs[start..<min(start + 64, uniqueIDs.count)])
+            // A batch promise means playable offline copies, not just files
+            // with a sidecar. Recheck existing pins before counting them done.
+            let verifiedPinned = await cacheStore.pinnedTrackIDs(in: chunk)
+            pinnedTrackIDs.subtract(chunk)
+            pinnedTrackIDs.formUnion(verifiedPinned)
+            if Task.isCancelled || !proStore.hasPro { break }
+            let tracks: [Track]
+            do { tracks = try await repository.tracks(ids: chunk, includeArtwork: false) }
+            catch {
+                failedCount += chunk.count
+                completed += chunk.count
+                batchPinProgress = (completed, uniqueIDs.count)
+                updateBackgroundActivity(activityID, detail: "\(completed)/\(uniqueIDs.count)")
+                continue
+            }
+            failedCount += chunk.count - tracks.count
+            completed += chunk.count - tracks.count
+            for track in tracks {
+                if Task.isCancelled || !proStore.hasPro { break }
+                defer {
+                    completed += 1
+                    batchPinProgress = (completed, uniqueIDs.count)
+                    updateBackgroundActivity(activityID, detail: "\(completed)/\(uniqueIDs.count)")
+                }
+                guard !pendingPinTrackIDs.contains(track.id) else {
+                    failedCount += 1
+                    continue
+                }
+                if pinnedTrackIDs.contains(track.id) {
+                    alreadyPinnedCount += 1
+                    continue
+                }
+                pendingPinTrackIDs.insert(track.id)
+                defer { pendingPinTrackIDs.remove(track.id) }
+                do {
+                    guard !unavailableSources.contains(track.sourceID),
+                          let source = sources[track.sourceID] else {
+                        throw MediaSourceAccessError.accessDenied
+                    }
+                    let root: URL
+                    if let cached = roots[track.sourceID] {
+                        root = cached
+                    } else {
+                        do {
+                            root = try await resolve(source: source, context: context)
+                            leases[track.sourceID] = try await sourceAccess.lease(for: root)
+                            roots[track.sourceID] = root
+                        } catch {
+                            unavailableSources.insert(track.sourceID)
+                            throw error
+                        }
+                    }
+                    let url = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
+                    try Task.checkCancellation()
+                    _ = try await cacheStore.pin(trackID: track.id, sourceURL: url)
+                    pinnedTrackIDs.insert(track.id)
+                    pinnedCount += 1
+                } catch is CancellationError {
+                    if Task.isCancelled { break }
+                    failedCount += 1
+                } catch {
+                    failedCount += 1
+                }
+            }
+        }
+        withExtendedLifetime(leases) {}
+        let cancelled = Task.isCancelled || !proStore.hasPro
+        if failedCount > 0 {
+            errorMessage = cmvLocalized("離線內容處理失敗：%@", arguments: "\(failedCount)/\(uniqueIDs.count)")
+        }
+        return BatchPinResult(pinned: pinnedCount, alreadyPinned: alreadyPinnedCount,
+                              failed: failedCount, cancelled: cancelled)
+    }
+
+    func updateMetadata(ids: [UUID], patch: TrackMetadataPatch, context: ModelContext) async -> Bool {
+        guard !ids.isEmpty, patch.hasChanges else { return false }
+        guard requirePro(.advancedLibrary) else { return false }
+        let activityID = beginBackgroundActivity(kind: .library,
+                                                 title: cmvLocalized("正在更新歌曲資訊"),
+                                                 detail: "\(ids.count)")
+        defer { endBackgroundActivity(activityID) }
+        do {
+            try await repository(for: context).updateMetadata(for: ids, with: patch)
+            libraryRevision &+= 1
+            return true
+        } catch {
+            errorMessage = cmvLocalized("無法更新歌曲資訊：%@", arguments: error.localizedDescription)
+            return false
+        }
+    }
+
     func playlists(context: ModelContext) async -> [Playlist] {
         playlistReadError = nil
         let repository = repository(for: context)
@@ -2293,6 +2457,23 @@ final class AppModel {
             return true
         } catch {
             errorMessage = cmvLocalized("無法加入歌單：%@", arguments: error.localizedDescription)
+            return false
+        }
+    }
+
+    func removeTracks(ids: [UUID], from playlist: Playlist, context: ModelContext) async -> Bool {
+        guard !ids.isEmpty else { return true }
+        guard requirePro(.advancedLibrary) else { return false }
+        let activityID = beginBackgroundActivity(kind: .library,
+                                                 title: cmvLocalized("正在整理歌單"),
+                                                 detail: "\(ids.count)")
+        defer { endBackgroundActivity(activityID) }
+        do {
+            try await repository(for: context).removeTracks(trackIDs: ids, fromPlaylist: playlist.id)
+            playlistRevision &+= 1
+            return true
+        } catch {
+            errorMessage = cmvLocalized("無法從歌單移除歌曲：%@", arguments: error.localizedDescription)
             return false
         }
     }
@@ -2426,11 +2607,11 @@ final class AppModel {
         return profile
     }
     func makeSmartQueue(tracks: [Track], profiles: [UUID: AnalysisProfile],
-                        history: [UUID: ListeningSignal], limit: Int = 25) async -> [DJSelection] {
-        guard requirePro(.smartDJ) else { return [] }
+                        history: [UUID: ListeningSignal], limit: Int = 25) async throws -> [DJSelection] {
+        guard requirePro(.smartDJ) else { throw ProOperationError.requiresPro }
         let activityID = beginBackgroundActivity(kind: .analysis, title: cmvLocalized("智慧 DJ 正在選歌"))
         defer { endBackgroundActivity(activityID) }
-        return await smartDJ.makeQueue(from: tracks, profiles: profiles, history: history, limit: limit)
+        return try await smartDJ.makeQueue(from: tracks, profiles: profiles, history: history, limit: limit)
     }
 
     private static func fallbackSearchScore(_ candidate: LibrarySearchCandidate, tokens: [String]) -> Int {

@@ -62,6 +62,26 @@ public final class TrackRecord {
     /// A user-initiated library removal. The source file is preserved and
     /// later scans must not silently add the item back to the visible library.
     public var isExcluded: Bool = false
+    /// Bitmask for metadata fields explicitly overridden in CMV. Source scans
+    /// update only fields without a user override, so library edits survive a
+    /// later re-index without modifying the original media file.
+    public var metadataOverrideMask: Int = 0
+
+    static let titleMetadataOverride = 1 << 0
+    static let artistMetadataOverride = 1 << 1
+    static let albumMetadataOverride = 1 << 2
+    static let albumArtistMetadataOverride = 1 << 3
+    static let artworkMetadataOverride = 1 << 4
+    static let trackNumberMetadataOverride = 1 << 5
+    static let discNumberMetadataOverride = 1 << 6
+
+    func hasMetadataOverride(_ bit: Int) -> Bool {
+        metadataOverrideMask & bit != 0
+    }
+
+    func addMetadataOverride(_ bit: Int) {
+        metadataOverrideMask |= bit
+    }
 
     public init(id: UUID = UUID(), sourceID: UUID, file: ScannedMediaFile) {
         self.id = id; self.sourceID = sourceID; self.relativePath = file.relativePath

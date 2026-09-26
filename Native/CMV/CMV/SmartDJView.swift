@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CMVDomain
+import CMVLibrary
 import CMVThemes
 
 /// Smart DJ 的使用者入口與結果清單。
@@ -20,6 +21,7 @@ struct SmartDJView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var selections: [DJSelection] = []
     @State private var isGenerating = false
     @State private var hasLoaded = false
@@ -92,7 +94,10 @@ struct SmartDJView: View {
             .accessibilityHint(AppLanguage.localized("從分段候選曲目產生新的 Smart DJ 播放清單"))
         }
         .padding(20)
-        .background(theme.surface.opacity(0.34), in: RoundedRectangle(cornerRadius: 18))
+        .background(
+            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.34)),
+            in: RoundedRectangle(cornerRadius: 18)
+        )
     }
 
     private var generatingCard: some View {
@@ -113,7 +118,10 @@ struct SmartDJView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(theme.surface.opacity(0.24), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.24)),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
     }
 
     private var emptyCard: some View {
@@ -162,7 +170,10 @@ struct SmartDJView: View {
             }
         }
         .padding(20)
-        .background(theme.surface.opacity(0.28), in: RoundedRectangle(cornerRadius: 18))
+        .background(
+            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.28)),
+            in: RoundedRectangle(cornerRadius: 18)
+        )
     }
 
     private func smartDJRow(_ selection: DJSelection, rank: Int) -> some View {
@@ -210,7 +221,10 @@ struct SmartDJView: View {
             .frame(minHeight: 44)
         }
         .padding(24)
-        .background(theme.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: 22))
+        .background(
+            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.92)),
+            in: RoundedRectangle(cornerRadius: 22)
+        )
         .frame(maxWidth: 560)
         .padding(24)
     }
@@ -265,17 +279,54 @@ struct SmartDJView: View {
         let profiles = Dictionary(uniqueKeysWithValues: playable.compactMap { track in
             track.analysis.map { (track.id, $0) }
         })
-        let result = await appModel.makeSmartQueue(
-            tracks: playable,
-            profiles: profiles,
-            history: [:],
-            limit: Self.queueLimit
-        )
+        let history: [UUID: ListeningSignal]
+        do {
+            history = try loadListeningHistory(for: playable)
+        } catch {
+            guard requestGeneration == generation, !Task.isCancelled else { return }
+            selections = []
+            statusMessage = AppLanguage.localized("無法讀取播放歷史，請稍後再試。")
+            return
+        }
+
+        let result: [DJSelection]
+        do {
+            result = try await appModel.makeSmartQueue(
+                tracks: playable,
+                profiles: profiles,
+                history: history,
+                limit: Self.queueLimit
+            )
+        } catch {
+            guard requestGeneration == generation, !Task.isCancelled else { return }
+            selections = []
+            statusMessage = AppLanguage.localized("Smart DJ 無法完成推薦，請稍後再試。")
+            return
+        }
         guard requestGeneration == generation, !Task.isCancelled else { return }
         selections = result
         if result.isEmpty {
             statusMessage = AppLanguage.localized("Smart DJ 暫時沒有推薦結果，請稍後再試。")
         }
+    }
+
+    private func loadListeningHistory(for tracks: [Track]) throws -> [UUID: ListeningSignal] {
+        let trackIDs = tracks.map(\.id)
+        guard !trackIDs.isEmpty else { return [:] }
+        var descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
+            trackIDs.contains(record.id)
+        })
+        descriptor.propertiesToFetch = [
+            \.id, \.playCount, \.skipCount, \.lastPlayedAt
+        ]
+        let records = try context.fetch(descriptor)
+        return Dictionary(uniqueKeysWithValues: records.map { record in
+            (record.id, ListeningSignal(
+                playCount: record.playCount,
+                skipCount: record.skipCount,
+                lastPlayedAt: record.lastPlayedAt
+            ))
+        })
     }
 
     private func loadCandidateSample() async -> [Track] {

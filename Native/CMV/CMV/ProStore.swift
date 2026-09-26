@@ -16,6 +16,12 @@ public final class ProStore {
         case restoring
     }
 
+    private enum EntitlementRead {
+        case verified
+        case absent
+        case unavailable
+    }
+
     public private(set) var hasPro = false
     public private(set) var isChecking = false
     public private(set) var displayPrice: String?
@@ -87,15 +93,15 @@ public final class ProStore {
     /// 重新讀取 StoreKit currentEntitlements；不呼叫 AppStore.sync。
     public func refresh() async {
         guard operation == .idle else { return }
-        await refreshStore()
+        _ = await refreshStore()
     }
 
-    private func refreshStore() async {
-        guard !isChecking else { return }
+    private func refreshStore() async -> EntitlementRead {
+        guard !isChecking else { return .unavailable }
         guard let productID else {
             displayPrice = nil
             messageKey = "目前尚未開放 Pro 購買，免費功能可照常使用。"
-            return
+            return .unavailable
         }
 
         isChecking = true
@@ -140,7 +146,10 @@ public final class ProStore {
 
         guard completedEntitlementRead, !Task.isCancelled else {
             isChecking = false
-            return
+            // A newer verified Transaction.updates event can legitimately
+            // supersede this interrupted iteration. Report its current state
+            // instead of claiming that the restored access is unknown.
+            return generation != refreshGeneration && hasPro ? .verified : .unavailable
         }
 
         // 新 transaction 若在 currentEntitlements 等待期間抵達，快照已過時，
@@ -149,6 +158,7 @@ public final class ProStore {
         if canCommitSnapshot {
             applyEntitlementSnapshot(foundVerifiedEntitlement)
         }
+        let snapshotGeneration = refreshGeneration
 
         // 權益快照已交付給狀態機後再 finish；若 refresh 已過時或被取消，
         // 這批 transaction 不算已交付，交由下一次核對或 updates 處理。
@@ -180,6 +190,17 @@ public final class ProStore {
         }
 
         isChecking = false
+        // Transaction.updates may arrive while finishing transactions or
+        // loading the product. Never report a superseded snapshot as the
+        // outcome of this restore attempt.
+        if refreshGeneration != snapshotGeneration {
+            return hasPro ? .verified : .unavailable
+        }
+        guard canCommitSnapshot else {
+            // A verified update may have arrived during entitlement iteration.
+            return generation != refreshGeneration && hasPro ? .verified : .unavailable
+        }
+        return foundVerifiedEntitlement ? .verified : .absent
     }
 
     public func purchase() async {
@@ -256,9 +277,13 @@ public final class ProStore {
 
         do {
             try await AppStore.sync()
-            await refreshStore()
-            if !hasPro, message == nil {
+            switch await refreshStore() {
+            case .verified where hasPro:
+                messageKey = "Pro 購買已確認。"
+            case .absent where !hasPro:
                 messageKey = "找不到可恢復的 Pro 購買。"
+            default:
+                messageKey = "目前無法確認 Pro 購買，請稍後再試。"
             }
         } catch {
             // 恢復失敗不可抹掉既有本地已驗證權益。

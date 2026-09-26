@@ -34,9 +34,9 @@ not information architecture.
 | Theme | Sky | Cloud light | Accent | Highlight |
 | --- | --- | --- | --- | --- |
 | 緋紅星雲 | plum-black | rose | coral | warm stardust |
-| 鈦銀月蝕 | midnight indigo | moon silver | cyan | ice blue |
-| 翠綠極光 | deep teal | emerald mist | mint | prismatic green |
-| 琥珀晨曦 | lavender dusk | peach | amber | sunrise gold |
+| 土星環軌站 | midnight indigo | Saturn ring light | cyan | ice blue |
+| 綿羊幻想鄉 | deep teal | emerald mist | mint | prismatic green |
+| 星海晨光 | lavender dusk | peach | amber | sunrise gold |
 
 Text, separators, selection, success, warning, error, unavailable, and focus
 colors remain semantic and meet contrast requirements in every theme.
@@ -69,7 +69,10 @@ colors remain semantic and meet contrast requirements in every theme.
 - Motion explains player expansion, queue changes, source scanning, and navigation.
 - Ambient stars and auroras use a small bounded particle count and pause when the
   app is inactive.
-- Reduce Motion replaces drifting/parallax effects with a static, composed sky.
+- 土星球體輪廓與星環固定；原創無縫雲圖沿球面經度旋轉，七個緯度帶分別以
+  96–192 秒一圈的速度運動，帶間柔和交融。星環只有淡淡星光，背景不發出聲音。
+- Reduce Motion keeps the globe and rings static and replaces drifting/parallax effects
+  with a composed sky.
 - Reduce Transparency uses opaque semantic surfaces with preserved hierarchy.
 - Large artwork is downsampled and cached; background effects do not run during
   memory pressure.

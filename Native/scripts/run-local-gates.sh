@@ -51,27 +51,28 @@ run_step() {
 cd "$workspace"
 
 run_step "Rust 1.98.1 toolchain contract"
-python3 - <<'PY'
-from pathlib import Path
-import tomllib
+expected="1.98.1"
+read_toml_string() {
+  local file="$1"
+  local key="$2"
+  sed -nE "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]+)\".*$/\1/p" "$file" | sed -n '1p'
+}
 
-expected = "1.98.1"
-root = Path.cwd()
+actual_channel="$(read_toml_string "rust-toolchain.toml" channel)"
+if [[ "$actual_channel" != "$expected" ]]; then
+  print -u2 -- "error: rust-toolchain.toml channel mismatch: expected $expected, got ${(actual_channel):-<missing>}"
+  exit 1
+fi
 
-toolchain = tomllib.loads((root / "rust-toolchain.toml").read_text())
-actual_channel = toolchain.get("toolchain", {}).get("channel")
-if actual_channel != expected:
-    raise SystemExit(f"rust-toolchain.toml channel mismatch: expected {expected}, got {actual_channel!r}")
-
-for relative in (
-    "Native/CMVCoreRS/Cargo.toml",
-    "Native/CMVCoreRS/ffi/Cargo.toml",
-):
-    data = tomllib.loads((root / relative).read_text())
-    actual = data.get("package", {}).get("rust-version")
-    if actual != expected:
-        raise SystemExit(f"{relative} rust-version mismatch: expected {expected}, got {actual!r}")
-PY
+for relative in \
+  Native/CMVCoreRS/Cargo.toml \
+  Native/CMVCoreRS/ffi/Cargo.toml; do
+  actual="$(read_toml_string "$relative" rust-version)"
+  if [[ "$actual" != "$expected" ]]; then
+    print -u2 -- "error: $relative rust-version mismatch: expected $expected, got ${(actual):-<missing>}"
+    exit 1
+  fi
+done
 
 rustc_version="$(rustc --version)"
 [[ "$rustc_version" == rustc\ 1.98.1\ * ]] || {

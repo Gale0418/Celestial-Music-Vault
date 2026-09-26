@@ -7,7 +7,7 @@ struct NativeSmartDJService: SmartDJService {
     private let rust = CMVCoreRSClient()
 
     func makeQueue(from tracks: [Track], profiles: [UUID: AnalysisProfile],
-                   history: [UUID: ListeningSignal], limit: Int) async -> [DJSelection] {
+                   history: [UUID: ListeningSignal], limit: Int) async throws -> [DJSelection] {
         let input = tracks.map { track in
             let profile = track.analysis ?? profiles[track.id]
             let signal = history[track.id] ?? ListeningSignal()
@@ -17,7 +17,7 @@ struct NativeSmartDJService: SmartDJService {
                                playCount: UInt32(clamping: signal.playCount),
                                skipCount: UInt32(clamping: signal.skipCount))
         }
-        guard let selections = try? rust.makeDJ(tracks: input, limit: limit) else { return [] }
+        let selections = try rust.makeDJ(tracks: input, limit: limit)
         let byID = Dictionary(tracks.map { ($0.id.uuidString, $0) },
                               uniquingKeysWith: { first, _ in first })
         return selections.compactMap { selection in

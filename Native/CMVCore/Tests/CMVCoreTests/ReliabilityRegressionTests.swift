@@ -224,6 +224,107 @@ final class ReliabilityRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testDelayedAppendedTrackDoesNotReportQueueFinished() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let first = Track(sourceID: sourceID, relativePath: "first.caf",
+                          fileIdentifier: "first-delayed", title: "First", duration: 1,
+                          fileSize: 1, modifiedAt: .now)
+        let second = Track(sourceID: sourceID, relativePath: "second.caf",
+                           fileIdentifier: "second-delayed", title: "Second", duration: 1,
+                           fileSize: 1, modifiedAt: .now)
+        let third = Track(sourceID: sourceID, relativePath: "third.caf",
+                          fileIdentifier: "third-delayed", title: "Third", duration: 1,
+                          fileSize: 1, modifiedAt: .now)
+        let opener = AudioFileOpener()
+        let engine = NativePlaybackEngine(
+            planner: { engineRate, current, _ in
+                let remaining = current.totalFrames - current.startFrame
+                let nextStart = UInt64(
+                    (Double(remaining) * Double(engineRate) / Double(current.sampleRateHz)).rounded()
+                )
+                return PlaybackSchedulePlan(
+                    currentStartFrame: current.startFrame,
+                    currentFrameCount: remaining,
+                    nextStartEngineFrame: nextStart,
+                    currentGainLinear: 1,
+                    nextGainLinear: 1
+                )
+            },
+            fileOpener: opener
+        )
+        try await engine.load(PlaybackQueue(tracks: [first]), resolvedURLs: [first.id: audioURL])
+        await opener.delayNextOpen(by: 2_000_000_000)
+
+        var didReportQueueFinished = false
+        let advanced = expectation(description: "delayed appended track becomes current")
+        let continued = expectation(description: "following appended track becomes current")
+        engine.onQueueFinished = { didReportQueueFinished = true }
+        engine.onCurrentTrackChanged = { track in
+            if track?.id == second.id { advanced.fulfill() }
+            if track?.id == third.id { continued.fulfill() }
+        }
+
+        try engine.play()
+        engine.appendToQueue([second, third], resolvedURLs: [second.id: audioURL, third.id: audioURL])
+        await fulfillment(of: [advanced, continued], timeout: 6)
+
+        XCTAssertFalse(didReportQueueFinished)
+        XCTAssertEqual(engine.queue.current?.id, third.id)
+        XCTAssertTrue(engine.isPlaying)
+    }
+
+    @MainActor
+    func testMissingResolvedURLAfterCurrentTrackFinishesDoesNotHang() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let first = Track(sourceID: sourceID, relativePath: "first.caf",
+                          fileIdentifier: "first-unresolved", title: "First", duration: 1,
+                          fileSize: 1, modifiedAt: .now)
+        let second = Track(sourceID: sourceID, relativePath: "second.caf",
+                           fileIdentifier: "second-unresolved", title: "Second", duration: 1,
+                           fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+        try await engine.load(PlaybackQueue(tracks: [first]), resolvedURLs: [first.id: audioURL])
+        engine.setQueue(PlaybackQueue(tracks: [first, second]))
+
+        let reportedFailure = expectation(description: "unresolved next track reported")
+        let finished = expectation(description: "queue finishes after unresolved next track is removed")
+        engine.onPlaybackError = { error in
+            if case NativePlaybackError.unresolvedTrack = error { reportedFailure.fulfill() }
+        }
+        engine.onQueueFinished = { finished.fulfill() }
+
+        try engine.play()
+        await fulfillment(of: [reportedFailure, finished], timeout: 5)
+
+        XCTAssertEqual(engine.queue.tracks.map(\.id), [first.id])
+    }
+
+    @MainActor
+    func testManualSkipReachesNewlyAppendedPageWithoutStartingPausedPlayer() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let first = Track(sourceID: sourceID, relativePath: "first.caf",
+                          fileIdentifier: "first", title: "First", duration: 1,
+                          fileSize: 1, modifiedAt: .now)
+        let second = Track(sourceID: sourceID, relativePath: "second.caf",
+                           fileIdentifier: "second", title: "Second", duration: 1,
+                           fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+        try await engine.load(PlaybackQueue(tracks: [first]), resolvedURLs: [first.id: audioURL])
+
+        engine.appendToQueue([second], resolvedURLs: [second.id: audioURL])
+        try engine.skipForward()
+
+        XCTAssertEqual(engine.queue.current?.id, second.id)
+        XCTAssertFalse(engine.isPlaying)
+    }
+
+    @MainActor
     func testShuffledTransitionDoesNotReusePreparedFileForDifferentTrack() throws {
         let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
         defer { try? FileManager.default.removeItem(at: audioURL) }

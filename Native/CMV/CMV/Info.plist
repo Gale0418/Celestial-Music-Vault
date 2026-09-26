@@ -14,6 +14,7 @@
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.music</string>
     <key>ITSAppUsesNonExemptEncryption</key><false/>
+    <key>NSMotionUsageDescription</key><string>CMV uses device tilt for a subtle Saturn theme parallax effect. Motion data stays on your device.</string>
     <key>UIBackgroundModes</key><array><string>audio</string></array>
     <key>UILaunchScreen</key><dict/>
     <key>UISupportedInterfaceOrientations~ipad</key>

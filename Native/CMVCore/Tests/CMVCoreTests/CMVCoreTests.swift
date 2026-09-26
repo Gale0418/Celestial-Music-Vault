@@ -78,11 +78,11 @@ final class CMVCoreTests: XCTestCase {
         )
     }
 
-    func testSmartDJIsExplainableAndPenalizesSkips() async {
+    func testSmartDJIsExplainableAndPenalizesSkips() async throws {
         let source = UUID()
         let favorite = Track(sourceID: source, relativePath: "favorite.flac", fileIdentifier: "1", title: "Favorite", fileSize: 1, modifiedAt: .now, isFavorite: true, rating: 5)
         let skipped = Track(sourceID: source, relativePath: "skipped.flac", fileIdentifier: "2", title: "Skipped", fileSize: 1, modifiedAt: .now)
-        let results = await LocalSmartDJService().makeQueue(from: [skipped, favorite], profiles: [:], history: [skipped.id: ListeningSignal(skipCount: 10)], limit: 2)
+        let results = try await LocalSmartDJService().makeQueue(from: [skipped, favorite], profiles: [:], history: [skipped.id: ListeningSignal(skipCount: 10)], limit: 2)
         XCTAssertEqual(results.first?.track.id, favorite.id)
         XCTAssertFalse(results.first?.reasons.isEmpty ?? true)
     }
@@ -392,6 +392,8 @@ final class CMVCoreTests: XCTestCase {
         try await repository.setFavorite(trackID: oldTrack.id, isFavorite: true)
         try await repository.setRating(trackID: oldTrack.id, rating: 4)
         try await repository.recordPlayback(trackID: oldTrack.id, skipped: false)
+        try await repository.updateMetadata(for: [oldTrack.id],
+                                            with: TrackMetadataPatch(title: .set("手動月光")))
         let playlist = try await repository.createPlaylist(name: "保留身份")
         try await repository.addTracks(trackIDs: [oldTrack.id, newTrack.id], toPlaylist: playlist.id)
         try await repository.applyReconciliation(
@@ -404,7 +406,7 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(repairedCount, 1)
         XCTAssertEqual(repaired.id, oldTrack.id)
         XCTAssertEqual(repaired.fileIdentifier, "new-volume-id")
-        XCTAssertEqual(repaired.title, "月光")
+        XCTAssertEqual(repaired.title, "手動月光")
         XCTAssertEqual(repaired.availability, .available)
         XCTAssertTrue(repaired.isFavorite)
         XCTAssertEqual(repaired.rating, 4)
@@ -412,6 +414,11 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(repairedPlaylists.first?.trackIDs, [oldTrack.id])
         let secondRepairCount = try await repository.repairDuplicateTracksByRelativePath(sourceIDs: [sourceID])
         XCTAssertEqual(secondRepairCount, 0)
+        try await repository.applyReconciliation(upserts: [remountedFile],
+                                                 missingIdentifiers: [], sourceID: sourceID)
+        let rescannedTracks = try await repository.tracks(sourceID: sourceID)
+        let rescanned = try XCTUnwrap(rescannedTracks.first)
+        XCTAssertEqual(rescanned.title, "手動月光")
     }
 
     func testMetadataFieldsSurviveReconciliation() async throws {
@@ -1046,6 +1053,193 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(result.first?.id, track.id)
         XCTAssertEqual(result.first?.isFavorite, true)
         XCTAssertEqual(result.first?.rating, 5)
+    }
+
+    func testBatchMetadataUpdateAppliesPatchAndPreservesUnspecifiedFields() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let files = [
+            ScannedMediaFile(
+                relativePath: "first.flac", fileIdentifier: "first", fileSize: 11,
+                modifiedAt: .now, title: "第一首", artist: "舊歌手一", album: "舊專輯一",
+                albumArtist: "舊專輯歌手一", trackNumber: 1, discNumber: 2
+            ),
+            ScannedMediaFile(
+                relativePath: "second.flac", fileIdentifier: "second", fileSize: 22,
+                modifiedAt: .now, title: "第二首", artist: "舊歌手二", album: "舊專輯二",
+                albumArtist: "舊專輯歌手二", trackNumber: 3, discNumber: 4
+            ),
+            ScannedMediaFile(
+                relativePath: "third.flac", fileIdentifier: "third", fileSize: 33,
+                modifiedAt: .now, title: "第三首", artist: "獨立歌手", album: "獨立專輯",
+                albumArtist: "獨立專輯歌手", trackNumber: 5, discNumber: 6
+            )
+        ]
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+        let imported = try await repository.tracks(sourceID: sourceID)
+        let first = try XCTUnwrap(imported.first { $0.fileIdentifier == "first" })
+        let second = try XCTUnwrap(imported.first { $0.fileIdentifier == "second" })
+        let third = try XCTUnwrap(imported.first { $0.fileIdentifier == "third" })
+        try await repository.setFavorite(trackID: first.id, isFavorite: true)
+        try await repository.setRating(trackID: first.id, rating: 4)
+
+        try await repository.updateMetadata(
+            for: [first.id, second.id],
+            with: TrackMetadataPatch(
+                artist: .set("共同歌手"),
+                album: .set("共同專輯"),
+                artworkData: .set(Data([1, 2, 3])),
+                trackNumber: .clear
+            )
+        )
+
+        let updated = try await repository.tracks(ids: [first.id, second.id, third.id])
+        let updatedFirst = try XCTUnwrap(updated.first { $0.id == first.id })
+        let updatedSecond = try XCTUnwrap(updated.first { $0.id == second.id })
+        let unchangedThird = try XCTUnwrap(updated.first { $0.id == third.id })
+        XCTAssertEqual(updatedFirst.artist, "共同歌手")
+        XCTAssertEqual(updatedFirst.album, "共同專輯")
+        XCTAssertEqual(updatedFirst.artworkData, Data([1, 2, 3]))
+        XCTAssertNil(updatedFirst.trackNumber)
+        XCTAssertEqual(updatedFirst.discNumber, 2)
+        XCTAssertEqual(updatedFirst.title, "第一首")
+        XCTAssertEqual(updatedFirst.albumArtist, "舊專輯歌手一")
+        XCTAssertTrue(updatedFirst.isFavorite)
+        XCTAssertEqual(updatedFirst.rating, 4)
+        XCTAssertEqual(updatedSecond.artist, "共同歌手")
+        XCTAssertEqual(updatedSecond.album, "共同專輯")
+        XCTAssertNil(updatedSecond.trackNumber)
+        XCTAssertEqual(updatedSecond.discNumber, 4)
+        XCTAssertEqual(updatedSecond.title, "第二首")
+        XCTAssertEqual(updatedSecond.albumArtist, "舊專輯歌手二")
+        XCTAssertEqual(unchangedThird.artist, "獨立歌手")
+        XCTAssertEqual(unchangedThird.album, "獨立專輯")
+        XCTAssertEqual(unchangedThird.trackNumber, 5)
+        XCTAssertEqual(unchangedThird.relativePath, "third.flac")
+        XCTAssertEqual(unchangedThird.fileIdentifier, "third")
+    }
+
+    func testBatchMetadataUpdateValidatesAllIDsBeforeMutatingAnyTrack() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        try await repository.applyReconciliation(
+            upserts: [
+                ScannedMediaFile(relativePath: "first.flac", fileIdentifier: "first", fileSize: 1,
+                                  modifiedAt: .now, title: "第一首", artist: "原歌手一"),
+                ScannedMediaFile(relativePath: "second.flac", fileIdentifier: "second", fileSize: 2,
+                                  modifiedAt: .now, title: "第二首", artist: "原歌手二")
+            ],
+            missingIdentifiers: [], sourceID: sourceID
+        )
+        let imported = try await repository.tracks(sourceID: sourceID)
+        let first = try XCTUnwrap(imported.first { $0.fileIdentifier == "first" })
+        let second = try XCTUnwrap(imported.first { $0.fileIdentifier == "second" })
+        let missingID = UUID()
+
+        do {
+            try await repository.updateMetadata(
+                for: [first.id, missingID, second.id],
+                with: TrackMetadataPatch(artist: .set("不應寫入"))
+            )
+            XCTFail("Missing track IDs must reject the whole metadata batch")
+        } catch let error as LibraryRepositoryError {
+            XCTAssertEqual(error, .trackNotFound(missingID))
+        }
+
+        do {
+            try await repository.updateMetadata(
+                for: [first.id, second.id],
+                with: TrackMetadataPatch(trackNumber: .set(-1))
+            )
+            XCTFail("Negative track numbers must reject the metadata batch")
+        } catch let error as LibraryRepositoryError {
+            XCTAssertEqual(error, .invalidMetadata)
+        }
+
+        let unchanged = try await repository.tracks(ids: [first.id, second.id])
+        XCTAssertEqual(unchanged.first { $0.id == first.id }?.artist, "原歌手一")
+        XCTAssertEqual(unchanged.first { $0.id == second.id }?.artist, "原歌手二")
+    }
+
+    func testBatchPlaylistRemovalPreservesOrderAndIgnoresUnknownIDs() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self, PlaylistRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let files = (0..<4).map { index in
+            ScannedMediaFile(
+                relativePath: "track-\(index).flac", fileIdentifier: "track-\(index)",
+                fileSize: Int64(index + 1), modifiedAt: .now, title: "曲目 \(index)"
+            )
+        }
+        try await repository.applyReconciliation(upserts: files, missingIdentifiers: [], sourceID: sourceID)
+        let imported = try await repository.tracks(sourceID: sourceID)
+        let ordered = files.compactMap { file in imported.first { $0.fileIdentifier == file.fileIdentifier }?.id }
+        XCTAssertEqual(ordered.count, 4)
+        let playlist = try await repository.createPlaylist(name: "批次移除")
+        try await repository.addTracks(trackIDs: ordered, toPlaylist: playlist.id)
+
+        let unknownID = UUID()
+        try await repository.removeTracks(
+            trackIDs: [ordered[2], unknownID, ordered[0], ordered[2]],
+            fromPlaylist: playlist.id
+        )
+
+        let remaining = try await repository.playlists().first { $0.id == playlist.id }
+        XCTAssertEqual(remaining?.trackIDs, [ordered[1], ordered[3]])
+    }
+
+    func testBatchMetadataOverridesSurviveRescanOnlyForEditedFields() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        try await repository.applyReconciliation(
+            upserts: [ScannedMediaFile(
+                relativePath: "song.flac", fileIdentifier: "song", fileSize: 1,
+                modifiedAt: .now, title: "來源標題", artist: "來源歌手", album: "來源專輯",
+                albumArtist: "來源專輯歌手", trackNumber: 1, discNumber: 1
+            )],
+            missingIdentifiers: [], sourceID: sourceID
+        )
+        let imported = try await repository.tracks(sourceID: sourceID)
+        let original = try XCTUnwrap(imported.first)
+        try await repository.updateMetadata(
+            for: [original.id],
+            with: TrackMetadataPatch(title: .set("使用者標題"), artist: .set("使用者歌手"))
+        )
+
+        try await repository.applyReconciliation(
+            upserts: [ScannedMediaFile(
+                relativePath: "song.flac", fileIdentifier: "song", fileSize: 2,
+                modifiedAt: .now, title: "重掃標題", artist: "重掃歌手", album: "重掃專輯",
+                albumArtist: "重掃專輯歌手", trackNumber: 9, discNumber: 9
+            )],
+            missingIdentifiers: [], sourceID: sourceID
+        )
+
+        let rescannedTracks = try await repository.tracks(sourceID: sourceID)
+        let rescanned = try XCTUnwrap(rescannedTracks.first)
+        XCTAssertEqual(rescanned.title, "使用者標題")
+        XCTAssertEqual(rescanned.artist, "使用者歌手")
+        XCTAssertEqual(rescanned.album, "重掃專輯")
+        XCTAssertEqual(rescanned.albumArtist, "重掃專輯歌手")
+        XCTAssertEqual(rescanned.trackNumber, 9)
+        XCTAssertEqual(rescanned.discNumber, 9)
+        XCTAssertEqual(rescanned.fileSize, 2)
+        XCTAssertEqual(rescanned.relativePath, "song.flac")
     }
 
     func testLibraryOperationsPersistFavoritesRatingsHistoryAndPlaylists() async throws {

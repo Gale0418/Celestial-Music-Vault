@@ -77,7 +77,7 @@ function registerApprovedPaths(paths) {
       const stat = fs.statSync(resolved);
       const isDirectory = stat.isDirectory();
       if (!isDirectory && !stat.isFile()) continue;
-      approvedScanRoots.add(isDirectory ? resolved : path.dirname(resolved));
+      approvedScanRoots.add(resolved);
       registered.push({ path: resolved, isDirectory });
     } catch (e) {
       console.warn('Skipping unapproved root candidate:', rawPath, e.message);
@@ -357,7 +357,8 @@ function loadApprovedRootsRegistry() {
       if (typeof rawPath !== 'string' || !path.isAbsolute(rawPath)) continue;
       try {
         const resolved = resolveExistingPath(rawPath);
-        if (fs.statSync(resolved).isDirectory()) approvedScanRoots.add(resolved);
+        const stat = fs.statSync(resolved);
+        if (stat.isDirectory() || stat.isFile()) approvedScanRoots.add(resolved);
       } catch {
         // Preserve a previously approved NAS root while it is temporarily
         // offline. Actual read/trash requests still have to pass realpath/stat.

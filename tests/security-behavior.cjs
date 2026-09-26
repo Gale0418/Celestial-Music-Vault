@@ -5,9 +5,9 @@ const path = require('path');
 const vm = require('vm');
 
 const mainText = fs.readFileSync(path.join(__dirname, '..', 'main.cjs'), 'utf8');
-const helperEnd = mainText.indexOf('// IPC: Native multi-folder selection dialog');
+const helperEnd = mainText.indexOf("ipcMain.handle('select-folders'");
 const filterStart = mainText.indexOf('function getApprovedRootsRegistryPath');
-const filterEnd = mainText.indexOf('// IPC: User Data Persistence');
+const filterEnd = mainText.indexOf('const getUserDataPath');
 const helperText = mainText.slice(0, helperEnd) + mainText.slice(filterStart, filterEnd);
 const registryUserData = path.join(os.tmpdir(), `cmv-registry-${process.pid}`);
 let capturedFetch;
@@ -36,8 +36,12 @@ fs.mkdirSync(approvedRoot);
 fs.mkdirSync(outsideRoot);
 const song = path.join(approvedRoot, 'song.mp3');
 const outsideSong = path.join(outsideRoot, 'outside.mp3');
+const siblingSong = path.join(approvedRoot, 'sibling.mp3');
+const otherSong = path.join(approvedRoot, 'other.mp3');
 fs.writeFileSync(song, 'fixture');
 fs.writeFileSync(outsideSong, 'fixture');
+fs.writeFileSync(siblingSong, 'fixture');
+fs.writeFileSync(otherSong, 'fixture');
 const resolvedSong = fs.realpathSync(song);
 const resolvedOutsideSong = fs.realpathSync(outsideSong);
 rememberApprovedRoots([approvedRoot]);
@@ -57,6 +61,21 @@ fs.unlinkSync(song);
 assert.throws(() => ensureApprovedFile(song));
 return scanAudioFiles(path.join(approvedRoot, 'does-not-exist')).then(async (files) => {
   assert.deepEqual(files, []);
+
+  approvedScanRoots.clear();
+  rememberApprovedRoots([siblingSong]);
+  assert.deepEqual([...approvedScanRoots], [fs.realpathSync(siblingSong)]);
+  assert.equal(ensureApprovedFile(siblingSong), fs.realpathSync(siblingSong));
+  assert.throws(() => ensureApprovedFile(otherSong));
+  assert.throws(() => ensureApprovedDirectory(approvedRoot));
+  await persistApprovedRootsRegistry();
+  approvedScanRoots.clear();
+  loadApprovedRootsRegistry();
+  assert.equal(ensureApprovedFile(siblingSong), fs.realpathSync(siblingSong));
+  assert.throws(() => ensureApprovedFile(otherSong));
+
+  approvedScanRoots.clear();
+  rememberApprovedRoots([approvedRoot]);
   try {
     const link = path.join(approvedRoot, 'outside-link.mp3');
     fs.symlinkSync(outsideSong, link, 'file');

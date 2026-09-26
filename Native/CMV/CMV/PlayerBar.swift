@@ -22,7 +22,7 @@ struct PlayerBar: View {
             }
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
-        .background(reduceTransparency ? AnyShapeStyle(theme.background.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial))
+        .background(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
         .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
         .controlSize(.large)
         .accessibilityElement(children: .contain)
@@ -138,7 +138,8 @@ struct PlayerBar: View {
                                : AppLanguage.localized("播放或暫停目前影片"))
             Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
                 .labelStyle(.iconOnly).frame(width: 44, height: 44)
-                .disabled(appModel.videoURL != nil && !appModel.canSkipVideoForward)
+                .disabled(appModel.videoURL != nil &&
+                          !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
     }
 }
@@ -209,7 +210,7 @@ struct MiniPlayerBar: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
-            .accessibilityLabel(AppLanguage.localized("現在收聽"))
+            .accessibilityHint(AppLanguage.localized("展開完整播放控制"))
             Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") {
                 appModel.skipCurrentMediaBackward(context: modelContext)
             }
@@ -233,11 +234,12 @@ struct MiniPlayerBar: View {
             Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
                 .labelStyle(.iconOnly).frame(width: 44, height: 44)
                 .accessibilityLabel(AppLanguage.localized("下一首"))
-                .disabled(appModel.videoURL != nil && !appModel.canSkipVideoForward)
+                .disabled(appModel.videoURL != nil &&
+                          !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background(reduceTransparency
-                    ? AnyShapeStyle(theme.background.opacity(0.98))
+                    ? AnyShapeStyle(theme.background)
                     : AnyShapeStyle(.ultraThinMaterial))
         .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
     }

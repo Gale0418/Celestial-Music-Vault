@@ -27,6 +27,7 @@ struct CelestialBackground: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.scenePhase) private var scenePhase
     @State private var skyElapsed: TimeInterval = 0
     @State private var skyAnchor: TimeInterval?
@@ -39,21 +40,38 @@ struct CelestialBackground: View {
 
     var body: some View {
         GeometryReader { geometry in
-        ZStack {
-            if reduceTransparency {
-                theme.background
-            } else {
-                Image(backgroundAssetName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .saturation(1.05)
-                    .overlay(theme.background.opacity(backgroundOverlayOpacity))
-            }
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let time = reduceMotion ? 0 : skyElapsed + (skyAnchor.map { max(0, now - $0) } ?? 0)
+        let overscan: CGFloat = 12
+        let portraitShift = backgroundPortraitShift(for: geometry.size)
+        // The leftward portrait crop must keep artwork behind the full viewport.
+        // Widen both the image and Canvas so the shifted right edge never reveals
+        // the view below; their shared size preserves the ring/atmosphere map.
+        let contentSize = CGSize(width: geometry.size.width + overscan + 2 * abs(portraitShift),
+                                 height: geometry.size.height + overscan)
+        let artworkScale = max(contentSize.width / 1586, contentSize.height / 992)
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
+            let now = timeline.date.timeIntervalSinceReferenceDate
+            let time = reduceMotion ? 0 : skyElapsed + (skyAnchor.map { max(0, now - $0) } ?? 0)
+            ZStack {
+                if reduceTransparency {
+                    theme.background
+                } else {
+                    Image(backgroundAssetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: contentSize.width, height: contentSize.height)
+                        .clipped()
+                        .layerEffect(
+                            ShaderLibrary.saturnAtmosphere(
+                                .float2(Float(contentSize.width), Float(contentSize.height)),
+                                .float(Float(time.truncatingRemainder(dividingBy: 5760))),
+                                .image(Image("SaturnCloudMap"))
+                            ),
+                            maxSampleOffset: CGSize(width: 50 * artworkScale, height: 28 * artworkScale),
+                            isEnabled: theme.id == .titaniumEclipse
+                        )
+                        .saturation(1.05)
+                        .overlay(theme.background.opacity(backgroundOverlayOpacity))
+                }
                 Canvas { context, size in
                     // Every stationary light is astronomical data. The theme
                     // artwork deliberately contains no baked point stars.
@@ -65,6 +83,9 @@ struct CelestialBackground: View {
                         showsLabels: showsLabels,
                         theme: theme
                     )
+                    if theme.id == .titaniumEclipse && !reduceTransparency {
+                        SaturnRingRenderer.draw(in: &context, size: size, time: time)
+                    }
                     if !reduceMotion {
                         let audioLevel = appModel.isCurrentMediaPlaying
                             ? Double(min(1, max(0, appModel.audioEnergy.snapshot.level)))
@@ -75,9 +96,13 @@ struct CelestialBackground: View {
                     }
                 }
             }
-            .isolatedAnimationSurface()
         }
+        .isolatedAnimationSurface()
+        .frame(width: contentSize.width, height: contentSize.height)
+        .offset(x: portraitShift)
+        .celestialParallax(.background, enabled: backgroundParallaxEnabled)
         .frame(width: geometry.size.width, height: geometry.size.height)
+        .clipped()
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -100,18 +125,44 @@ struct CelestialBackground: View {
     private var backgroundAssetName: String {
         switch theme.id {
         case .crimsonNebula: "SkyCrimsonNebula"
-        case .titaniumEclipse: "SkyTitaniumEclipse"
+        case .titaniumEclipse: "SkySaturnOrbit"
         case .emeraldAurora: "SkyEmeraldAurora"
         case .amberDawn: "SkyAmberDawn"
         }
     }
 
     private var backgroundOverlayOpacity: Double {
+        let baseOpacity: Double
         switch theme.id {
-        case .amberDawn: 0.32
-        case .emeraldAurora: 0.24
-        case .crimsonNebula, .titaniumEclipse: 0.10
+        case .amberDawn: baseOpacity = 0.32
+        case .emeraldAurora: baseOpacity = 0.24
+        case .crimsonNebula, .titaniumEclipse: baseOpacity = 0.10
         }
+        return colorSchemeContrast == .increased ? min(0.22, baseOpacity + 0.08) : baseOpacity
+    }
+
+    private func backgroundPortraitShift(for size: CGSize) -> CGFloat {
+        #if os(iOS)
+        guard theme.id == .titaniumEclipse,
+              UIDevice.current.userInterfaceIdiom == .pad,
+              size.height > size.width else { return 0 }
+        // In portrait the height determines the image scale. Align its right
+        // edge with the viewport so the globe centre lands near the right edge
+        // rather than shrinking to a thin sliver as the window gets narrower.
+        let heightScale = (size.height + 12) / 992
+        let artworkWidth = 1586 * heightScale
+        return -max(0, (artworkWidth - size.width - 12) / 2)
+        #else
+        return 0
+        #endif
+    }
+
+    private var backgroundParallaxEnabled: Bool {
+        #if os(iOS)
+        theme.id == .titaniumEclipse
+        #else
+        false
+        #endif
     }
 
     private func updateSkyClock(running: Bool) {
@@ -122,6 +173,115 @@ struct CelestialBackground: View {
             skyElapsed += max(0, now - skyAnchor)
             self.skyAnchor = nil
         }
+    }
+}
+
+/// A restrained procedural glint layer for the foreground rings in
+/// SkySaturnOrbit. The source artwork is 1586x992; all geometry stays in those
+/// coordinates so aspect-fill scaling preserves alignment on every display.
+private enum SaturnRingRenderer {
+    private static let sourceSize = CGSize(width: 1586, height: 992)
+    private static let ringCenter = CGPoint(x: 980, y: 600)
+    private static let majorRadius: CGFloat = 760
+    private static let minorRadius: CGFloat = 72
+    private static let ringAngle: CGFloat = -0.50
+    private static let foregroundStart: CGFloat = 0.15
+    private static let foregroundEnd: CGFloat = 3.00
+    private static let particleCount = 13
+
+    private struct RingTransform {
+        let center: CGPoint
+        let majorRadius: CGFloat
+        let minorRadius: CGFloat
+        let major: CGVector
+        let minor: CGVector
+    }
+
+    static func draw(in context: inout GraphicsContext, size: CGSize, time: TimeInterval) {
+        guard size.width > 0, size.height > 0, time.isFinite else { return }
+
+        let scale = max(size.width / sourceSize.width, size.height / sourceSize.height)
+        let drawnSize = CGSize(width: sourceSize.width * scale, height: sourceSize.height * scale)
+        let origin = CGPoint(x: (size.width - drawnSize.width) / 2,
+                             y: (size.height - drawnSize.height) / 2)
+        let transform = RingTransform(
+            center: CGPoint(x: origin.x + ringCenter.x * scale,
+                            y: origin.y + ringCenter.y * scale),
+            majorRadius: majorRadius * scale,
+            minorRadius: minorRadius * scale,
+            major: CGVector(dx: cos(ringAngle), dy: sin(ringAngle)),
+            minor: CGVector(dx: -sin(ringAngle), dy: cos(ringAngle))
+        )
+
+        // The source already contains the complete ring and its planet occlusion.
+        // Draw only moving glints on the foreground arc, preserving every static
+        // edge and avoiding a synthetic, heavy annulus over the artwork.
+        context.drawLayer { glints in
+            drawParticles(in: &glints, transform: transform, time: time)
+        }
+    }
+
+    private static func drawParticles(
+        in context: inout GraphicsContext,
+        transform: RingTransform,
+        time: TimeInterval
+    ) {
+        let arcLength = foregroundEnd - foregroundStart
+        for index in 0..<particleCount {
+            let seed = Double(index)
+            let phase = positiveRemainder(seed * 1.71, Double(arcLength))
+            let speed = 0.082 + (seed.truncatingRemainder(dividingBy: 4) * 0.018)
+            let angle = foregroundStart + CGFloat(
+                positiveRemainder(Double(time) * speed + phase, Double(arcLength))
+            )
+            let widthOffset = CGFloat(sin(seed * 2.41)) * 0.46
+            let center = ringPoint(angle: angle, offset: widthOffset, transform: transform)
+            let tangent = ringTangent(angle: angle, transform: transform)
+            let radius = max(0.8, transform.minorRadius * CGFloat(0.011 + (seed.truncatingRemainder(dividingBy: 3) * 0.004)))
+            context.fill(
+                Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
+                                       width: radius * 2, height: radius * 2)),
+                with: .color(Color.white.opacity(0.12))
+            )
+
+            let tail = radius * 5.0
+            var streak = Path()
+            streak.move(to: CGPoint(x: center.x - tangent.dx * tail,
+                                    y: center.y - tangent.dy * tail))
+            streak.addLine(to: CGPoint(x: center.x + tangent.dx * radius,
+                                       y: center.y + tangent.dy * radius))
+            context.stroke(streak,
+                           with: .color(Color(red: 1.0, green: 0.90, blue: 0.72).opacity(0.095)),
+                           style: StrokeStyle(lineWidth: max(0.6, radius * 0.72), lineCap: .round))
+        }
+    }
+
+    private static func ringPoint(angle: CGFloat, offset: CGFloat, transform: RingTransform) -> CGPoint {
+        let cosAngle = cos(angle)
+        let sinAngle = sin(angle)
+        let majorDistance = transform.majorRadius * cosAngle
+        let minorDistance = transform.minorRadius * (sinAngle + offset)
+        return CGPoint(
+            x: transform.center.x + transform.major.dx * majorDistance + transform.minor.dx * minorDistance,
+            y: transform.center.y + transform.major.dy * majorDistance + transform.minor.dy * minorDistance
+        )
+    }
+
+    private static func ringTangent(angle: CGFloat, transform: RingTransform) -> CGVector {
+        let tangent = CGVector(
+            dx: -transform.majorRadius * sin(angle) * transform.major.dx
+                + transform.minorRadius * cos(angle) * transform.minor.dx,
+            dy: -transform.majorRadius * sin(angle) * transform.major.dy
+                + transform.minorRadius * cos(angle) * transform.minor.dy
+        )
+        let length = max(1, sqrt(tangent.dx * tangent.dx + tangent.dy * tangent.dy))
+        return CGVector(dx: tangent.dx / length, dy: tangent.dy / length)
+    }
+
+    private static func positiveRemainder(_ value: Double, _ modulus: Double) -> Double {
+        guard modulus > 0 else { return 0 }
+        let remainder = value.truncatingRemainder(dividingBy: modulus)
+        return remainder >= 0 ? remainder : remainder + modulus
     }
 }
 
@@ -151,6 +311,7 @@ extension View {
 struct AlbumWorldView: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @State private var decodedArtwork: CGImage?
     var size: CGFloat = 260
     var artworkID: UUID?
@@ -163,14 +324,16 @@ struct AlbumWorldView: View {
     var body: some View {
         ZStack {
             ZStack {
-                Circle().fill(reduceTransparency ? AnyShapeStyle(theme.background.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial))
-                Circle().fill(RadialGradient(colors: [theme.primary.opacity(0.92), theme.secondary.opacity(0.55), .clear], center: .center, startRadius: 0, endRadius: size / 2))
-                ForEach(0..<7, id: \.self) { index in
-                    Circle()
-                        .fill(Color.white.opacity(0.13 + Double(index % 3) * 0.07))
-                        .frame(width: size * (0.26 + CGFloat(index % 3) * 0.08))
-                        .blur(radius: 10)
-                        .offset(x: CGFloat(index % 4 - 2) * size * 0.11, y: CGFloat(index / 3 - 1) * size * 0.14)
+                Circle().fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                if !reduceTransparency {
+                    Circle().fill(RadialGradient(colors: [theme.primary.opacity(0.92), theme.secondary.opacity(0.55), .clear], center: .center, startRadius: 0, endRadius: size / 2))
+                    ForEach(0..<7, id: \.self) { index in
+                        Circle()
+                            .fill(Color.white.opacity(0.13 + Double(index % 3) * 0.07))
+                            .frame(width: size * (0.26 + CGFloat(index % 3) * 0.08))
+                            .blur(radius: 10)
+                            .offset(x: CGFloat(index % 4 - 2) * size * 0.11, y: CGFloat(index / 3 - 1) * size * 0.14)
+                    }
                 }
                 if let decodedArtwork {
                     Image(decorative: decodedArtwork, scale: 1, orientation: .up)
@@ -181,10 +344,12 @@ struct AlbumWorldView: View {
                 } else {
                     fallbackArtwork
                 }
-                Circle().stroke(AngularGradient(colors: [theme.primary, theme.metal, theme.secondary, theme.primary], center: .center), lineWidth: 3)
-                    .shadow(color: theme.primary, radius: 18)
+                Circle().stroke(AngularGradient(colors: [theme.primary, theme.metal, theme.secondary, theme.primary], center: .center), lineWidth: colorSchemeContrast == .increased ? 4 : 3)
+                    .shadow(color: reduceTransparency ? .clear : theme.primary,
+                            radius: colorSchemeContrast == .increased ? 22 : 18)
             }
             .frame(width: size, height: size)
+            .celestialParallax(.cover, enabled: theme.id == .titaniumEclipse)
             AudioEnergyRing(
                 diameter: size,
                 energyState: energyState,
@@ -268,25 +433,29 @@ private struct AudioEnergyRing: View {
     }
 
     private var shouldRotate: Bool {
-        !reduceMotion && isActive && scenePhase == .active
+        !reduceMotion && !reduceTransparency && isActive && scenePhase == .active
     }
 
     var body: some View {
         TimelineView(.animation(
-            minimumInterval: reduceMotion ? 1.0 / 15.0 : nil,
-            paused: !isActive || scenePhase != .active
+            minimumInterval: 1.0 / 30.0,
+            paused: reduceMotion || reduceTransparency || !isActive || scenePhase != .active
         )) { timeline in
-            let snapshot = energyState.snapshot
+            // Accessibility modes keep a deterministic silent ring. Do not read
+            // the live meter, so producer updates cannot redraw its decoration.
+            let snapshot: AudioEnergySnapshot = (reduceMotion || reduceTransparency)
+                ? .silent
+                : energyState.snapshot
             let timelineTime = timeline.date.timeIntervalSinceReferenceDate
             let elapsedRotationTime = rotationAnchor.map { max(0, timelineTime - $0) } ?? 0
             let activeRotationRadians = accumulatedRotationRadians
                 + elapsedRotationTime * Self.radiansPerSecond(for: activeRotationDuration)
-            let rotationRadians = reduceMotion
+            let rotationRadians = (reduceMotion || reduceTransparency)
                 ? 0
                 : Self.normalizedRadians(activeRotationRadians)
             let elapsed = timelineTime - snapshot.publishedAt
             let rawBlend = min(1, max(0, elapsed / snapshot.interpolationDuration))
-            let blend = rawBlend * rawBlend * (3 - 2 * rawBlend)
+            let blend = reduceMotion ? 1 : rawBlend * rawBlend * (3 - 2 * rawBlend)
 
             Canvas { context, canvasSize in
                 let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
@@ -301,9 +470,10 @@ private struct AudioEnergyRing: View {
                 )
                 context.stroke(
                     Path(ellipseIn: orbitRect),
-                    with: .color(theme.secondary.opacity(isActive ? 0.46 : 0.30)),
+                    with: .color(reduceTransparency ? theme.secondary : theme.secondary.opacity(isActive ? 0.46 : 0.30)),
                     style: StrokeStyle(lineWidth: 1.6)
                 )
+                if reduceTransparency { return }
 
                 // Rotate the graphics context once instead of performing two
                 // trigonometric transforms for every segment on every frame.
@@ -549,7 +719,7 @@ struct VideoMoonPortalView: View {
                     lineWidth: 4
                 )
                 .frame(width: size, height: size)
-                .shadow(color: theme.primary, radius: 18)
+                .shadow(color: reduceTransparency ? .clear : theme.primary, radius: 18)
                 .allowsHitTesting(false)
 
             AudioEnergyRing(
@@ -567,7 +737,7 @@ struct VideoMoonPortalView: View {
                 Image(systemName: appModel.videoSession.isPlaying ? "pause.fill" : "play.fill")
                     .frame(width: 44, height: 44)
                     .background(
-                        reduceTransparency ? AnyShapeStyle(theme.surface.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial),
+                        reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
                         in: Circle()
                     )
             }
@@ -582,16 +752,16 @@ struct VideoMoonPortalView: View {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .frame(width: 44, height: 44)
                     .background(
-                        reduceTransparency ? AnyShapeStyle(theme.surface.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial),
+                        reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
                         in: Circle()
                     )
             }
             .buttonStyle(.plain)
             .padding(10)
-            .accessibilityLabel("在獨立播放器開啟影片")
+            .accessibilityLabel(AppLanguage.localized("在獨立播放器開啟影片"))
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("月環影片播放器")
+        .accessibilityLabel(AppLanguage.localized("月環影片播放器"))
     }
 }
 
@@ -603,7 +773,7 @@ struct CloudSurfaceModifier: ViewModifier {
         content
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface.opacity(0.98)) : AnyShapeStyle(.ultraThinMaterial))
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial))
                     .overlay {
                         if !reduceTransparency {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -611,7 +781,8 @@ struct CloudSurfaceModifier: ViewModifier {
                         }
                     }
             }
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(.white.opacity(0.16)))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(reduceTransparency ? theme.metal : .white.opacity(0.16)))
     }
 }
 

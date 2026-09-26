@@ -12,6 +12,9 @@ complete.
 
 ## Verify
 
+土星雲層使用隨 App 編譯的 Metal shader。若 Xcode 回報缺少 Metal Toolchain，先執行
+`xcodebuild -downloadComponent MetalToolchain` 安裝 Apple 官方元件，再執行建置。
+
 Keep build products on the workspace volume when the system disk is constrained:
 
 ```sh

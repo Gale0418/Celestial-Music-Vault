@@ -17,7 +17,12 @@ private func mediaMetadataText(artist: String, album: String) -> String {
     localizedFormat("%@ · %@", AppLanguage.localizedArtist(artist), AppLanguage.localizedAlbum(album))
 }
 
-private func trackStatusText(_ track: Track, pinnedTrackIDs: Set<UUID>, isCurrent: Bool = false) -> String? {
+private func trackStatusText(
+    _ track: Track,
+    pinnedTrackIDs: Set<UUID>,
+    isCurrent: Bool = false,
+    sourceStatus: MediaSourceStatus? = nil
+) -> String? {
     var states: [String] = []
     if isCurrent { states.append(AppLanguage.localized("目前播放")) }
     if pinnedTrackIDs.contains(track.id) { states.append(AppLanguage.localized("已釘選離線")) }
@@ -26,6 +31,13 @@ private func trackStatusText(_ track: Track, pinnedTrackIDs: Set<UUID>, isCurren
     case .sourceOffline: states.append(AppLanguage.localized("來源離線"))
     case .missing: states.append(AppLanguage.localized("檔案遺失"))
     case .permissionRequired: states.append(AppLanguage.localized("需要重新授權"))
+    }
+    switch sourceStatus {
+    case .offline? where !states.contains(AppLanguage.localized("來源離線")):
+        states.append(AppLanguage.localized("來源離線"))
+    case .permissionRequired? where !states.contains(AppLanguage.localized("需要重新授權")):
+        states.append(AppLanguage.localized("需要重新授權"))
+    default: break
     }
     return states.isEmpty ? nil : states.joined(separator: " · ")
 }
@@ -39,6 +51,7 @@ struct SidebarView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
     @State private var trackCount = 0
@@ -75,8 +88,12 @@ struct SidebarView: View {
         }
         .id(appLanguage)
         .scrollContentBackground(.hidden)
-        .background(.ultraThinMaterial.opacity(0.34))
-        .background(theme.surface.opacity(0.10))
+        .background(reduceTransparency
+                    ? AnyShapeStyle(theme.surface)
+                    : AnyShapeStyle(.ultraThinMaterial.opacity(0.34)))
+        .background(reduceTransparency
+                    ? AnyShapeStyle(theme.surface)
+                    : AnyShapeStyle(theme.surface.opacity(0.10)))
         .navigationTitle(AppLanguage.localized("星穹私藏音樂庫"))
         .tint(theme.primary)
         .defaultScrollAnchor(.top)
@@ -122,7 +139,14 @@ struct NowPlayingView: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Query private var libraryTracks: [TrackRecord]
     @State private var showingVideoImporter = false
+
+    init() {
+        var descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
+        descriptor.fetchLimit = 1
+        _libraryTracks = Query(descriptor)
+    }
 
     var body: some View {
         let current = appModel.currentTrack
@@ -204,6 +228,13 @@ struct NowPlayingView: View {
             }
             playbackActions
         }
+        .padding(theme.id == .titaniumEclipse ? 24 : 0)
+        .background {
+            if theme.id == .titaniumEclipse {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(theme.background.opacity(reduceTransparency ? 1 : 0.88))
+            }
+        }
     }
 
     @ViewBuilder
@@ -242,11 +273,18 @@ struct NowPlayingView: View {
                 }
             }
 
-            if track == nil {
+            if track == nil, libraryTracks.isEmpty {
                 Button("加入音樂來源", systemImage: "folder.badge.plus") { appModel.showingImporter = true }
                     .buttonStyle(.borderedProminent)
                     .frame(minHeight: 44)
                     .accessibilityHint("選擇本機或已在檔案 App、Finder 連接的 NAS 資料夾")
+            } else if track == nil {
+                Button("前往曲庫選歌", systemImage: "music.note.list") {
+                    appModel.selection = .songs
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+                .accessibilityHint("從曲庫選擇歌曲開始播放")
             }
 
             if let track {
@@ -264,22 +302,21 @@ struct NowPlayingView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
             reduceTransparency
-                ? AnyShapeStyle(theme.surface.opacity(0.98))
+                ? AnyShapeStyle(theme.surface)
                 : AnyShapeStyle(.ultraThinMaterial.opacity(0.52)),
             in: RoundedRectangle(cornerRadius: 24, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
+                .strokeBorder(reduceTransparency
+                    ? AnyShapeStyle(theme.metal)
+                    : AnyShapeStyle(LinearGradient(
                         colors: [theme.metal.opacity(0.56), theme.primary.opacity(0.28), .white.opacity(0.08)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                    )), lineWidth: 1)
         }
-        .shadow(color: theme.primary.opacity(0.12), radius: 24, y: 12)
+        .shadow(color: reduceTransparency ? .clear : theme.primary.opacity(0.12), radius: 24, y: 12)
     }
 
     @ViewBuilder
@@ -319,7 +356,7 @@ struct NowPlayingView: View {
         .controlSize(.large)
         .padding(10)
         .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface.opacity(0.96)) : AnyShapeStyle(.thinMaterial),
+            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.thinMaterial),
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
         .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(theme.metal.opacity(0.24)) }
@@ -357,7 +394,8 @@ struct NowPlayingView: View {
         .labelStyle(.iconOnly)
         .buttonStyle(.bordered)
         .frame(minWidth: 44, minHeight: 44)
-        .disabled(appModel.videoURL != nil && !appModel.canSkipVideoForward)
+        .disabled(appModel.videoURL != nil &&
+                  !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
     }
 
     private var playButton: some View {
@@ -603,7 +641,11 @@ struct TrackListView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Query(sort: \MediaSourceRecord.displayName) private var sources: [MediaSourceRecord]
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @State private var tracks: [Track] = []
     @State private var search = ""
     @State private var playlists: [Playlist] = []
@@ -616,6 +658,9 @@ struct TrackListView: View {
     @State private var isSelectingAll = false
     @State private var isPerformingBatchAction = false
     @State private var showingRemoveConfirmation = false
+    @State private var showingBatchMetadataEditor = false
+    @State private var batchPinTask: Task<Void, Never>?
+    @State private var batchPinSummary: String?
     @State private var sortMode: TrackListSortMode = .relevance
     @State private var sortAscending = true
     @AppStorage("cmv.library.displayMode") private var displayModeRaw = TrackListDisplayMode.compact.rawValue
@@ -627,6 +672,13 @@ struct TrackListView: View {
     private var displayMode: TrackListDisplayMode { TrackListDisplayMode(rawValue: displayModeRaw) ?? .compact }
     private var artworkGridSize: ArtworkGridSize { ArtworkGridSize(rawValue: artworkGridSizeRaw) ?? .medium }
     private var pageSize: Int { displayMode == .artwork ? 60 : 200 }
+    private var isNarrowTrackLayout: Bool {
+        #if os(iOS)
+        horizontalSizeClass == .compact
+        #else
+        false
+        #endif
+    }
 
     private func playbackQuery(for rowTracks: [Track]) -> LibraryPlaybackQuery? {
         guard hasMore,
@@ -708,6 +760,17 @@ struct TrackListView: View {
                 .frame(minHeight: 44)
             }
             if !selectedTrackIDs.isEmpty { batchActionBar }
+            if let progress = appModel.batchPinProgress {
+                HStack(spacing: 12) {
+                    ProgressView(value: Double(progress.completed), total: Double(progress.total))
+                    Text(localizedFormat("離線準備 %lld／%lld", Int64(progress.completed), Int64(progress.total)))
+                        .font(.caption.monospacedDigit())
+                    Button("取消離線準備") { batchPinTask?.cancel() }
+                }
+                .padding(.horizontal, 12)
+            } else if let batchPinSummary {
+                Text(batchPinSummary).font(.caption).padding(.horizontal, 12)
+            }
             if displayMode == .artwork {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: artworkGridSize.minimumWidth, maximum: artworkGridSize.maximumWidth), spacing: 12)], spacing: 12) {
                     ForEach(rowTracks.indices, id: \.self) { index in
@@ -720,7 +783,14 @@ struct TrackListView: View {
                 let track = rowTracks[index]
                 let isCurrent = track.id == appModel.currentTrackID
                 let isSelected = selectedTrackIDs.contains(track.id)
-                let status = trackStatusText(track, pinnedTrackIDs: appModel.pinnedTrackIDs, isCurrent: isCurrent)
+                let sourceStatus = sources.first(where: { $0.id == track.sourceID })?.status
+                let status = trackStatusText(track,
+                                             pinnedTrackIDs: appModel.pinnedTrackIDs,
+                                             isCurrent: isCurrent,
+                                             sourceStatus: sourceStatus)
+                let sourceUnavailable = sourceStatus == .offline || sourceStatus == .permissionRequired
+                let canPlayTrack = (track.availability == .available && !sourceUnavailable)
+                    || appModel.pinnedTrackIDs.contains(track.id)
                 HStack(spacing: 8) {
                     Button {
                         if isSelected { selectedTrackIDs.remove(track.id) } else { selectedTrackIDs.insert(track.id) }
@@ -763,9 +833,14 @@ struct TrackListView: View {
                     }
                     #else
                     if displayMode == .compact {
-                        Text(track.title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(AppLanguage.localizedArtist(track.artist)).font(.caption).foregroundStyle(.secondary)
-                            .lineLimit(1).frame(width: 100, alignment: .leading)
+                        Text(track.title)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityValue(status ?? AppLanguage.localized("可播放"))
+                        if !isNarrowTrackLayout {
+                            Text(AppLanguage.localizedArtist(track.artist)).font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).frame(width: 100, alignment: .leading)
+                        }
                     } else {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(track.title).lineLimit(1)
@@ -790,6 +865,10 @@ struct TrackListView: View {
                     }
                     .buttonStyle(.borderless).frame(width: 44, height: 44)
                     .accessibilityLabel(localizedFormat("播放%@", track.title))
+                    .accessibilityHint(canPlayTrack
+                                       ? AppLanguage.localized("開始播放此曲目")
+                                       : (status ?? AppLanguage.localized("此曲目目前無法播放")))
+                    .disabled(!canPlayTrack)
                     Menu { trackActions(for: track, at: index, in: rowTracks) } label: {
                         Image(systemName: "ellipsis.circle").accessibilityLabel("歌曲操作")
                     }.frame(width: 44, height: 44)
@@ -804,8 +883,15 @@ struct TrackListView: View {
                 }
                 .frame(minHeight: displayMode == .compact ? 44 : 60)
                 .padding(.horizontal, 12)
-                .background(isSelected ? theme.primary.opacity(0.22) : (isCurrent ? theme.primary.opacity(0.15) : .clear),
+                .background(reduceTransparency
+                            ? (isSelected || isCurrent ? theme.surface : .clear)
+                            : (isSelected ? theme.primary.opacity(0.22) : (isCurrent ? theme.primary.opacity(0.15) : .clear)),
                             in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    if reduceTransparency && (isSelected || isCurrent) {
+                        RoundedRectangle(cornerRadius: 12).strokeBorder(theme.primary, lineWidth: 2)
+                    }
+                }
                 .contextMenu { trackActions(for: track, at: index, in: rowTracks) }
             }
             }
@@ -853,6 +939,14 @@ struct TrackListView: View {
                                    displayMode: displayMode)) { await fetchPage() }
         .onChange(of: sources.map(\.updatedAt)) { _, _ in Task { @MainActor in await fetchPage() } }
         .task(id: appModel.playlistRevision) { playlists = await appModel.playlists(context: context) }
+        .task(id: appModel.libraryRevision) {
+            if appModel.libraryRevision > 0 { await fetchPage() }
+        }
+        .sheet(isPresented: $showingBatchMetadataEditor) {
+            BatchMetadataEditor(selectionCount: selectedTrackIDs.count) { patch in
+                updateSelectedMetadata(patch)
+            }
+        }
         .alert(localizedFormat("從 CMV 移出 %lld 首曲目？", Int64(selectedTrackIDs.count)),
                isPresented: $showingRemoveConfirmation) {
             Button("取消", role: .cancel) {}
@@ -884,7 +978,9 @@ struct TrackListView: View {
                 } label: {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.title3).padding(8)
-                        .background(.regularMaterial, in: Circle())
+                        .background(reduceTransparency
+                                    ? AnyShapeStyle(theme.surface)
+                                    : AnyShapeStyle(.regularMaterial), in: Circle())
                 }
                 .buttonStyle(.plain)
                 .disabled(isPerformingBatchAction || isSelectingAll)
@@ -921,8 +1017,15 @@ struct TrackListView: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? theme.primary.opacity(0.18) : theme.surface.opacity(0.20),
+        .background(reduceTransparency
+                    ? AnyShapeStyle(theme.surface)
+                    : AnyShapeStyle(isSelected ? theme.primary.opacity(0.18) : theme.surface.opacity(0.20)),
                     in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            if reduceTransparency && isSelected {
+                RoundedRectangle(cornerRadius: 14).strokeBorder(theme.primary, lineWidth: 2)
+            }
+        }
         .contextMenu { trackActions(for: track, at: index, in: rowTracks) }
     }
 
@@ -936,13 +1039,18 @@ struct TrackListView: View {
                     else { ForEach(playlists) { playlist in Button(playlist.name) { addSelectedTracks(to: playlist) } } }
                 }
                 .disabled(playlists.isEmpty)
+                Button("批次離線釘選 · Pro", systemImage: "arrow.down.circle") { pinSelectedTracks() }
+                Button("批次編輯資訊 · Pro", systemImage: "square.and.pencil") {
+                    if appModel.requirePro(.advancedLibrary) { showingBatchMetadataEditor = true }
+                }
                 Button("取消選取", systemImage: "xmark") { selectedTrackIDs.removeAll() }
                 Button("移出 CMV", systemImage: "rectangle.portrait.and.arrow.right") { showingRemoveConfirmation = true }
                     .buttonStyle(.bordered).tint(.red)
             }
             .padding(.horizontal, 12).frame(minHeight: 52)
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial),
+                    in: RoundedRectangle(cornerRadius: 12))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(theme.primary.opacity(0.28)) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(localizedFormat("已選取 %lld 首的批次操作", Int64(selectedTrackIDs.count)))
@@ -998,6 +1106,36 @@ struct TrackListView: View {
             guard await appModel.excludeTracks(ids: ids, context: context) else { return }
             selectedTrackIDs.removeAll()
             await fetchPage()
+        }
+    }
+
+    @MainActor private func pinSelectedTracks() {
+        guard !isPerformingBatchAction, !isSelectingAll,
+              displayedGeneration == searchGeneration,
+              appModel.requirePro(.smartOfflineCache) else { return }
+        let ids = Array(selectedTrackIDs)
+        guard !ids.isEmpty else { return }
+        isPerformingBatchAction = true
+        batchPinSummary = nil
+        batchPinTask = Task { @MainActor in
+            let result = await appModel.pinTracks(ids: ids, context: context)
+            batchPinSummary = localizedFormat("離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@",
+                                              Int64(result.pinned), Int64(result.alreadyPinned),
+                                              Int64(result.failed), result.cancelled ? AppLanguage.localized("（已取消）") : "")
+            batchPinTask = nil
+            isPerformingBatchAction = false
+        }
+    }
+
+    @MainActor private func updateSelectedMetadata(_ patch: TrackMetadataPatch) {
+        guard !isPerformingBatchAction, !selectedTrackIDs.isEmpty else { return }
+        let ids = Array(selectedTrackIDs)
+        isPerformingBatchAction = true
+        Task { @MainActor in
+            defer { isPerformingBatchAction = false }
+            if await appModel.updateMetadata(ids: ids, patch: patch, context: context) {
+                selectedTrackIDs.removeAll()
+            }
         }
     }
 
@@ -1547,6 +1685,7 @@ private struct TrackRows: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let tracks: [Track]
     let onLast: (() async -> Void)?
 
@@ -1585,7 +1724,14 @@ private struct TrackRows: View {
                     Image(systemName: "heart.fill").foregroundStyle(theme.primary)
                 }
                 .frame(minHeight: 48).padding(.horizontal, 12)
-                .background(isCurrent ? theme.primary.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .background(isCurrent
+                            ? (reduceTransparency ? theme.surface : theme.primary.opacity(0.12))
+                            : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    if reduceTransparency && isCurrent {
+                        RoundedRectangle(cornerRadius: 10).strokeBorder(theme.primary, lineWidth: 2)
+                    }
+                }
                 .task { if index == tracks.count - 1 { await onLast?() } }
             }
         }
@@ -1596,6 +1742,7 @@ struct PlaylistHubView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var playlists: [Playlist] = []
     @State private var editingPlaylist: Playlist?
     @State private var editedName = ""
@@ -1676,7 +1823,8 @@ struct PlaylistHubView: View {
                     }
                 }
                 .padding(20)
-                .background(theme.surface.opacity(0.9), in: RoundedRectangle(cornerRadius: 20))
+                .background(reduceTransparency ? theme.surface : theme.surface.opacity(0.9),
+                            in: RoundedRectangle(cornerRadius: 20))
                 .frame(maxWidth: 460)
             }
         }
@@ -1717,6 +1865,9 @@ private struct PlaylistDetailView: View {
     @State private var loadingPage = false
     @State private var loadGeneration = 0
     @State private var showingCleanConfirmation = false
+    @State private var selectedPlaylistIDs = Set<UUID>()
+    @State private var showingBatchRemoveConfirmation = false
+    @State private var isRemovingSelection = false
 
     private var unavailableCount: Int {
         guard playlist != nil, !entriesFailed else { return 0 }
@@ -1733,6 +1884,15 @@ private struct PlaylistDetailView: View {
                     ForEach(playlist.trackIDs.prefix(loadedCount), id: \.self) { trackID in
                         if let entry = entryByID[trackID] {
                         HStack(spacing: 12) {
+                            Button {
+                                if selectedPlaylistIDs.contains(entry.id) { selectedPlaylistIDs.remove(entry.id) }
+                                else { selectedPlaylistIDs.insert(entry.id) }
+                            } label: {
+                                Image(systemName: selectedPlaylistIDs.contains(entry.id) ? "checkmark.circle.fill" : "circle")
+                            }
+                            .buttonStyle(.plain)
+                            .frame(width: 44, height: 44)
+                            .accessibilityLabel(selectedPlaylistIDs.contains(entry.id) ? "取消選取歌曲" : "選取歌曲")
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(entry.track.title).lineLimit(2)
                                 Text(mediaMetadataText(artist: entry.track.artist, album: entry.track.album))
@@ -1772,6 +1932,15 @@ private struct PlaylistDetailView: View {
                         .frame(minHeight: 52)
                         } else {
                             HStack {
+                                Button {
+                                    if selectedPlaylistIDs.contains(trackID) { selectedPlaylistIDs.remove(trackID) }
+                                    else { selectedPlaylistIDs.insert(trackID) }
+                                } label: {
+                                    Image(systemName: selectedPlaylistIDs.contains(trackID) ? "checkmark.circle.fill" : "circle")
+                                }
+                                .buttonStyle(.plain)
+                                .frame(width: 44, height: 44)
+                                .accessibilityLabel(selectedPlaylistIDs.contains(trackID) ? "取消選取歌曲" : "選取歌曲")
                                 Label("找不到曲目記錄", systemImage: "exclamationmark.triangle")
                                     .foregroundStyle(.secondary)
                                 Spacer()
@@ -1811,6 +1980,18 @@ private struct PlaylistDetailView: View {
         .navigationTitle(playlist?.name ?? AppLanguage.localized("歌單"))
         .celestialPageBackground()
         .toolbar {
+            if let playlist, !playlist.trackIDs.isEmpty {
+                Button("全選已載入", systemImage: "checklist") {
+                    selectedPlaylistIDs.formUnion(playlist.trackIDs.prefix(loadedCount))
+                }
+                .disabled(isRemovingSelection || loadedCount == 0)
+            }
+            if !selectedPlaylistIDs.isEmpty {
+                Button("批次移出歌單 · Pro", systemImage: "minus.circle") {
+                    if appModel.requirePro(.advancedLibrary) { showingBatchRemoveConfirmation = true }
+                }
+                .disabled(isRemovingSelection)
+            }
             if playlist?.trackIDs.isEmpty == false, !entriesFailed {
                 Button("清理失效項目", systemImage: "line.3.horizontal.decrease.circle") {
                     showingCleanConfirmation = true
@@ -1838,6 +2019,21 @@ private struct PlaylistDetailView: View {
         } message: {
             Text("只修改這張歌單；不刪除原始檔案、評分或播放紀錄。暫時離線的曲目不會移除。")
         }
+        .confirmationDialog("將所選歌曲移出歌單？", isPresented: $showingBatchRemoveConfirmation) {
+            Button("移出所選歌曲", role: .destructive) {
+                guard let playlist else { return }
+                let ids = Array(selectedPlaylistIDs)
+                isRemovingSelection = true
+                Task {
+                    defer { isRemovingSelection = false }
+                    guard await appModel.removeTracks(ids: ids, from: playlist, context: context) else { return }
+                    selectedPlaylistIDs.subtract(ids)
+                    await reload()
+                }
+            }
+        } message: {
+            Text("只修改這張歌單，不刪除原始音樂檔。")
+        }
         .task(id: appModel.playlistRevision) { await reload() }
         .onChange(of: sources.map(\.updatedAt)) { _, _ in Task { await reload() } }
     }
@@ -1856,6 +2052,7 @@ private struct PlaylistDetailView: View {
         }
         guard generation == loadGeneration else { return }
         playlist = latest
+        selectedPlaylistIDs.formIntersection(latest.trackIDs)
         entries = []
         entryByID = [:]
         loadedCount = 0
@@ -1940,12 +2137,21 @@ struct SettingsView: View {
                 set: { appModel.selectTheme($0) }
             )) {
                 ForEach(CMVThemeID.allCases) { theme in
-                    Text(theme == .crimsonNebula || theme == .amberDawn
-                         ? AppLanguage.localized(theme.name)
-                         : localizedFormat("%@ · Pro", AppLanguage.localized(theme.name))).tag(theme)
+                    let requiresPro = theme != .crimsonNebula && theme != .amberDawn
+                    Label {
+                        Text(requiresPro
+                             ? localizedFormat("%@ · Pro", AppLanguage.localized(theme.name))
+                             : AppLanguage.localized(theme.name))
+                    } icon: {
+                        if requiresPro && !appModel.proStore.hasPro {
+                            Image(systemName: "lock.fill")
+                        }
+                    }
+                    .tag(theme)
                 }
             }
             .id(appLanguage)
+            .accessibilityHint(AppLanguage.localized("鎖定的 Pro 主題會開啟升級頁"))
             Section("曲庫") {
                 NavigationLink { MusicSourcesSettingsView() } label: {
                     Label("音樂來源", systemImage: "externaldrive.connected.to.line.below")

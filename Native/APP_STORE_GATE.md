@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜送審前 gate
 
-更新：2026-09-01
+更新：2026-09-26
 
 這份清單是送 TestFlight 前的可重跑 gate，不把模擬器編譯誤當成實機核准。
 
@@ -31,18 +31,23 @@
 6. 依 `Native/APP_STORE_METADATA.md` 補齊 Privacy Policy／Support URL、商店文案、
    年齡分級、App Review notes 與完整素材／第三方授權紀錄。
 
-## 2026-09-01 唯讀發行盤點
+## 2026-09-26 唯讀發行盤點
 
-- `asc 4.11.0` 與 Xcode 26.6 可用，但 `asc auth status` 沒有已登入 profile；不得從
-  MediBuddy 複製 API key，須由發布者為 CMV 正式登入或指定既有受權 profile。
-- Bundle ID／版本／build 已固定為 `com.windsheep.cmv`／`2.0`／`1`；送審前仍須確認
-  App Store Connect App Record 是否以相同 Bundle ID 同時建立 IOS 與 MAC_OS lane。
-- Keychain 目前只有 Apple Development identity，尚無 Apple Distribution；不得把
-  Development／ad-hoc build 宣稱為 TestFlight 或 App Store ready。
-- 實體 iPad 目前離線；背景音訊、PiP、Files provider、bookmark 重啟恢復與 NAS
-  故障矩陣仍無實機證據。
-- `Native/APP_STORE_REVIEW_KIT.md` 與 `Native/ASSET_RIGHTS_LEDGER.md` 是 canonical
-  審核資料入口；含方括號的欄位均為人工 gate，不得猜測或自動填入。
+- App Store Connect 已成功唯讀回讀 App Record：App ID `6815468050`、Bundle ID
+  `com.windsheep.cmv`，iOS 與 macOS 共用同一紀錄，主要語言為繁體中文；不再以「尚未
+  確認 App Record」作為目前狀態。版本／build 仍為 `2.0`／`1`。
+- 正式 Pro non-consumable 已建立：商品 ID `com.windsheep.cmv.pro.v1`、商品資源 ID
+  `6815468483`；台灣價格唯讀回讀為 NT$150，繁中與英文名稱／描述已回讀。商品截圖
+  資源 `3d8c1597-c3fd-46e1-8411-9264d81e913e` 已完成傳遞，商品狀態為
+  `READY_TO_SUBMIT`。
+- App Store Connect 商務頁已唯讀確認免費／付費協議、收款與稅務狀態完成；Pro 商品仍
+  未送審，App 尚未發佈。這些商店設定證據不等於 Sandbox 購買、實機驗收或可上架。
+- 正式 Distribution archive、embedded entitlements／privacy manifest、實機與上傳
+  validation 仍待重新驗證；9/26 紀錄只有 Mac／iPad Simulator Debug 編譯與隔離 App
+  strict ad-hoc 簽章證據，不能宣稱 TestFlight 或 App Store ready。
+- 實體 iPad、背景音訊、PiP、Files provider、bookmark 重啟恢復、NAS 故障矩陣，以及
+  Apple Sandbox 購買／恢復／退款／撤銷仍無足夠證據；`Native/APP_STORE_REVIEW_KIT.md`
+  與 `Native/ASSET_RIGHTS_LEDGER.md` 的方括號欄位仍是人工 gate。
 
 ## 可重跑命令
 

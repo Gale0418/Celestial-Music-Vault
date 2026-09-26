@@ -7,7 +7,7 @@ public enum CMVThemeID: String, CaseIterable, Codable, Sendable, Identifiable {
     public var name: String {
         switch self {
         case .crimsonNebula: "銀河月夜"
-        case .titaniumEclipse: "木星深空站"
+        case .titaniumEclipse: "土星環軌站"
         case .emeraldAurora: "綿羊幻想鄉"
         case .amberDawn: "星海晨光"
         }
@@ -16,7 +16,7 @@ public enum CMVThemeID: String, CaseIterable, Codable, Sendable, Identifiable {
 
 public enum CMVSkyStyle: Sendable, Equatable {
     case milkyWayNight
-    case jupiterStation
+    case saturnRingStation
     case sheepDreamland
     case celestialDawn
 }
@@ -77,7 +77,7 @@ public struct CMVTheme: Sendable {
                 atmosphereSecondary: Color(red: 0.22, green: 0.50, blue: 0.78),
                 starPrimary: Color(red: 0.92, green: 0.97, blue: 1.0),
                 starSecondary: Color(red: 0.46, green: 0.84, blue: 1.0),
-                skyStyle: .jupiterStation
+                skyStyle: .saturnRingStation
             )
         case .emeraldAurora:
             CMVTheme(

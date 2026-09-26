@@ -6,8 +6,19 @@ import AudioToolbox
 import Darwin
 import CMVDomain
 
-private actor AudioFileOpener {
-    func open(_ urlsByIndex: [Int: URL]) throws -> [Int: AVAudioFile] {
+actor AudioFileOpener {
+    private var nextOpenDelayNanoseconds: UInt64?
+
+    init(nextOpenDelayNanoseconds: UInt64? = nil) {
+        self.nextOpenDelayNanoseconds = nextOpenDelayNanoseconds
+    }
+
+    func delayNextOpen(by nanoseconds: UInt64) {
+        nextOpenDelayNanoseconds = nanoseconds
+    }
+
+    func open(_ urlsByIndex: [Int: URL]) async throws -> [Int: AVAudioFile] {
+        try await waitForDelayedOpenIfNeeded()
         var files: [Int: AVAudioFile] = [:]
         files.reserveCapacity(urlsByIndex.count)
         for (index, url) in urlsByIndex {
@@ -16,8 +27,15 @@ private actor AudioFileOpener {
         return files
     }
 
-    func open(_ url: URL) throws -> AVAudioFile {
-        try AVAudioFile(forReading: url)
+    func open(_ url: URL) async throws -> AVAudioFile {
+        try await waitForDelayedOpenIfNeeded()
+        return try AVAudioFile(forReading: url)
+    }
+
+    private func waitForDelayedOpenIfNeeded() async throws {
+        guard let delay = nextOpenDelayNanoseconds else { return }
+        nextOpenDelayNanoseconds = nil
+        try await Task.sleep(nanoseconds: delay)
     }
 }
 
@@ -114,7 +132,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         componentFlagsMask: 0
     ))
     private let planner: PlaybackPairPlanner
-    private let fileOpener = AudioFileOpener()
+    private let fileOpener: AudioFileOpener
     private var resolvedURLs: [UUID: URL] = [:]
     private var scheduledFiles: [Int: AVAudioFile] = [:]
     private var scheduledEngineStartFrames: [Int: UInt64] = [:]
@@ -124,6 +142,8 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     private var timelineStarted = false
     private var timelineNeedsReschedule = false
     private var queueReachedEnd = false
+    private var pendingFinishedQueueIndex: Int?
+    private var nextTrackOpenGeneration: Int?
     private var currentTrackStartEngineFrame: UInt64 = 0
     private var currentSourceStartSeconds: TimeInterval = 0
     private var engineSampleRate: Double = 48_000
@@ -139,11 +159,17 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     private var standbyNode: AVAudioPlayerNode { activeNodeIsFirst ? secondNode : firstNode }
 
     public override convenience init() {
-        self.init(planner: NativePlaybackEngine.fallbackPlanner)
+        self.init(planner: NativePlaybackEngine.fallbackPlanner,
+                  fileOpener: AudioFileOpener())
     }
 
-    public init(planner: @escaping PlaybackPairPlanner) {
+    public convenience init(planner: @escaping PlaybackPairPlanner) {
+        self.init(planner: planner, fileOpener: AudioFileOpener())
+    }
+
+    init(planner: @escaping PlaybackPairPlanner, fileOpener: AudioFileOpener) {
         self.planner = planner
+        self.fileOpener = fileOpener
         super.init()
         engine.attach(firstNode)
         engine.attach(secondNode)
@@ -353,6 +379,8 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         timelineStarted = false
         timelineNeedsReschedule = false
         queueReachedEnd = false
+        pendingFinishedQueueIndex = nil
+        nextTrackOpenGeneration = nil
         publishPlaybackState(false)
         publishElapsed(0)
         publishOutputLevel(0)
@@ -489,6 +517,8 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
             timelineStarted = false
             timelineNeedsReschedule = false
             queueReachedEnd = false
+            pendingFinishedQueueIndex = nil
+            nextTrackOpenGeneration = nil
             publishPlaybackState(false)
             publishElapsed(0)
             publishOutputLevel(0)
@@ -604,6 +634,8 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         currentTrackStartEngineFrame = 0
         scheduledFiles.removeAll(keepingCapacity: true)
         scheduledEngineStartFrames.removeAll(keepingCapacity: true)
+        pendingFinishedQueueIndex = nil
+        nextTrackOpenGeneration = nil
 
         guard let currentTrack = candidateQueue.current,
               let currentURL = candidateURLs[currentTrack.id] else {
@@ -654,16 +686,35 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         let currentIndex = queue.currentIndex
         guard let currentFile = scheduledFiles[currentIndex] else { return }
         let nextIndex = currentIndex + 1
-        guard queue.tracks.indices.contains(nextIndex),
-              let nextURL = resolvedURLs[queue.tracks[nextIndex].id] else { return }
+        guard queue.tracks.indices.contains(nextIndex) else { return }
+        guard let nextURL = resolvedURLs[queue.tracks[nextIndex].id] else {
+            queue.tracks.remove(at: nextIndex)
+            onQueueChanged?()
+            onPlaybackError?(NativePlaybackError.unresolvedTrack)
+            if pendingFinishedQueueIndex == currentIndex {
+                if queue.tracks.indices.contains(currentIndex + 1) {
+                    scheduleFollowingTrack()
+                } else {
+                    pendingFinishedQueueIndex = nil
+                    handleTrackFinished(queueIndex: currentIndex, generation: scheduleGeneration)
+                }
+            } else {
+                scheduleFollowingTrack()
+            }
+            return
+        }
         let nextTrack = queue.tracks[nextIndex]
         let generation = scheduleGeneration
+        guard nextTrackOpenGeneration != generation else { return }
+        nextTrackOpenGeneration = generation
         Task { [weak self] in
             guard let self else { return }
             let nextFile: AVAudioFile
             do {
                 nextFile = try await fileOpener.open(nextURL)
             } catch {
+                guard generation == scheduleGeneration else { return }
+                nextTrackOpenGeneration = nil
                 guard generation == scheduleGeneration,
                       queue.currentIndex == currentIndex,
                       queue.tracks.indices.contains(nextIndex),
@@ -675,23 +726,73 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 onQueueChanged?()
                 onPlaybackError?(error)
                 scheduleFollowingTrack()
+                if pendingFinishedQueueIndex == currentIndex,
+                   !queue.tracks.indices.contains(currentIndex + 1) {
+                    pendingFinishedQueueIndex = nil
+                    handleTrackFinished(queueIndex: currentIndex, generation: generation)
+                }
                 return
             }
             guard generation == scheduleGeneration,
                   queue.currentIndex == currentIndex else { return }
             do {
-                try scheduleFollowingTrack(
-                    currentFile: currentFile,
-                    nextFile: nextFile,
-                    nextTrack: nextTrack,
-                    currentIndex: currentIndex
-                )
+                nextTrackOpenGeneration = nil
+                if pendingFinishedQueueIndex == currentIndex {
+                    resumeAfterDelayedTrack(nextFile: nextFile, currentIndex: currentIndex)
+                } else {
+                    try scheduleFollowingTrack(
+                        currentFile: currentFile,
+                        nextFile: nextFile,
+                        nextTrack: nextTrack,
+                        currentIndex: currentIndex
+                    )
+                }
             } catch {
                 guard generation == scheduleGeneration,
                       queue.currentIndex == currentIndex else { return }
+                nextTrackOpenGeneration = nil
+                if pendingFinishedQueueIndex == currentIndex {
+                    pendingFinishedQueueIndex = nil
+                    publishPlaybackState(false)
+                    timelineStarted = false
+                    timelineNeedsReschedule = true
+                    queueReachedEnd = false
+                    publishElapsed(queue.current?.duration ?? elapsed)
+                    updateNowPlaying()
+                }
                 onPlaybackError?(error)
             }
         }
+    }
+
+    private func resumeAfterDelayedTrack(nextFile: AVAudioFile, currentIndex: Int) {
+        pendingFinishedQueueIndex = nil
+        queue.currentIndex += 1
+        onCurrentTrackChanged?(queue.current)
+        shuffleUpcomingTrackIfNeeded()
+
+        // The originally calculated engine start frame is already in the
+        // past when opening the next file outlasts the current track. Rebuild
+        // a timeline for the newly current file so playback starts now.
+        let currentQueue = PlaybackQueue(
+            tracks: Array(queue.tracks.prefix(queue.currentIndex + 1)),
+            currentIndex: queue.currentIndex
+        )
+        do {
+            try prepareTimeline(
+                sourceStartFrame: 0,
+                for: currentQueue,
+                resolvedURLs: resolvedURLs,
+                preparedFiles: [queue.currentIndex: nextFile]
+            )
+            try play()
+            scheduleFollowingTrack()
+        } catch {
+            publishPlaybackState(false)
+            timelineNeedsReschedule = true
+            onPlaybackError?(error)
+        }
+        updateNowPlaying()
     }
 
     private func scheduleFollowingTrack(
@@ -787,13 +888,13 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         }
         guard scheduledFiles[queueIndex + 1] != nil,
               scheduledEngineStartFrames[queueIndex + 1] != nil else {
-            publishPlaybackState(false)
-            timelineStarted = false
-            timelineNeedsReschedule = true
-            queueReachedEnd = true
-            publishElapsed(queue.current?.duration ?? elapsed)
-            onQueueFinished?()
-            updateNowPlaying()
+            // The next file may still be opening asynchronously after an
+            // appended queue page. Wait for that task to schedule it before
+            // declaring that playback reached the end of the queue.
+            pendingFinishedQueueIndex = queueIndex
+            if nextTrackOpenGeneration != generation {
+                scheduleFollowingTrack()
+            }
             return
         }
         queue.currentIndex += 1

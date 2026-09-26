@@ -72,10 +72,10 @@ Pro 的價值在於智慧離線快取與批次釘選、進階曲庫整理與批�
 ## Visual commitments
 
 - Four complete celestial-weather themes share one component and interaction contract:
-  - **緋紅星雲:** coral and crimson nebulae, rose clouds, warm stardust.
-  - **鈦銀月蝕:** midnight indigo, moon-silver clouds, cool cyan starlight.
-  - **翠綠極光:** emerald auroras, deep teal sky, prismatic mist.
-  - **琥珀晨曦:** golden cloud edges, peach sunrise, lavender distance.
+  - **銀河月夜:** deep blue night sky and cool starlight.
+  - **土星環軌站:** an immense fixed Saturn on the right, subtly moving cloud bands and softly lit rings.
+  - **綿羊幻想鄉:** emerald and rose atmosphere with animated sheep.
+  - **星海晨光:** golden cloud edges, peach sunrise, lavender distance.
 - The default visual world is the **Celestial Cloud Atlas**: albums become luminous cloud-worlds, source and offline state become small functional constellations, and playback progression becomes a restrained ribbon of colored starlight.
 - The celestial world must remain operational: atmospheric illustration stays behind semantic controls, large artwork never hides library status, and Reduce Motion has a deliberate static composition.
 - Use native controls, system materials, SF Symbols, semantic color roles, and readable text at every Dynamic Type size.

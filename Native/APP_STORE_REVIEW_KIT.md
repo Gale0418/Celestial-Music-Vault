@@ -19,9 +19,10 @@
 Celestial Music Vault is a local media-library player. Basic playback, search, playlists,
 favorites, ratings, and everyday queue controls are free. CMV Pro is an optional one-time
 in-app purchase with no subscription. It unlocks offline pinning and smart prefetch,
-Sheep Dreamland and Jupiter Deep-Space Station themes, on-device acoustic analysis,
-and Smart DJ recommendations. The app does not implement SMB login, local-network
-discovery, cloud sync, advertising, tracking, or cloud AI.
+the gated Titanium Eclipse (Saturn Ring Station) and Emerald Aurora (Sheep
+Dreamland) themes, on-device acoustic analysis, and Smart DJ recommendations. The app
+does not implement SMB login, local-network discovery, cloud sync, advertising,
+tracking, or cloud AI.
 
 To test:
 
@@ -44,7 +45,8 @@ After purchasing Pro with an App Review Sandbox account:
    next tracks. Disconnect the source only after the pinned file is ready.
 3. Open Smart DJ from Playlists or Settings, generate a queue, inspect its reasons,
    and play it. Run on-device analysis from Now Playing for an audio track.
-4. Choose Sheep Dreamland or Jupiter Deep-Space Station in theme settings.
+4. Choose Saturn Ring Station or Sheep Dreamland in theme settings; these are
+   the Titanium Eclipse and Emerald Aurora Pro themes, respectively.
 
 The app processes media, artwork, metadata, acoustic analysis, and listening history only
 on the device. It does not upload audio, PCM, video, artwork, metadata, analysis results,

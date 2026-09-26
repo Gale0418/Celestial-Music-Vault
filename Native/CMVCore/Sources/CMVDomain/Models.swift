@@ -56,6 +56,58 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
     }
 }
 
+/// Describes one metadata field in a partial update.
+///
+/// `.unchanged` leaves the existing value untouched. `.set` replaces it and
+/// `.clear` removes it where the stored field is optional; for non-optional
+/// text fields, clearing stores an empty string because the model keeps those
+/// columns non-optional. Metadata updates only affect the library record and
+/// never write back to the source media file.
+public enum TrackMetadataField<Value: Equatable & Sendable>: Equatable, Sendable {
+    case unchanged
+    case set(Value)
+    case clear
+}
+
+/// Partial metadata update applied to one or more library tracks.
+///
+/// Fields omitted by the caller remain unchanged. Source identity, file
+/// location, playback state, ratings, favorites, and analysis are not part of
+/// this patch and are therefore preserved by the repository operation.
+public struct TrackMetadataPatch: Equatable, Sendable {
+    public var title: TrackMetadataField<String>
+    public var artist: TrackMetadataField<String>
+    public var album: TrackMetadataField<String>
+    public var albumArtist: TrackMetadataField<String>
+    public var artworkData: TrackMetadataField<Data>
+    public var trackNumber: TrackMetadataField<Int>
+    public var discNumber: TrackMetadataField<Int>
+
+    public init(
+        title: TrackMetadataField<String> = .unchanged,
+        artist: TrackMetadataField<String> = .unchanged,
+        album: TrackMetadataField<String> = .unchanged,
+        albumArtist: TrackMetadataField<String> = .unchanged,
+        artworkData: TrackMetadataField<Data> = .unchanged,
+        trackNumber: TrackMetadataField<Int> = .unchanged,
+        discNumber: TrackMetadataField<Int> = .unchanged
+    ) {
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.albumArtist = albumArtist
+        self.artworkData = artworkData
+        self.trackNumber = trackNumber
+        self.discNumber = discNumber
+    }
+
+    public var hasChanges: Bool {
+        title != .unchanged || artist != .unchanged || album != .unchanged ||
+            albumArtist != .unchanged || artworkData != .unchanged ||
+            trackNumber != .unchanged || discNumber != .unchanged
+    }
+}
+
 public struct Album: Identifiable, Hashable, Codable, Sendable {
     public var id: String { "\(albumArtist)|\(title)" }
     public var title: String

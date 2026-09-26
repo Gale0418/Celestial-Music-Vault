@@ -1,6 +1,6 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
 <!-- Deprecated compatibility view: focus.md is generated from tasks.md only and must never be edited or treated as a second lifecycle source. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=2ad951397b5a0efd874a876f972e7b00acd9eeafdd3bee9894a57169f504a5eb -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=3260f4dd6ed458be515eda3e731265557014e8e6b4a0639c389412fa0538c01d -->
 # P0 焦點
 
 - 唯一真實來源: `tasks.md`
@@ -8,7 +8,7 @@
 
 | ID | 標題 | 狀態 | 下一步 | 依賴 | 驗證方式 |
 | --- | --- | --- | --- | --- | --- |
-| AERO-MON30 | 完成一次性 Pro 商品、功能解鎖與購買驗收 | In Progress | StoreKit 2／升級頁／action gates 切片完成；2026-09-26 台灣價格改為 NT$150 並由 Apple API 回讀，App 免費，真實 iPad 升級頁審核截圖已上傳且商品 READY_TO_SUBMIT；接續 StoreKit／Sandbox 矩陣與 iPad 實機驗收 | AERO-MON29 | 免費日常播放無退步；成功、取消、待處理、失敗、退款／撤銷、恢復與已購離線啟動皆有證據；兩平台商品、文案與 RC 一致 |
+| AERO-MON30 | 完成一次性 Pro 商品、功能解鎖與購買驗收 | In Progress | StoreKit 2／升級頁／action gates 切片完成；2026-09-26 台灣價格改為 NT$150 並由 Apple API 回讀，App 免費，真實 iPad 升級頁審核截圖已上傳且商品 READY_TO_SUBMIT；批次離線、CMV 資料庫批次編輯、Smart DJ 操作及土星環軌站主題已實作；接續 StoreKit／Sandbox 矩陣、iPad 實機購買與素材 gate | AERO-MON29 | 免費日常播放無退步；成功、取消、待處理、失敗、退款／撤銷、恢復與已購離線啟動皆有證據；兩平台商品、文案與 RC 一致 |
 | AERO-E3 | AeroMusic 2.0 SwiftUI＋Rust 原生重建 | In Progress | 🦀 critic_full PASS；本機 universal Development archive 已驗證；完成實機／沙盒／授權素材與 Distribution archive qualification 後進入 AERO-R3 TestFlight | AERO-E2 | macOS 15+ 與 iPadOS 18+ 通過完整驗收並可送審 |
 | AERO-V3 | 效能、故障、實機、隱私與 App Store 驗證 | In Progress | 🦀 目前工作樹的本機與 Simulator 回歸全綠；依 `Native/APP_STORE_GATE.md` 補授權節目 reference material、實機／沙盒／隱私驗證、送審 metadata 與 Distribution archive，完成後進入 AERO-R3 TestFlight | AERO-A3, AERO-C3, AERO-U3 | 自動測試、實機矩陣、隱私與沙盒檢查通過；最終 critic findings 全數 disposition |
 | AERO-R3 | TestFlight、App Store 送審與 Electron 安全退場 | In Progress | 先執行 AERO-AC4 唯讀盤點；同步等候 AERO-RC4 的程式品質依賴完成 | AERO-V3 | iPadOS／macOS 分平台完成簽章、實機、Metadata、TestFlight、strict submission health 與送審；原生版核准穩定且退場清單再獲核准 |

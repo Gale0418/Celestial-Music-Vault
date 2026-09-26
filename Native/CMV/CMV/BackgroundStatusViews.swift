@@ -57,6 +57,7 @@ struct BackgroundActivityRail: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         if let activity = appModel.primaryBackgroundActivity {
@@ -89,7 +90,7 @@ struct BackgroundActivityRail: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
-            .background(.regularMaterial)
+            .background(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial))
             .overlay(alignment: .top) { Divider() }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel(activity))
@@ -125,6 +126,7 @@ struct BackgroundActivityToast: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         if let activity = appModel.primaryBackgroundActivity {
@@ -146,7 +148,10 @@ struct BackgroundActivityToast: View {
             }
             .padding(.horizontal, 15)
             .padding(.vertical, 10)
-            .background(.regularMaterial, in: Capsule())
+            .background(
+                reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial),
+                in: Capsule()
+            )
             .overlay(Capsule().stroke(theme.primary.opacity(0.28), lineWidth: 1))
             .shadow(color: .black.opacity(0.24), radius: 10, y: 4)
             .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
@@ -158,6 +163,8 @@ struct BackgroundActivityToast: View {
 
 struct ErrorStatusBanner: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         if let message = appModel.errorMessage {
@@ -176,7 +183,7 @@ struct ErrorStatusBanner: View {
             }
             .padding(.leading, 14)
             .padding(.trailing, 6)
-            .background(.regularMaterial)
+            .background(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial))
             .overlay(alignment: .bottom) { Divider() }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(cmvLocalizedFormat("錯誤：%@", arguments: message))

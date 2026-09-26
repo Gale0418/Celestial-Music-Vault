@@ -316,11 +316,11 @@
         "zh-Hant": { "stringUnit": { "state": "translated", "value": "星海晨光" } }
       }
     },
-    "木星深空站": {
+    "土星環軌站": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Jupiter Deep-Space Station" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "木星深宇宙ステーション" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "木星深空站" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Saturn Ring Station" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "土星リングステーション" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "土星環軌站" } }
       }
     },
     "綿羊幻想鄉": {
@@ -337,11 +337,11 @@
         "zh-Hant": { "stringUnit": { "state": "translated", "value": "銀河月夜" } }
       }
     },
-    "解鎖綿羊幻想鄉與木星深空站。": {
+    "解鎖綿羊幻想鄉與土星環軌站。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unlock Sheep Dreamland and Jupiter Deep-Space Station." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ひつじ幻想郷と木星深宇宙ステーションを解放。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖綿羊幻想鄉與木星深空站。" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Unlock Sheep Dreamland and Saturn Ring Station." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ひつじ幻想郷と土星リングステーションを解放。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖綿羊幻想鄉與土星環軌站。" } }
       }
     },
     " · 已讀取 %.1f 秒": {
@@ -868,6 +868,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pro 已啟用。"
+          }
+        }
+      }
+    },
+    "Pro 購買已確認。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Pro purchase is confirmed."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proの購入を確認しました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro 購買已確認。"
           }
         }
       }
@@ -6606,6 +6628,28 @@
         }
       }
     },
+    "目前無法確認 Pro 購買，請稍後再試。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We can’t confirm your Pro purchase right now. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在Proの購入を確認できません。後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前無法確認 Pro 購買，請稍後再試。"
+          }
+        }
+      }
+    },
     "目前無法恢復 Pro 購買，請稍後再試。": {
       "localizations": {
         "en": {
@@ -8846,6 +8890,281 @@
           "stringUnit": {
             "state": "translated",
             "value": "點選星星評分；上下滑動可調整"
+          }
+        }
+      }
+    },
+    "批次離線釘選 · Pro": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch Pin for Offline · Pro" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "オフライン用に一括ピン留め · Pro" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次離線釘選 · Pro" } }
+      }
+    },
+    "批次編輯資訊 · Pro": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch Edit Info · Pro" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "情報を一括編集 · Pro" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯資訊 · Pro" } }
+      }
+    },
+    "取消離線準備": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel Offline Preparation" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備をキャンセル" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "取消離線準備" } }
+      }
+    },
+    "離線準備 %lld／%lld": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline preparation %lld/%lld" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備 %lld／%lld" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "離線準備 %lld／%lld" } }
+      }
+    },
+    "離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline preparation complete: %lld added, %lld already present, %lld failed%@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備完了：新規 %lld、既存 %lld、失敗 %lld%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@" } }
+      }
+    },
+    "（已取消）": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": " (Canceled)" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "（キャンセル済み）" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "（已取消）" } }
+      }
+    },
+    "批次編輯 %lld 首歌曲": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch edit %lld songs" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%lld 曲の曲情報を一括編集" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯 %lld 首歌曲" } }
+      }
+    },
+    "只修改勾選的欄位；原始音樂檔不會變動。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Only modify checked fields; original music files won't be changed." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "選択した項目のみ変更します。元の音楽ファイルは変更されません。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "只修改勾選的欄位；原始音樂檔不會變動。" } }
+      }
+    },
+    "統一套用": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply to All" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "一括適用" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "統一套用" } }
+      }
+    },
+    "批次編輯歌曲資訊": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch Edit Song Info" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を一括編集" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯歌曲資訊" } }
+      }
+    },
+    "套用變更": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply Changes" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "変更を適用" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "套用變更" } }
+      }
+    },
+    "全選已載入": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select All Loaded" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "読み込み済みをすべて選択" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "全選已載入" } }
+      }
+    },
+    "批次移出歌單 · Pro": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch Remove from Playlist · Pro" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストから一括削除 · Pro" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次移出歌單 · Pro" } }
+      }
+    },
+    "選取歌曲": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select Song" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲を選択" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "選取歌曲" } }
+      }
+    },
+    "取消選取歌曲": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Deselect Song" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲の選択を解除" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "取消選取歌曲" } }
+      }
+    },
+    "將所選歌曲移出歌單？": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Selected Songs from Playlist?" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "選択した曲をプレイリストから削除しますか？" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "將所選歌曲移出歌單？" } }
+      }
+    },
+    "移出所選歌曲": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Selected Songs" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "選択した曲を削除" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移出所選歌曲" } }
+      }
+    },
+    "只修改這張歌單，不刪除原始音樂檔。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Only this playlist will be changed; original music files won't be deleted." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "このプレイリストのみを変更します。元の音楽ファイルは削除されません。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "只修改這張歌單，不刪除原始音樂檔。" } }
+      }
+    },
+    "正在更新歌曲資訊": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Updating song information" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を更新中" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "正在更新歌曲資訊" } }
+      }
+    },
+    "無法更新歌曲資訊：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could not update song information: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を更新できませんでした：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法更新歌曲資訊：%@" } }
+      }
+    },
+    "正在整理歌單": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Organizing playlist" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストを整理中" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "正在整理歌單" } }
+      }
+    },
+    "無法從歌單移除歌曲：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could not remove songs from playlist: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストから曲を削除できませんでした：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法從歌單移除歌曲：%@" } }
+      }
+    },
+    "可播放": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Playable" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再生可能" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "可播放" } }
+      }
+    },
+    "開始播放此曲目": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start playing this track" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "この曲の再生を開始" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "開始播放此曲目" } }
+      }
+    },
+    "此曲目目前無法播放": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This track can't be played right now" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "この曲は現在再生できません" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "此曲目目前無法播放" } }
+      }
+    },
+    "鎖定的 Pro 主題會開啟升級頁": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Locked Pro themes open the upgrade page" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ロックされた Pro テーマを選ぶとアップグレードページが開きます" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "鎖定的 Pro 主題會開啟升級頁" } }
+      }
+    },
+    "展開完整播放控制": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Expand full playback controls" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "完全な再生コントロールを展開" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "展開完整播放控制" } }
+      }
+    },
+    "無法讀取播放歷史，請稍後再試。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Couldn't read play history. Please try again later." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再生履歴を読み込めませんでした。後でもう一度お試しください。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法讀取播放歷史，請稍後再試。" } }
+      }
+    },
+    "Smart DJ 無法完成推薦，請稍後再試。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ couldn't complete its recommendation. Please try again later." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ はおすすめを作成できませんでした。後でもう一度お試しください。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 無法完成推薦，請稍後再試。" } }
+      }
+    },
+    "解鎖 %@ 與 %@。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unlock %@ and %@." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%@ と %@ をアンロック。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖 %@ 與 %@。" } }
+      }
+    },
+    "進階批次整理": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Advanced Batch Organization" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "高度な一括整理" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "進階批次整理" } }
+      }
+    },
+    "批次編輯歌曲資訊與歌單多選移除。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Batch edit song info and remove multiple songs from playlists." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲情報の一括編集とプレイリストからの複数曲削除。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯歌曲資訊與歌單多選移除。" } }
+      }
+    },
+    "已保存到裝置的歌曲，來源離線時仍可播放。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Songs already saved to your device remain playable when their source is offline." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "デバイスに保存済みの曲は、ソースがオフラインでも再生できます。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已保存到裝置的歌曲，來源離線時仍可播放。" } }
+      }
+    },
+    "前往曲庫選歌": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose from Music Library"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリで曲を選択"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前往曲庫選歌"
+          }
+        }
+      }
+    },
+    "從曲庫選擇歌曲開始播放": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a song from your library to start playback"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリから曲を選んで再生します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從曲庫選擇歌曲開始播放"
           }
         }
       }

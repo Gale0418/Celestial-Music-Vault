@@ -114,7 +114,7 @@ struct RootView: View {
                     .buttonStyle(.borderedProminent)
                     .padding(12)
                     .background(reduceTransparency
-                                ? AnyShapeStyle(Color.black.opacity(0.96))
+                                ? AnyShapeStyle(Color.black)
                                 : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
                     .padding(16)
                 }
@@ -166,6 +166,7 @@ private struct WideRootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
 
@@ -210,23 +211,25 @@ private struct WideRootView: View {
                 PerformantQueueView()
                     .frame(width: 350)
                     .frame(maxHeight: .infinity)
-                    .background(theme.surface.opacity(reduceTransparency ? 0.96 : 0.88))
-                    .background(
-                        LinearGradient(
-                            colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .background(theme.surface.opacity(reduceTransparency ? 1 : 0.88))
+                    .background {
+                        if !reduceTransparency {
+                            LinearGradient(
+                                colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        }
+                    }
                     .overlay(alignment: .leading) {
                         Rectangle()
                             .fill(theme.metal.opacity(0.20))
                             .frame(width: 1)
                     }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .animation(.snappy(duration: 0.28), value: showingQueue.wrappedValue)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingQueue.wrappedValue)
         #else
         libraryStage
             .inspector(isPresented: showingQueue) {
@@ -244,8 +247,12 @@ private struct WideRootView: View {
                 if columnVisibility == .detailOnly {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(AppLanguage.localized("顯示側邊欄"), systemImage: "sidebar.left") {
-                            withAnimation(.snappy(duration: 0.25)) {
+                            if reduceMotion {
                                 columnVisibility = .all
+                            } else {
+                                withAnimation(.snappy(duration: 0.25)) {
+                                    columnVisibility = .all
+                                }
                             }
                         }
                         .labelStyle(.iconOnly)
@@ -305,17 +312,23 @@ private struct CompactRootView: View {
         .sheet(isPresented: $showingNowPlaying) {
             NavigationStack { NowPlayingView() }
         }
+        .onAppear { selectedTab = tabDestination(for: appModel.selection) }
         .onChange(of: appModel.videoURL) { _, _ in showMoonPortalIfNeeded() }
         .onChange(of: appModel.videoPresentationMode) { _, _ in showMoonPortalIfNeeded() }
         .onChange(of: appModel.selection) { _, destination in
-            guard let destination else { return }
-            switch destination {
-            case .nowPlaying: selectedTab = .nowPlaying
-            case .queue: selectedTab = .songs
-            case .playlists: selectedTab = .playlists
-            case .settings: selectedTab = .settings
-            default: selectedTab = .songs
-            }
+            selectedTab = tabDestination(for: destination)
+        }
+        .onChange(of: selectedTab) { _, destination in
+            if tabDestination(for: appModel.selection) != destination { appModel.selection = destination }
+        }
+    }
+
+    private func tabDestination(for selection: LibraryDestination?) -> LibraryDestination {
+        switch selection {
+        case .some(.nowPlaying), .none: .nowPlaying
+        case .some(.playlists): .playlists
+        case .some(.settings): .settings
+        default: .songs
         }
     }
 
@@ -393,7 +406,7 @@ private struct SourceStatusBanner: View {
             .frame(minHeight: 44)
             #endif
             .background(reduceTransparency
-                        ? AnyShapeStyle(theme.background.opacity(0.98))
+                        ? AnyShapeStyle(theme.background)
                         : AnyShapeStyle(.regularMaterial))
             .overlay(alignment: .bottom) {
                 Rectangle().fill(theme.primary.opacity(0.35)).frame(height: 1)

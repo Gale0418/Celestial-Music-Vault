@@ -103,6 +103,7 @@ struct PerformantQueueView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var snapshot = QueuePanelSnapshot()
     @State private var search = ""
     @State private var filteredIndices: [Int] = []
@@ -142,7 +143,10 @@ struct PerformantQueueView: View {
                         .accessibilityLabel(AppLanguage.localized("搜尋歌曲、歌手或專輯"))
                 }
                 .padding(8)
-                .background(theme.surface.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+                .background(
+                    reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.35)),
+                    in: RoundedRectangle(cornerRadius: 8)
+                )
             }
 
             if tracks.isEmpty {
@@ -252,8 +256,15 @@ struct PerformantQueueView: View {
         .frame(minHeight: 60)
         .padding(.vertical, 9)
         .padding(.horizontal, 10)
-        .background(isCurrent ? theme.primary.opacity(0.16) : .clear,
+        .background(isCurrent
+                    ? (reduceTransparency ? theme.surface : theme.primary.opacity(0.16))
+                    : .clear,
                     in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            if reduceTransparency && isCurrent {
+                RoundedRectangle(cornerRadius: 14).strokeBorder(theme.primary, lineWidth: 2)
+            }
+        }
     }
 
     private func statusText(for track: Track, isCurrent: Bool) -> String? {

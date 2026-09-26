@@ -35,6 +35,9 @@ public protocol LibraryRepository: Sendable {
     func applyScan(_ files: [ScannedMediaFile], sourceID: UUID, sourceWasReachable: Bool) async throws
     func setFavorite(trackID: UUID, isFavorite: Bool) async throws
     func setRating(trackID: UUID, rating: Int) async throws
+    /// Applies the same partial metadata patch to every requested track.
+    /// The operation validates all IDs before mutating records and saves once.
+    func updateMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws
     func recordPlayback(trackID: UUID, skipped: Bool) async throws
     func setAnalysis(trackID: UUID, profile: AnalysisProfile) async throws
     func playlists() async throws -> [Playlist]
@@ -44,6 +47,8 @@ public protocol LibraryRepository: Sendable {
     func addTrack(trackID: UUID, toPlaylist id: UUID) async throws
     func addTracks(trackIDs: [UUID], toPlaylist id: UUID) async throws
     func removeTrack(trackID: UUID, fromPlaylist id: UUID) async throws
+    /// Removes all matching IDs in one save while preserving the remaining order.
+    func removeTracks(trackIDs: [UUID], fromPlaylist id: UUID) async throws
 }
 
 @MainActor
@@ -128,7 +133,7 @@ public struct DeterministicCacheEvictionPlanner: CacheEvictionPlanner {
 }
 
 public protocol SmartDJService: Sendable {
-    func makeQueue(from tracks: [Track], profiles: [UUID: AnalysisProfile], history: [UUID: ListeningSignal], limit: Int) async -> [DJSelection]
+    func makeQueue(from tracks: [Track], profiles: [UUID: AnalysisProfile], history: [UUID: ListeningSignal], limit: Int) async throws -> [DJSelection]
 }
 
 public struct ScannedMediaFile: Hashable, Sendable {
