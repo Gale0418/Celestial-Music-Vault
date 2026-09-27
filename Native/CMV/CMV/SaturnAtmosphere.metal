@@ -1,7 +1,7 @@
 #include <metal_stdlib>
 using namespace metal;
 
-// Stable cell seeds keep the ice stars attached to the ring instead of
+// Stable cell seeds keep the ice stars on their orbits instead of
 // regenerating their positions every frame.
 static float ringStarSeed(float2 cell) {
     return fract(sin(dot(cell, float2(127.1, 311.7))) * 43758.5453);
@@ -98,6 +98,8 @@ static float ringStarSeed(float2 cell) {
     float ringAA = aa / tilt;
     float ringCoverage = smoothstep(1.20 - ringAA, 1.20 + ringAA, ringRadius)
         * (1.0 - smoothstep(2.36 - ringAA, 2.36 + ringAA, ringRadius));
+    float ringOpacity = 0.0;
+    float3 ringColor = float3(0.0);
     if (ringCoverage > 0.0) {
         float front = step(z, ringZ);
         float visible = 1.0 - sphereCoverage * (1.0 - front);
@@ -108,39 +110,56 @@ static float ringStarSeed(float2 cell) {
         float density = mix(0.24, 0.88, smoothstep(1.43, 1.51, ringRadius));
         density *= mix(1.0, 0.69, smoothstep(1.99, 2.03, ringRadius));
         float opacity = ringCoverage * visible * density * (0.70 + grain * 0.30) * (1.0 - gap * 0.95);
+        ringOpacity = opacity;
         float3 ringPoint = float3(q, ringZ);
         float towardSun = dot(ringPoint, sun);
         float rayDistance = dot(ringPoint, ringPoint) - towardSun * towardSun;
         float shadow = (1.0 - smoothstep(0.94, 1.06, rayDistance)) * (1.0 - step(0.0, towardSun));
         float3 ice = mix(float3(0.46, 0.35, 0.23), float3(1.0, 0.90, 0.70), grain);
         ice *= 0.94 - shadow * 0.82;
-        // Jittered polar cells scatter frost across the ring. Only the nearby
-        // 3x3 cells are evaluated, regardless of the total number of stars.
-        // Positions share the ice plane and its near/far depth test.
-        const float orbitPeriods[4] = {64.0, 80.0, 96.0, 120.0};
-        const float pulsePeriods[6] = {3.0, 4.0, 5.0, 6.0, 8.0, 10.0};
-        const float radialStep = 1.10 / 8.0;
-        const float angularCells = 96.0;
-        float ringAngle = atan2(q.y / tilt, q.x);
-        int nearestLane = int(floor((ringRadius - 1.24) / radialStep));
-        float starlight = 0.0;
-        for (int row = -1; row <= 1; ++row) {
-            int lane = nearestLane + row;
-            if (lane < 0 || lane >= 8) continue;
+        ringColor = ice;
+    }
+
+    // Frost occupies the ring and sparse orbits above/below its normal. Each
+    // lane has a stable height; nothing bobs while the camera is at rest.
+    // Inverse-project each lane before querying its neighboring angular cells,
+    // so raised stars remain visible outside the flat ice's coverage mask.
+    const float orbitPeriods[4] = {64.0, 80.0, 96.0, 120.0};
+    const float pulsePeriods[6] = {3.0, 4.0, 5.0, 6.0, 8.0, 10.0};
+    const float radialStep = 1.10 / 8.0;
+    const float angularCells = 96.0;
+    float frontStarlight = 0.0;
+    float backStarlight = 0.0;
+    if (abs(q.x) < 2.40 && abs(q.y) < 0.43) {
+        for (int layer = -1; layer <= 1; ++layer) {
+          for (int lane = 0; lane < 8; ++lane) {
+            float height = float(layer) * (0.06 + 0.05 * ringStarSeed(float2(float(lane), float(layer + 3))));
+            float2 projected = float2(q.x, (q.y + height * axisCosine) / tilt);
+            float projectedRadius = length(projected);
+            int nearestLane = int(floor((projectedRadius - 1.24) / radialStep));
+            if (abs(nearestLane - lane) > 1) continue;
+            float ringAngle = atan2(projected.y, projected.x);
             float turns = time / orbitPeriods[lane / 2];
             float cellAngle = fract(ringAngle / (2.0 * M_PI_F) + turns) * angularCells;
             for (int column = -1; column <= 1; ++column) {
                 float cell = fmod(floor(cellAngle) + float(column) + angularCells, angularCells);
-                float2 key = float2(float(lane), cell);
+                float2 key = float2(float(lane + (layer + 1) * 11), cell);
                 float seed = ringStarSeed(key + 0.37);
-                if (seed < 0.30) continue;
+                if (seed < (layer == 0 ? 0.30 : 0.77)) continue;
                 float starRadius = 1.24 + (float(lane) + 0.15 + 0.70 * ringStarSeed(key + 7.9)) * radialStep;
                 float orbit = ((cell + 0.15 + 0.70 * ringStarSeed(key + 19.3)) / angularCells - turns) * (2.0 * M_PI_F);
-                float2 starPosition = starRadius * float2(cos(orbit), tilt * sin(orbit));
-                float2 delta = q - starPosition;
+                float3 starPosition = float3(starRadius * cos(orbit),
+                    starRadius * tilt * sin(orbit) - height * axisCosine,
+                    starRadius * axisCosine * sin(orbit) + height * tilt);
+                float2 delta = q - starPosition.xy;
                 float2 d = (major * delta.x + minor * delta.y) * radius * scale;
                 float distanceSquared = dot(d, d);
                 if (distanceSquared > 100.0) continue;
+                float planetVisibility = 1.0 - sphereCoverage * (1.0 - step(z, starPosition.z));
+                bool behindIce = layer != 0 && starPosition.z < ringZ;
+                float towardSun = dot(starPosition, sun);
+                float rayDistance = dot(starPosition, starPosition) - towardSun * towardSun;
+                float shadow = (1.0 - smoothstep(0.94, 1.06, rayDistance)) * (1.0 - step(0.0, towardSun));
                 float prominent = step(0.92, seed);
                 float width = mix(0.40, 0.85, ringStarSeed(key + 31.4)) + prominent * 0.25;
                 float core = exp(-distanceSquared / (width * width));
@@ -149,12 +168,24 @@ static float ringStarSeed(float2 cell) {
                            + exp(-abs(d.y) / 2.5 - d.x * d.x / 0.28);
                 float pulsePeriod = pulsePeriods[(lane + int(cell)) % 6];
                 float sparkle = 0.62 + 0.38 * sin(time * (2.0 * M_PI_F / pulsePeriod) + seed * 19.0);
-                starlight += (core * (2.5 + prominent * 3.0) + halo * 0.18 + rays * prominent * 0.65) * sparkle;
+                float light = (core * (2.5 + prominent * 3.0) + halo * 0.18 + rays * prominent * 0.65)
+                    * sparkle * planetVisibility * (1.0 - shadow * 0.8) * 0.65;
+                if (behindIce) backStarlight += light;
+                else frontStarlight += light;
             }
+          }
         }
-        ice += starlight * float3(1.0, 0.95, 0.82) * (1.0 - shadow * 0.8);
-        rgb = ice * opacity + rgb * (1.0 - opacity);
-        alpha = opacity + alpha * (1.0 - opacity);
     }
+    // Depth-ordered premultiplied composition: rear frost, ice, front frost.
+    // Rear stars never dim the ice in front of them through their own alpha.
+    const float3 starColor = float3(1.0, 0.95, 0.82);
+    float starAlpha = saturate(backStarlight);
+    rgb = backStarlight * starColor + rgb * (1.0 - starAlpha);
+    alpha = starAlpha + alpha * (1.0 - starAlpha);
+    rgb = ringColor * ringOpacity + rgb * (1.0 - ringOpacity);
+    alpha = ringOpacity + alpha * (1.0 - ringOpacity);
+    starAlpha = saturate(frontStarlight);
+    rgb = frontStarlight * starColor + rgb * (1.0 - starAlpha);
+    alpha = starAlpha + alpha * (1.0 - starAlpha);
     return half4(half3(rgb), half(alpha)) * input.a;
 }
