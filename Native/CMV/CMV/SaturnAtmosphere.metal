@@ -1,6 +1,12 @@
 #include <metal_stdlib>
 using namespace metal;
 
+// Stable cell seeds keep the ice stars attached to the ring instead of
+// regenerating their positions every frame.
+static float ringStarSeed(float2 cell) {
+    return fract(sin(dot(cell, float2(127.1, 311.7))) * 43758.5453);
+}
+
 // Original orthographic planet and ring geometry. There is no baked atmosphere
 // beneath this surface: every visible latitude samples the animated cloud map.
 [[ stitchable ]] half4 saturnScene(float2 position, half4 input, float2 size,
@@ -8,12 +14,12 @@ using namespace metal;
     float scale = max(size.x / 1586.0, size.y / 992.0);
     if (scale <= 0.0) return half4(0.0h);
     float2 origin = (size - float2(1586.0, 992.0) * scale) * 0.5;
-    float2 p = (position - origin) / scale - float2(1500.0, 620.0);
-    const float radius = 580.0;
-    const float2 major = float2(0.98877108, -0.14943813);
-    const float2 minor = float2(0.14943813, 0.98877108);
-    const float tilt = 0.35;
-    const float axisCosine = 0.9367497;
+    float2 p = (position - origin) / scale - float2(1393.0, 420.0);
+    const float radius = 553.0;
+    const float2 major = float2(0.90044710, -0.43496553);
+    const float2 minor = float2(0.43496553, 0.90044710);
+    const float tilt = 0.12;
+    const float axisCosine = 0.99277389;
     const float3 northAxis = float3(0.0, -axisCosine, tilt);
     const float3 sun = float3(-0.8746, -0.3194, -0.3650);
     float2 q = float2(dot(p, major), dot(p, minor)) / radius;
@@ -89,11 +95,9 @@ using namespace metal;
     // Derivatives are evaluated before the coverage branch so edge quads
     // retain defined gradients. Fade frequencies before the Nyquist limit.
     float radialFootprint = max(fwidth(ringRadius), 0.00001);
-    float ringAngle = atan2(q.y / tilt, q.x);
-    float angularFootprint = min(0.1, max(fwidth(ringAngle), 0.00001));
     float ringAA = aa / tilt;
     float ringCoverage = smoothstep(1.20 - ringAA, 1.20 + ringAA, ringRadius)
-        * (1.0 - smoothstep(2.26 - ringAA, 2.26 + ringAA, ringRadius));
+        * (1.0 - smoothstep(2.36 - ringAA, 2.36 + ringAA, ringRadius));
     if (ringCoverage > 0.0) {
         float front = step(z, ringZ);
         float visible = 1.0 - sphereCoverage * (1.0 - front);
@@ -110,21 +114,45 @@ using namespace metal;
         float shadow = (1.0 - smoothstep(0.94, 1.06, rayDistance)) * (1.0 - step(0.0, towardSun));
         float3 ice = mix(float3(0.46, 0.35, 0.23), float3(1.0, 0.90, 0.70), grain);
         ice *= 0.94 - shadow * 0.82;
-        // Five finite-sized icy glints, widened and flux-filtered when they
-        // become subpixel. Their positions stay fixed while brightness pulses.
-        float glint = 0.0;
-        float radialWidth = max(0.003, radialFootprint);
-        float angularWidth = max(0.008, angularFootprint);
-        for (int i = 0; i < 5; ++i) {
-            float seed = float(i);
-            float r = 1.55 + seed * 0.145;
-            float a = 2.36 + seed * 0.133;
-            float angleDelta = fract((ringAngle - a + M_PI_F) / (2.0 * M_PI_F)) * (2.0 * M_PI_F) - M_PI_F;
-            float2 distance = float2((ringRadius - r) / radialWidth, angleDelta / angularWidth);
-            glint += exp(-dot(distance, distance)) * (0.003 / radialWidth) * (0.008 / angularWidth)
-                * (0.50 + 0.25 * sin(time * (2.0 * M_PI_F / 8.0) + seed * 1.7));
+        // Jittered polar cells scatter frost across the ring. Only the nearby
+        // 3x3 cells are evaluated, regardless of the total number of stars.
+        // Positions share the ice plane and its near/far depth test.
+        const float orbitPeriods[4] = {64.0, 80.0, 96.0, 120.0};
+        const float pulsePeriods[6] = {3.0, 4.0, 5.0, 6.0, 8.0, 10.0};
+        const float radialStep = 1.10 / 8.0;
+        const float angularCells = 96.0;
+        float ringAngle = atan2(q.y / tilt, q.x);
+        int nearestLane = int(floor((ringRadius - 1.24) / radialStep));
+        float starlight = 0.0;
+        for (int row = -1; row <= 1; ++row) {
+            int lane = nearestLane + row;
+            if (lane < 0 || lane >= 8) continue;
+            float turns = time / orbitPeriods[lane / 2];
+            float cellAngle = fract(ringAngle / (2.0 * M_PI_F) + turns) * angularCells;
+            for (int column = -1; column <= 1; ++column) {
+                float cell = fmod(floor(cellAngle) + float(column) + angularCells, angularCells);
+                float2 key = float2(float(lane), cell);
+                float seed = ringStarSeed(key + 0.37);
+                if (seed < 0.30) continue;
+                float starRadius = 1.24 + (float(lane) + 0.15 + 0.70 * ringStarSeed(key + 7.9)) * radialStep;
+                float orbit = ((cell + 0.15 + 0.70 * ringStarSeed(key + 19.3)) / angularCells - turns) * (2.0 * M_PI_F);
+                float2 starPosition = starRadius * float2(cos(orbit), tilt * sin(orbit));
+                float2 delta = q - starPosition;
+                float2 d = (major * delta.x + minor * delta.y) * radius * scale;
+                float distanceSquared = dot(d, d);
+                if (distanceSquared > 100.0) continue;
+                float prominent = step(0.92, seed);
+                float width = mix(0.40, 0.85, ringStarSeed(key + 31.4)) + prominent * 0.25;
+                float core = exp(-distanceSquared / (width * width));
+                float halo = exp(-distanceSquared / 6.25);
+                float rays = exp(-abs(d.x) / 2.5 - d.y * d.y / 0.28)
+                           + exp(-abs(d.y) / 2.5 - d.x * d.x / 0.28);
+                float pulsePeriod = pulsePeriods[(lane + int(cell)) % 6];
+                float sparkle = 0.62 + 0.38 * sin(time * (2.0 * M_PI_F / pulsePeriod) + seed * 19.0);
+                starlight += (core * (2.5 + prominent * 3.0) + halo * 0.18 + rays * prominent * 0.65) * sparkle;
+            }
         }
-        ice += glint * float3(0.55, 0.48, 0.32) * (1.0 - shadow);
+        ice += starlight * float3(1.0, 0.95, 0.82) * (1.0 - shadow * 0.8);
         rgb = ice * opacity + rgb * (1.0 - opacity);
         alpha = opacity + alpha * (1.0 - opacity);
     }

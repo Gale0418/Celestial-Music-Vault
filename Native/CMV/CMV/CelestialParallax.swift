@@ -4,6 +4,8 @@ import Foundation
 #if os(iOS)
 import CoreMotion
 import UIKit
+#else
+import AppKit
 #endif
 
 /// A normalized, bounded parallax sample shared by the celestial decorations.
@@ -23,12 +25,12 @@ struct CelestialParallaxSample: Equatable, Sendable {
 
     /// Maximum displacement for the sky artwork.
     var backgroundOffset: CGSize {
-        CGSize(width: x * 4, height: y * 4)
+        CGSize(width: x * 24, height: y * 24)
     }
 
     /// Maximum displacement for the Now Playing cover artwork.
     var coverOffset: CGSize {
-        CGSize(width: x * 4, height: y * 4)
+        CGSize(width: x * 10, height: y * 10)
     }
 
     /// Maximum cover tilt. The caller can use this with `rotationEffect`.
@@ -38,7 +40,7 @@ struct CelestialParallaxSample: Equatable, Sendable {
 
     fileprivate func offset(for layer: CelestialParallaxLayer) -> CGSize {
         switch layer {
-        case .distantBackground: CGSize(width: x * 1.5, height: y * 1.5)
+        case .distantBackground: CGSize(width: -x * 8, height: -y * 8)
         case .background: backgroundOffset
         case .cover: coverOffset
         }
@@ -74,8 +76,8 @@ private struct CelestialCardSheen: ViewModifier {
                         LinearGradient(
                             stops: [
                                 .init(color: .clear, location: 0.15),
-                                .init(color: .cyan.opacity(0.12), location: 0.40),
-                                .init(color: .white.opacity(0.20), location: 0.49),
+                                .init(color: .cyan.opacity(0.18), location: 0.40),
+                                .init(color: .white.opacity(0.30), location: 0.49),
                                 .init(color: .yellow.opacity(0.10), location: 0.58),
                                 .init(color: .clear, location: 0.82)
                             ], startPoint: .topLeading, endPoint: .bottomTrailing
@@ -89,9 +91,9 @@ private struct CelestialCardSheen: ViewModifier {
                     .accessibilityHidden(true)
                 }
             }
-            .rotation3DEffect(.degrees(enabled ? -Double(sample.y) * 5 : 0),
+            .rotation3DEffect(.degrees(enabled ? -Double(sample.y) * 10 : 0),
                               axis: (x: 1, y: 0, z: 0), perspective: 0.35)
-            .rotation3DEffect(.degrees(enabled ? Double(sample.x) * 5 : 0),
+            .rotation3DEffect(.degrees(enabled ? Double(sample.x) * 10 : 0),
                               axis: (x: 0, y: 1, z: 0), perspective: 0.35)
     }
 }
@@ -100,7 +102,7 @@ private struct CelestialCardSheen: ViewModifier {
 
 /// The one shared iOS motion source used by all celestial parallax modifiers.
 ///
-/// Device motion gravity is used here. Info.plist declares the purpose with
+/// Relative device attitude is used here. Info.plist declares the purpose with
 /// NSMotionUsageDescription as required by Core Motion's privacy contract. The manager is started
 /// only while at least one visible modifier has a lease and is stopped when the
 /// last lease disappears (including when the scene becomes inactive).
@@ -117,6 +119,8 @@ final class CelestialParallaxMotion: ObservableObject {
     private var filteredY = 0.0
     private var publishedX = 0.0
     private var publishedY = 0.0
+    private var referenceAttitude: CMAttitude?
+    private var referenceOrientation: UIInterfaceOrientation?
 
     private init() {}
 
@@ -139,6 +143,8 @@ final class CelestialParallaxMotion: ObservableObject {
         publishedX = 0
         publishedY = 0
         sample = .zero
+        referenceAttitude = nil
+        referenceOrientation = nil
     }
 
     private func startUpdatesIfAvailable() {
@@ -153,8 +159,8 @@ final class CelestialParallaxMotion: ObservableObject {
         Self.manager.startDeviceMotionUpdates(using: .xArbitraryZVertical)
         pollTask = Task { [weak self] in
             while let self, !Task.isCancelled, self.leaseCount > 0 {
-                if let gravity = Self.manager.deviceMotion?.gravity {
-                    self.consume(gravityX: gravity.x, gravityY: gravity.y)
+                if let attitude = Self.manager.deviceMotion?.attitude {
+                    self.consume(attitude: attitude)
                 }
                 // Poll only the latest sample. A busy main actor drops old
                 // positions instead of accumulating one task per callback.
@@ -163,31 +169,40 @@ final class CelestialParallaxMotion: ObservableObject {
         }
     }
 
-    private func consume(gravityX: Double, gravityY: Double) {
+    private func consume(attitude: CMAttitude) {
         guard leaseCount > 0 else { return }
-
-        // A small one-pole low pass removes hand tremor while preserving a
-        // deliberate tilt. Gravity is already bounded by Core Motion, but the
-        // clamp keeps malformed readings from escaping the visual budget.
         let orientation = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive }?.interfaceOrientation ?? .portrait
-        let screenGravity: (x: Double, y: Double)
-        switch orientation {
-        case .portrait:
-            screenGravity = (gravityX, -gravityY)
-        case .portraitUpsideDown:
-            screenGravity = (-gravityX, gravityY)
-        case .landscapeLeft:
-            screenGravity = (-gravityY, -gravityX)
-        case .landscapeRight:
-            screenGravity = (gravityY, gravityX)
-        default:
-            screenGravity = (gravityX, -gravityY)
+        // Calibrate once per active session/orientation, never continuously.
+        // Relative attitude still responds when the iPad is held upright,
+        // where raw gravity was already near its limit and barely changed.
+        guard let referenceAttitude, referenceOrientation == orientation else {
+            referenceAttitude = attitude.copy() as? CMAttitude
+            referenceOrientation = orientation
+            filteredX = 0; filteredY = 0
+            publishedX = 0; publishedY = 0
+            sample = .zero
+            return
         }
-        let targetX = max(-1, min(1, screenGravity.x.isFinite ? screenGravity.x : 0))
-        let targetY = max(-1, min(1, screenGravity.y.isFinite ? screenGravity.y : 0))
-        let smoothing: Double = 0.16
+        guard let relative = attitude.copy() as? CMAttitude else { return }
+        relative.multiply(byInverseOf: referenceAttitude)
+        let matrix = relative.rotationMatrix
+        let horizontal = atan2(matrix.m13, matrix.m33)
+        let vertical = atan2(matrix.m23, matrix.m33)
+        let screenTilt: (x: Double, y: Double)
+        switch orientation {
+        case .portrait: screenTilt = (horizontal, -vertical)
+        case .portraitUpsideDown: screenTilt = (-horizontal, vertical)
+        case .landscapeLeft: screenTilt = (-vertical, -horizontal)
+        case .landscapeRight: screenTilt = (vertical, horizontal)
+        default: screenTilt = (horizontal, -vertical)
+        }
+        // 12 degrees reaches full travel; ordinary small tilts remain visible.
+        let fullTravel = 12.0 * Double.pi / 180.0
+        let targetX = max(-1, min(1, screenTilt.x.isFinite ? screenTilt.x / fullTravel : 0))
+        let targetY = max(-1, min(1, screenTilt.y.isFinite ? screenTilt.y / fullTravel : 0))
+        let smoothing: Double = 0.22
         filteredX += (targetX - filteredX) * smoothing
         filteredY += (targetY - filteredY) * smoothing
 
@@ -259,69 +274,148 @@ private struct CelestialParallaxMotionModifier: ViewModifier {
 
 #else
 
-/// macOS has no Core Motion source in this feature. The same modifier samples
-/// the pointer position while it is over the view, so a stationary pointer
-/// produces a stationary value and leaving the view returns it to zero.
+private struct CelestialPointerSampleKey: EnvironmentKey {
+    static let defaultValue = CelestialParallaxSample.zero
+}
+
+private extension EnvironmentValues {
+    var celestialPointerSample: CelestialParallaxSample {
+        get { self[CelestialPointerSampleKey.self] }
+        set { self[CelestialPointerSampleKey.self] = newValue }
+    }
+}
+
+/// Read this window's pointer without consuming events or blocking controls.
+private struct CelestialPointerReader: NSViewRepresentable {
+    let onSample: (CelestialParallaxSample) -> Void
+
+    func makeNSView(context: Context) -> PointerView {
+        let view = PointerView()
+        view.onSample = onSample
+        return view
+    }
+
+    func updateNSView(_ view: PointerView, context: Context) {
+        view.onSample = onSample
+    }
+
+    static func dismantleNSView(_ view: PointerView, coordinator: ()) { view.stop() }
+
+    final class PointerView: NSView {
+        var onSample: (CelestialParallaxSample) -> Void = { _ in }
+        private var monitor: Any?
+        private weak var observedWindow: NSWindow?
+        private var previouslyAcceptedMovement = false
+        private var lastUpdate: TimeInterval = 0
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stop()
+            guard let window else { return }
+            observedWindow = window
+            previouslyAcceptedMovement = window.acceptsMouseMovedEvents
+            window.acceptsMouseMovedEvents = true
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [
+                .mouseMoved, .leftMouseDragged, .rightMouseDragged,
+                .otherMouseDragged, .mouseEntered, .mouseExited, .leftMouseDown
+            ]) { [weak self] event in
+                // AppKit delivers local event monitors on the main thread.
+                MainActor.assumeIsolated { self?.consume(event) }
+                return event
+            }
+        }
+
+        private func consume(_ event: NSEvent) {
+            guard let window, event.window === window, window.isKeyWindow else { return }
+            let point = convert(event.locationInWindow, from: nil)
+            guard bounds.contains(point), bounds.width > 0, bounds.height > 0 else {
+                onSample(.zero)
+                return
+            }
+            let now = Date.timeIntervalSinceReferenceDate
+            guard event.type == .leftMouseDown || now - lastUpdate >= 1.0 / 30.0 else { return }
+            lastUpdate = now
+            onSample(CelestialParallaxSample(
+                x: (point.x - bounds.minX) / bounds.width * 2 - 1,
+                y: 1 - (point.y - bounds.minY) / bounds.height * 2))
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            if let observedWindow, !previouslyAcceptedMovement {
+                observedWindow.acceptsMouseMovedEvents = false
+            }
+            observedWindow = nil
+        }
+    }
+}
+
+private struct CelestialPointerSurface: ViewModifier {
+    let enabled: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var sample = CelestialParallaxSample.zero
+
+    private var shouldTrack: Bool { enabled && !reduceMotion && scenePhase == .active }
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.celestialPointerSample, shouldTrack ? sample : .zero)
+            .background {
+                if shouldTrack {
+                    CelestialPointerReader { next in
+                        if sample != next { sample = next }
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+            }
+            .onChange(of: shouldTrack) { _, active in
+                if !active { sample = .zero }
+            }
+            .onDisappear { sample = .zero }
+    }
+}
+
+/// All Mac depth layers share the window's pointer sample, including while
+/// the pointer crosses a control or album artwork. No idle animation is used.
 @MainActor
 private struct CelestialParallaxHoverModifier: ViewModifier {
     let layer: CelestialParallaxLayer
     let enabled: Bool
-
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @State private var hoverSample = CelestialParallaxSample.zero
-    @State private var contentSize = CGSize.zero
+    @Environment(\.celestialPointerSample) private var pointerSample
 
-    private var shouldTrack: Bool {
-        enabled && !reduceMotion && scenePhase == .active
-    }
+    private var shouldTrack: Bool { enabled && !reduceMotion && scenePhase == .active }
 
     func body(content: Content) -> some View {
-        let visibleSample = shouldTrack ? hoverSample : .zero
-
+        let visibleSample = shouldTrack ? pointerSample : .zero
         content
             .modifier(CelestialCardSheen(sample: visibleSample, enabled: layer == .cover && shouldTrack))
             .offset(visibleSample.offset(for: layer))
             .rotationEffect(visibleSample.rotation(for: layer))
-            .onGeometryChange(for: CGSize.self) { proxy in
-                proxy.size
-            } action: { newSize in
-                contentSize = newSize
-            }
-            .onContinuousHover(coordinateSpace: .local) { phase in
-                guard shouldTrack else { return }
-                switch phase {
-                case .active(let location):
-                    let width = max(contentSize.width, 1)
-                    let height = max(contentSize.height, 1)
-                    let normalizedX = (location.x / width) * 2 - 1
-                    let normalizedY = (location.y / height) * 2 - 1
-                    hoverSample = CelestialParallaxSample(
-                        x: normalizedX,
-                        y: normalizedY
-                    )
-                case .ended:
-                    hoverSample = .zero
-                }
-            }
-            .onChange(of: reduceMotion) { _, _ in
-                if reduceMotion { hoverSample = .zero }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                if phase != .active { hoverSample = .zero }
-            }
-            .onChange(of: enabled) { _, isEnabled in
-                if !isEnabled { hoverSample = .zero }
-            }
     }
 }
 
 #endif
 
 extension View {
+    @ViewBuilder
+    func celestialPointerSurface(enabled: Bool) -> some View {
+        #if os(macOS)
+        modifier(CelestialPointerSurface(enabled: enabled))
+        #else
+        self
+        #endif
+    }
+
     /// Applies a bounded, non-animated celestial parallax response.
     ///
-    /// On iOS the response follows device gravity. On macOS it follows the
+    /// On iOS the response follows calibrated device attitude. On macOS it follows the
     /// pointer while hovering over this view. Reduce Motion and inactive scene
     /// phases always return the layer to its neutral position.
     @ViewBuilder

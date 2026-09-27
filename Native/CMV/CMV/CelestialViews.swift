@@ -40,7 +40,7 @@ struct CelestialBackground: View {
 
     var body: some View {
         GeometryReader { geometry in
-        let overscan: CGFloat = 12
+        let overscan: CGFloat = theme.id == .titaniumEclipse ? 64 : 12
         let portraitShift = backgroundPortraitShift(for: geometry.size)
         // The leftward portrait crop must keep artwork behind the full viewport.
         // Widen both the image and Canvas so the shifted right edge never reveals
@@ -162,20 +162,16 @@ struct CelestialBackground: View {
         // In portrait the height determines the image scale. Align its right
         // edge with the viewport so the globe centre lands near the right edge
         // rather than shrinking to a thin sliver as the window gets narrower.
-        let heightScale = (size.height + 12) / 992
+        let heightScale = (size.height + 64) / 992
         let artworkWidth = 1586 * heightScale
-        return -max(0, (artworkWidth - size.width - 12) / 2)
+        return -max(0, (artworkWidth - size.width - 64) / 2)
         #else
         return 0
         #endif
     }
 
     private var backgroundParallaxEnabled: Bool {
-        #if os(iOS)
         theme.id == .titaniumEclipse
-        #else
-        false
-        #endif
     }
 
     private func updateSkyClock(running: Bool) {

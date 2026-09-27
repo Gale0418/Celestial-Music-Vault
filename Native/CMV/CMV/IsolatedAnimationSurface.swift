@@ -14,6 +14,7 @@ private struct IsolatedAnimationSurface<Content: View>: NSViewRepresentable {
 
     private var hostedContent: AnyView {
         AnyView(content
+            .ignoresSafeArea()
             .environment(\.cmvTheme, theme)
             .environment(\.scenePhase, scenePhase)
             .environment(\.colorScheme, colorScheme)

@@ -47,6 +47,7 @@ struct RootView: View {
                     #endif
                 }
             }
+            .celestialPointerSurface(enabled: appModel.selectedTheme == .titaniumEclipse)
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
             .preferredColorScheme(.dark)
             .overlay(alignment: .top) {
