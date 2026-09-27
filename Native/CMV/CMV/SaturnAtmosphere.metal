@@ -41,7 +41,8 @@ static float cloudMask(float2 p) {
 
     // Seven separately rotating latitude bands. All periods divide 5760,
     // matching the Swift clock wrap, so neither time nor texture has a seam.
-    const float periods[7] = {144.0, 120.0, 180.0, 96.0, 160.0, 128.0, 192.0};
+    // Four times the original speed so cloud features visibly travel within seconds.
+    const float periods[7] = {36.0, 30.0, 45.0, 24.0, 40.0, 32.0, 48.0};
     float band = clamp(uv.y * 7.0 - 0.5, 0.0, 6.0);
     int lower = min(int(floor(band)), 5);
     float feather = smoothstep(0.32, 0.68, band - lower);

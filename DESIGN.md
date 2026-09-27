@@ -70,7 +70,7 @@ colors remain semantic and meet contrast requirements in every theme.
 - Ambient stars and auroras use a small bounded particle count and pause when the
   app is inactive.
 - 土星球體輪廓與星環固定；原創無縫雲圖沿球面經度旋轉，七個緯度帶分別以
-  96–192 秒一圈的速度運動，帶間柔和交融。星環只有淡淡星光，背景不發出聲音。
+  24–48 秒一圈的速度運動，帶間柔和交融。星環只有淡淡星光，背景不發出聲音。
 - Reduce Motion keeps the globe and rings static and replaces drifting/parallax effects
   with a composed sky.
 - Reduce Transparency uses opaque semantic surfaces with preserved hierarchy.
