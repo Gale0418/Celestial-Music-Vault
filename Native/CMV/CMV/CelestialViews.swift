@@ -249,7 +249,6 @@ struct AlbumWorldView: View {
                             radius: colorSchemeContrast == .increased ? 22 : 18)
             }
             .frame(width: size, height: size)
-            .celestialParallax(.cover, enabled: theme.id == .titaniumEclipse)
             AudioEnergyRing(
                 diameter: size,
                 energyState: energyState,

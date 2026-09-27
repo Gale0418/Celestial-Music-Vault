@@ -43,6 +43,7 @@ struct CelestialParallaxSample: Equatable, Sendable {
         case .distantBackground: CGSize(width: -x * 8, height: -y * 8)
         case .background: backgroundOffset
         case .cover: coverOffset
+        case .interface: .zero
         }
     }
 
@@ -60,41 +61,93 @@ enum CelestialParallaxLayer {
     case distantBackground
     case background
     case cover
+    /// Only light moves across UI surfaces; controls never move.
+    case interface
 }
 
-/// A light response tied only to input, never to an idle animation clock.
-private struct CelestialCardSheen: ViewModifier {
+/// Preserve the moon's input tilt without painting light over its artwork.
+private struct CelestialCoverTilt: ViewModifier {
     let sample: CelestialParallaxSample
     let enabled: Bool
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         content
-            .overlay {
-                if enabled && !reduceTransparency {
-                    GeometryReader { geometry in
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0.15),
-                                .init(color: .cyan.opacity(0.18), location: 0.40),
-                                .init(color: .white.opacity(0.30), location: 0.49),
-                                .init(color: .yellow.opacity(0.10), location: 0.58),
-                                .init(color: .clear, location: 0.82)
-                            ], startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                        .offset(x: sample.x * geometry.size.width * 0.24,
-                                y: sample.y * geometry.size.height * 0.24)
-                        .blendMode(.screen)
-                    }
-                    .clipShape(Circle())
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                }
-            }
             .rotation3DEffect(.degrees(enabled ? -Double(sample.y) * 10 : 0),
                               axis: (x: 1, y: 0, z: 0), perspective: 0.35)
             .rotation3DEffect(.degrees(enabled ? Double(sample.x) * 10 : 0),
                               axis: (x: 0, y: 1, z: 0), perspective: 0.35)
+    }
+}
+
+/// An optical foil reflection across the scene. It shares the card's input;
+/// the planet shader keeps its own fixed light source and cloud coordinates.
+private struct CelestialSkySheen: ViewModifier {
+    let sample: CelestialParallaxSample
+    let enabled: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if enabled && !reduceTransparency && contrast != .increased {
+                GeometryReader { geometry in
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0.1),
+                        .init(color: .cyan.opacity(0.10), location: 0.30),
+                        .init(color: .white.opacity(0.07), location: 0.43),
+                        .init(color: .purple.opacity(0.11), location: 0.58),
+                        .init(color: .orange.opacity(0.08), location: 0.72),
+                        .init(color: .clear, location: 0.90)
+                    ], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .scaleEffect(1.5)
+                    .rotationEffect(.degrees(Double(sample.x - sample.y) * 12))
+                    .offset(x: sample.x * geometry.size.width * 0.24,
+                            y: sample.y * geometry.size.height * 0.18)
+                    .blendMode(.screen)
+                }
+                .clipped()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
+/// Applied to a panel's background only, below its text and controls.
+/// The caller clips the reflection to the panel's own rounded shape.
+private struct CelestialPanelSheen: ViewModifier {
+    let sample: CelestialParallaxSample
+    let enabled: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if enabled && !reduceTransparency && contrast != .increased {
+                GeometryReader { geometry in
+                    let stripWidth = min(260, max(100, geometry.size.width * 0.32))
+                    let horizontalTravel = max(0, (geometry.size.width - stripWidth) / 2)
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .cyan.opacity(0.13), location: 0.24),
+                        .init(color: .white.opacity(0.18), location: 0.47),
+                        .init(color: .purple.opacity(0.10), location: 0.62),
+                        .init(color: .yellow.opacity(0.08), location: 0.76),
+                        .init(color: .clear, location: 1)
+                    ], startPoint: .leading, endPoint: .trailing)
+                    // A bounded-width reflection with transparent sides. The tall
+                    // strip covers wide player bars without exposing rotated edges.
+                    .frame(width: stripWidth,
+                           height: max(geometry.size.width, geometry.size.height) * 3)
+                    .rotationEffect(.degrees(-24 + Double(sample.x - sample.y) * 12))
+                    .position(x: geometry.size.width / 2 + sample.x * horizontalTravel,
+                              y: geometry.size.height * (0.5 + sample.y * 0.25))
+                    .blendMode(.screen)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+        }
     }
 }
 
@@ -245,9 +298,12 @@ private struct CelestialParallaxMotionModifier: ViewModifier {
         let visibleSample = shouldRun ? motion.sample : .zero
 
         content
-            .modifier(CelestialCardSheen(sample: visibleSample, enabled: layer == .cover && shouldRun))
+            .modifier(CelestialCoverTilt(sample: visibleSample, enabled: layer == .cover && shouldRun))
+            .modifier(CelestialSkySheen(sample: visibleSample, enabled: layer == .background && shouldRun))
+            .modifier(CelestialPanelSheen(sample: visibleSample, enabled: layer == .interface && shouldRun))
             .offset(visibleSample.offset(for: layer))
             .rotationEffect(visibleSample.rotation(for: layer))
+            .animation(shouldRun ? .easeOut(duration: 0.16) : nil, value: visibleSample)
             .onAppear { reconcileLease() }
             .onChange(of: scenePhase) { _, _ in reconcileLease() }
             .onChange(of: reduceMotion) { _, _ in reconcileLease() }
@@ -395,9 +451,12 @@ private struct CelestialParallaxHoverModifier: ViewModifier {
     func body(content: Content) -> some View {
         let visibleSample = shouldTrack ? pointerSample : .zero
         content
-            .modifier(CelestialCardSheen(sample: visibleSample, enabled: layer == .cover && shouldTrack))
+            .modifier(CelestialCoverTilt(sample: visibleSample, enabled: layer == .cover && shouldTrack))
+            .modifier(CelestialSkySheen(sample: visibleSample, enabled: layer == .background && shouldTrack))
+            .modifier(CelestialPanelSheen(sample: visibleSample, enabled: layer == .interface && shouldTrack))
             .offset(visibleSample.offset(for: layer))
             .rotationEffect(visibleSample.rotation(for: layer))
+            .animation(shouldTrack ? .easeOut(duration: 0.16) : nil, value: visibleSample)
     }
 }
 
@@ -413,7 +472,7 @@ extension View {
         #endif
     }
 
-    /// Applies a bounded, non-animated celestial parallax response.
+    /// Applies a bounded, input-driven celestial light or parallax response.
     ///
     /// On iOS the response follows calibrated device attitude. On macOS it follows the
     /// pointer while hovering over this view. Reduce Motion and inactive scene

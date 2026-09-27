@@ -2,6 +2,20 @@ import SwiftUI
 import SwiftData
 import CMVThemes
 
+/// Bound only accessibility-sized toolbar glyphs; preserve the normal layout.
+struct PlaybackIconSize: ViewModifier {
+    var points: CGFloat = 22
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            content.font(.system(size: points))
+        } else {
+            content
+        }
+    }
+}
+
 struct PlayerBar: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
@@ -22,7 +36,12 @@ struct PlayerBar: View {
             }
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
-        .background(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+        .background {
+            Rectangle()
+                .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                .clipped()
+        }
         .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
         .controlSize(.large)
         .accessibilityElement(children: .contain)
@@ -78,7 +97,7 @@ struct PlayerBar: View {
                     .disabled(!appModel.canAdjustQueueOrder)
             } label: {
                 Label(AppLanguage.localized("更多播放控制"), systemImage: "ellipsis.circle")
-                    .labelStyle(.iconOnly)
+                    .labelStyle(.iconOnly).modifier(PlaybackIconSize())
             }
             .frame(width: 44, height: 44)
             .disabled(!appModel.canShuffleQueue && !appModel.canAdjustQueueOrder)
@@ -90,6 +109,7 @@ struct PlayerBar: View {
     private func controlSymbol(_ name: String, isOn: Bool) -> some View {
         ZStack(alignment: .topTrailing) {
             Image(systemName: name)
+                .modifier(PlaybackIconSize())
                 .foregroundStyle(isOn ? theme.primary : Color.secondary)
             if isOn {
                 Image(systemName: "checkmark.circle.fill")
@@ -107,7 +127,7 @@ struct PlayerBar: View {
         return HStack(spacing: 12) {
             ZStack {
                 Circle().fill(theme.secondary)
-                Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal)
+                Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal)
             }
             .frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 3) {
@@ -122,7 +142,7 @@ struct PlayerBar: View {
     private var transportControls: some View {
         HStack(spacing: 4) {
             Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") { appModel.skipCurrentMediaBackward(context: modelContext) }
-                .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
                 .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
             Button(appModel.isCurrentMediaPlaying
                    ? AppLanguage.localized("暫停")
@@ -130,14 +150,14 @@ struct PlayerBar: View {
                    systemImage: appModel.isCurrentMediaPlaying ? "pause.fill" : "play.fill") {
                 appModel.toggleCurrentMediaPlayback(context: modelContext)
             }
-            .labelStyle(.iconOnly)
+            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
             .buttonStyle(.borderedProminent)
             .frame(width: 44, height: 44)
             .accessibilityHint(appModel.videoURL == nil
                                ? AppLanguage.localized("播放目前曲目")
                                : AppLanguage.localized("播放或暫停目前影片"))
             Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
-                .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
                 .disabled(appModel.videoURL != nil &&
                           !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
@@ -163,7 +183,7 @@ struct SleepTimerMenu: View {
             }
         } label: {
             Label(timerLabel, systemImage: appModel.playback.sleepTimerEndDate == nil ? "moon.zzz" : "moon.zzz.fill")
-                .labelStyle(.iconOnly)
+                .labelStyle(.iconOnly).modifier(PlaybackIconSize())
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -196,7 +216,7 @@ struct MiniPlayerBar: View {
             Button(action: onExpand) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 12) {
-                        ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").foregroundStyle(theme.metal) }
+                        ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal) }
                             .frame(width: 42, height: 42)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(current?.title ?? AppLanguage.localized("尚未播放")).font(.headline).lineLimit(1)
@@ -214,7 +234,7 @@ struct MiniPlayerBar: View {
             Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") {
                 appModel.skipCurrentMediaBackward(context: modelContext)
             }
-            .labelStyle(.iconOnly)
+            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
             .frame(width: 44, height: 44)
             .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
             Button(appModel.isCurrentMediaPlaying
@@ -223,7 +243,7 @@ struct MiniPlayerBar: View {
                    systemImage: appModel.isCurrentMediaPlaying ? "pause.fill" : "play.fill") {
                 appModel.toggleCurrentMediaPlayback(context: modelContext)
             }
-            .labelStyle(.iconOnly)
+            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
             .frame(width: 44, height: 44)
             .accessibilityLabel(appModel.isCurrentMediaPlaying
                                 ? AppLanguage.localized("暫停")
@@ -232,15 +252,18 @@ struct MiniPlayerBar: View {
                                ? AppLanguage.localized("播放目前曲目")
                                : AppLanguage.localized("播放或暫停目前影片"))
             Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
-                .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
                 .accessibilityLabel(AppLanguage.localized("下一首"))
                 .disabled(appModel.videoURL != nil &&
                           !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
-        .background(reduceTransparency
-                    ? AnyShapeStyle(theme.background)
-                    : AnyShapeStyle(.ultraThinMaterial))
+        .background {
+            Rectangle()
+                .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                .clipped()
+        }
         .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
     }
 }

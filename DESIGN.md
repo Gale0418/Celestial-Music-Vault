@@ -72,7 +72,10 @@ colors remain semantic and meet contrast requirements in every theme.
 - 土星球體輪廓與星環固定；原創無縫雲圖沿球面經度旋轉，十二個緯度帶交錯配置快慢流速，以
   18–80 秒一圈的速度運動，帶間柔和交融。星環像撒糖霜般散布大小、疏密和閃爍相位各異的亮點，混合少量明亮短星芒；環面上下另有高低錯落的稀疏亮點，沿各自軌道以 64–120 秒週期繞行。球體與冰塵依深度遮擋星光，背景不發出聲音。
 - 土星背後為 imagegen 原創銀河遠景；iPad 以初始持握角度校正，±12° 達到完整位移；遠景反向 ±8 pt、中景 ±24 pt，
-  Mac 背景由主視窗滑鼠位置驅動；專輯卡片以雙軸 ±10° 傾斜及隨輸入改變的淡色反光呈現深度，靜置時沒有自動漂移。
+  Mac 背景由主視窗滑鼠位置驅動；版型以 `5fdbf0e`（土星主題前）作為歷史基準，土星寬版僅讓右側歌曲／播放面板整組向下 24 pt，月球／月環位置與尺寸不變，靜置時沒有自動漂移。
+- 土星環軌站的 Now Playing 保留原圓形專輯封面、月環與 PCM 環形波形；moon 不再套用 cover parallax，不新增或強化圓盤流光，月環完全無流光。先前票卡替代圓盤是代理誤解，不採用票根、缺口、energy bar 或 ticket enum。
+- 三個 UI 面板背景使用 `.interface` 的 `CelestialPanelSheen`，只新增背景流光並保留原格式：歌曲／播放面板與聆聽詳情卡使用 `ultraThinMaterial.opacity(0.34)` 加深色 tint `0.14`，背景內的 `padding(-24)` 只延伸繪製範圍不改 layout；內層 transport 維持 `thinMaterial.opacity(0.30)` 與原內卡邊框，底部 `PlayerBar`／`MiniPlayerBar` 保持原 transport 邊界。流光為寬度 100–260 pt、左右透明的窄柔光，垂直延伸避免寬播放列露出旋轉邊，`horizontalTravel=max(0,(width-stripWidth)/2)` 限制中心不逸出。文字和按鈕固定並位於流光之上，整個土星背景保留 `CelestialSkySheen`。輸入以 0.16 秒平滑跟手，Reduce Motion、Reduce Transparency 與 Increased Contrast 分別停用動態或改用不透明語意底材；其他主題、影片入口、播放控制、進度、評分、收藏與本機資料行為不變；更正版尚待畫面與實機驗收。
+- iPad 最大無障礙字級下，純 `iconOnly` 圖示固定 22 pt、小月圖固定 20 pt；文字仍遵循 Dynamic Type，`shuffle` 與 `video` 控制維持至少 44 pt 觸控目標。
 - 雲紋包含可追蹤的旋渦；固定暖金側光保留明暗交界。北極六角噴流為相對穩定的
   雲帶邊界，按球面極區投影，近側面構圖只呈現可見部分，不改成正面六角貼紙。
 - 少數風暴區每隔一段時間短暫出現微小雲內閃電，隨所在緯度雲層移動；無全畫面閃爍或聲音。

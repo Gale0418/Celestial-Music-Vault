@@ -21,3 +21,10 @@
 | UI 動效與效能收斂 | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) 的 audit／animate／optimize 規則 | 月環降回 80 段、移除逐段旋轉向量運算、修正 circular-buffer 時序並降低 queue backdrop blur；保留主視覺、刪掉無效 GPU 工作 | MIT；僅採規則與設計原則 |
 | CMV Pro 買斷定價與跨平台權益 | [Doppler 台灣 App Store](https://apps.apple.com/tw/app/doppler-mp3-flac-player/id1468459747)、[Evermusic Pro 台灣 App Store](https://apps.apple.com/tw/app/evermusic-pro-%E9%9B%A2%E7%B7%9A%E9%9F%B3%E6%A8%82%E6%92%AD%E6%94%BE%E5%99%A8%E5%92%8C%E5%9D%87%E8%A1%A1%E5%99%A8%E9%9B%B2%E6%B5%81%E5%AA%92%E9%AB%94/id905746421)、[foobar2000 台灣 App Store](https://apps.apple.com/tw/app/foobar2000/id1072807669)、[Apple 跨平台購買](https://developer.apple.com/help/app-store-connect/create-an-app-record/add-platforms) | 2026-09-24 Apple API 已回讀：CMV 免費 App 台灣 TWD 0；同一 iPad／Mac 紀錄的 Pro non-consumable 商品台灣 TWD 290。商品尚 MISSING_METADATA，不代表 Sandbox 購買可用 | 競品價格為 2026-09-24 觀察，可能變動；僅學習定位，未複製內容或新增依賴 |
 | CMV Pro Sandbox／審核邊界 | [Apple IAP 配置概述](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/overview-for-configuring-in-app-purchases)、[Apple IAP 審核資訊](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information)、[Apple Sandbox 故障排查](https://developer.apple.com/documentation/technotes/tn3186-troubleshooting-in-app-purchases-availability-in-the-sandbox) | 同一 App 紀錄可共用單一 IAP；付費協議須有效，商店 metadata 在 Sandbox 可能延遲至 1 小時。審核截圖應清楚顯示 App 內實際提供的項目，不以空曲庫主畫面冒充。Sandbox 不等於已送審或上架 | 官方文件，僅引用規則；測試結果依本機與 Apple API 回讀另記 |
+
+## 2026-09-27 土星 UI 排版回復
+
+- 使用者指出月環／播放區是在土星背景改版後變動。Git 定位：`5fdbf0e` 為改版前基準；`74df366` 首次加入播放區 24 pt layout padding 與 cover parallax。
+- 恢復前版量測、移除月環 cover parallax；依最新要求保留寬版右面板下移 24 pt、淡半透明歌曲／播放與詳情卡。流光限於指定 UI 背景，月環無流光。
+- 原生 macOS 簽署必須使用 `Native/CMV/CMV/CMV.entitlements`。本次交付曾誤用 `build/entitlements.mac.plist`（Electron）而讀到非 sandbox 資料位置，已重新簽署並於原生畫面確認既有 1,964 首曲目。未遷移或刪除曲庫。
+- 本輪局部 UI 完成不代表整個 Pro／StoreKit 發布任務完成。

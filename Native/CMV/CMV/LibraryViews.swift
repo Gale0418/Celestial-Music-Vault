@@ -133,12 +133,26 @@ struct LibraryStageView: View {
     }
 }
 
+/// Keep labels legible on Saturn's bright cyan prominent buttons.
+private struct SaturnProminentLabel: ViewModifier {
+    @Environment(\.cmvTheme) private var theme
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if theme.id == .titaniumEclipse {
+            content.foregroundStyle(theme.background)
+        } else {
+            content
+        }
+    }
+}
+
 struct NowPlayingView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
     @Query private var libraryTracks: [TrackRecord]
     @State private var showingVideoImporter = false
 
@@ -164,6 +178,7 @@ struct NowPlayingView: View {
                             mediaWorld(size: mediaSize, artworkData: current?.artworkData)
                             nowPlayingControls
                                 .frame(maxWidth: 520, alignment: .leading)
+                                .offset(y: theme.id == .titaniumEclipse ? 24 : 0)
                         }
                         .frame(maxWidth: 880, alignment: .leading)
                         .frame(maxWidth: .infinity)
@@ -204,6 +219,8 @@ struct NowPlayingView: View {
         }
     }
 
+    private var solidSaturnPanels: Bool { reduceTransparency || contrast == .increased }
+
     @ViewBuilder private var nowPlayingControls: some View {
         let current = appModel.currentTrack
         VStack(alignment: .leading, spacing: 12) {
@@ -228,11 +245,21 @@ struct NowPlayingView: View {
             }
             playbackActions
         }
-        .padding(theme.id == .titaniumEclipse ? 24 : 0)
         .background {
             if theme.id == .titaniumEclipse {
                 RoundedRectangle(cornerRadius: 24)
-                    .fill(theme.background.opacity(reduceTransparency ? 1 : 0.88))
+                    .fill(solidSaturnPanels
+                          ? AnyShapeStyle(theme.background)
+                          : AnyShapeStyle(.ultraThinMaterial.opacity(0.34)))
+                    .overlay {
+                        if !solidSaturnPanels {
+                            RoundedRectangle(cornerRadius: 24).fill(theme.background.opacity(0.14))
+                        }
+                    }
+                    .celestialParallax(.interface, enabled: true)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    // Match the pre-Saturn content layout; decorate outside it.
+                    .padding(-24)
             }
         }
     }
@@ -276,6 +303,7 @@ struct NowPlayingView: View {
             if track == nil, libraryTracks.isEmpty {
                 Button("加入音樂來源", systemImage: "folder.badge.plus") { appModel.showingImporter = true }
                     .buttonStyle(.borderedProminent)
+                    .modifier(SaturnProminentLabel())
                     .frame(minHeight: 44)
                     .accessibilityHint("選擇本機或已在檔案 App、Finder 連接的 NAS 資料夾")
             } else if track == nil {
@@ -283,6 +311,7 @@ struct NowPlayingView: View {
                     appModel.selection = .songs
                 }
                 .buttonStyle(.borderedProminent)
+                .modifier(SaturnProminentLabel())
                 .frame(minHeight: 44)
                 .accessibilityHint("從曲庫選擇歌曲開始播放")
             }
@@ -300,12 +329,20 @@ struct NowPlayingView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            reduceTransparency
-                ? AnyShapeStyle(theme.surface)
-                : AnyShapeStyle(.ultraThinMaterial.opacity(0.52)),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
+                      ? AnyShapeStyle(theme.surface)
+                      : AnyShapeStyle(.ultraThinMaterial.opacity(theme.id == .titaniumEclipse ? 0.34 : 0.52)))
+                .overlay {
+                    if theme.id == .titaniumEclipse && !solidSaturnPanels {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(theme.background.opacity(0.14))
+                    }
+                }
+                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(reduceTransparency
@@ -356,7 +393,9 @@ struct NowPlayingView: View {
         .controlSize(.large)
         .padding(10)
         .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.thinMaterial),
+            reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
+                ? AnyShapeStyle(theme.surface)
+                : AnyShapeStyle(.thinMaterial.opacity(theme.id == .titaniumEclipse ? 0.30 : 1)),
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
         .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(theme.metal.opacity(0.24)) }
@@ -382,6 +421,7 @@ struct NowPlayingView: View {
             appModel.skipCurrentMediaBackward(context: context)
         }
         .labelStyle(.iconOnly)
+        .modifier(PlaybackIconSize())
         .buttonStyle(.bordered)
         .frame(minWidth: 44, minHeight: 44)
         .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
@@ -392,6 +432,7 @@ struct NowPlayingView: View {
             appModel.skipCurrentMediaForward(context: context)
         }
         .labelStyle(.iconOnly)
+        .modifier(PlaybackIconSize())
         .buttonStyle(.bordered)
         .frame(minWidth: 44, minHeight: 44)
         .disabled(appModel.videoURL != nil &&
@@ -407,6 +448,7 @@ struct NowPlayingView: View {
                            ? AppLanguage.localized("播放目前曲目")
                            : AppLanguage.localized("播放或暫停目前影片"))
         .buttonStyle(.borderedProminent)
+        .modifier(SaturnProminentLabel())
     }
 
     private var shuffleButton: some View {
@@ -414,6 +456,7 @@ struct NowPlayingView: View {
             .disabled(!appModel.canShuffleQueue)
             .buttonStyle(.bordered)
             .labelStyle(.iconOnly)
+            .modifier(PlaybackIconSize())
             .frame(width: 44, height: 44)
             .tint(appModel.isShuffleEnabled ? theme.primary : nil)
             .overlay(alignment: .topTrailing) {
@@ -431,6 +474,7 @@ struct NowPlayingView: View {
         Button(AppLanguage.localized("開啟影片"), systemImage: "film") { showingVideoImporter = true }
             .buttonStyle(.bordered)
             .labelStyle(.iconOnly)
+            .modifier(PlaybackIconSize())
             .frame(width: 44, height: 44)
             .accessibilityHint(AppLanguage.localized("從檔案選擇尚未加入曲庫的影片"))
     }
