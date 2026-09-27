@@ -47,34 +47,39 @@ struct CelestialBackground: View {
         // the view below; their shared size preserves the ring/atmosphere map.
         let contentSize = CGSize(width: geometry.size.width + overscan + 2 * abs(portraitShift),
                                  height: geometry.size.height + overscan)
-        let artworkScale = max(contentSize.width / 1586, contentSize.height / 992)
+        ZStack {
+        if theme.id == .titaniumEclipse && !reduceTransparency {
+            // Keep the galaxy outside the display-clock graph. Its depth changes
+            // only with deliberate device movement, independently of the planet.
+            Image("SkyMilkyWayDepth")
+                .resizable()
+                .scaledToFill()
+                .frame(width: geometry.size.width + overscan, height: geometry.size.height + overscan)
+                .clipped()
+                .overlay {
+                    LinearGradient(colors: [.black.opacity(0.24), .clear, .black.opacity(0.35)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                }
+                .celestialParallax(.distantBackground, enabled: backgroundParallaxEnabled)
+        }
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
             let now = timeline.date.timeIntervalSinceReferenceDate
             let time = reduceMotion ? 0 : skyElapsed + (skyAnchor.map { max(0, now - $0) } ?? 0)
             ZStack {
                 if reduceTransparency {
                     theme.background
-                } else {
+                } else if theme.id != .titaniumEclipse {
                     Image(backgroundAssetName)
                         .resizable()
                         .scaledToFill()
                         .frame(width: contentSize.width, height: contentSize.height)
                         .clipped()
-                        .layerEffect(
-                            ShaderLibrary.saturnAtmosphere(
-                                .float2(Float(contentSize.width), Float(contentSize.height)),
-                                .float(Float(time.truncatingRemainder(dividingBy: 5760))),
-                                .image(Image("SaturnCloudMap"))
-                            ),
-                            maxSampleOffset: CGSize(width: 50 * artworkScale, height: 28 * artworkScale),
-                            isEnabled: theme.id == .titaniumEclipse
-                        )
                         .saturation(1.05)
                         .overlay(theme.background.opacity(backgroundOverlayOpacity))
                 }
                 Canvas { context, size in
-                    // Every stationary light is astronomical data. The theme
-                    // artwork deliberately contains no baked point stars.
+                    // Catalog stars sit behind the planet. The generated galaxy
+                    // is decorative stellar dust, not astronomical catalog data.
                     PlanisphereRenderer.draw(
                         in: &context,
                         size: size,
@@ -83,9 +88,6 @@ struct CelestialBackground: View {
                         showsLabels: showsLabels,
                         theme: theme
                     )
-                    if theme.id == .titaniumEclipse && !reduceTransparency {
-                        SaturnRingRenderer.draw(in: &context, size: size, time: time)
-                    }
                     if !reduceMotion {
                         let audioLevel = appModel.isCurrentMediaPlaying
                             ? Double(min(1, max(0, appModel.audioEnergy.snapshot.level)))
@@ -95,12 +97,23 @@ struct CelestialBackground: View {
                                               audioLevel: audioLevel)
                     }
                 }
+                if theme.id == .titaniumEclipse && !reduceTransparency {
+                    Rectangle()
+                        .fill(.white)
+                        .colorEffect(ShaderLibrary.saturnScene(
+                            .float2(Float(contentSize.width), Float(contentSize.height)),
+                            .float(Float(time.truncatingRemainder(dividingBy: 5760))),
+                            .image(Image("SaturnCloudMap"))
+                        ))
+                }
             }
         }
         .isolatedAnimationSurface()
         .frame(width: contentSize.width, height: contentSize.height)
         .offset(x: portraitShift)
         .celestialParallax(.background, enabled: backgroundParallaxEnabled)
+        .frame(width: geometry.size.width, height: geometry.size.height)
+        }
         .frame(width: geometry.size.width, height: geometry.size.height)
         .clipped()
         }
@@ -173,115 +186,6 @@ struct CelestialBackground: View {
             skyElapsed += max(0, now - skyAnchor)
             self.skyAnchor = nil
         }
-    }
-}
-
-/// A restrained procedural glint layer for the foreground rings in
-/// SkySaturnOrbit. The source artwork is 1586x992; all geometry stays in those
-/// coordinates so aspect-fill scaling preserves alignment on every display.
-private enum SaturnRingRenderer {
-    private static let sourceSize = CGSize(width: 1586, height: 992)
-    private static let ringCenter = CGPoint(x: 980, y: 600)
-    private static let majorRadius: CGFloat = 760
-    private static let minorRadius: CGFloat = 72
-    private static let ringAngle: CGFloat = -0.50
-    private static let foregroundStart: CGFloat = 0.15
-    private static let foregroundEnd: CGFloat = 3.00
-    private static let particleCount = 13
-
-    private struct RingTransform {
-        let center: CGPoint
-        let majorRadius: CGFloat
-        let minorRadius: CGFloat
-        let major: CGVector
-        let minor: CGVector
-    }
-
-    static func draw(in context: inout GraphicsContext, size: CGSize, time: TimeInterval) {
-        guard size.width > 0, size.height > 0, time.isFinite else { return }
-
-        let scale = max(size.width / sourceSize.width, size.height / sourceSize.height)
-        let drawnSize = CGSize(width: sourceSize.width * scale, height: sourceSize.height * scale)
-        let origin = CGPoint(x: (size.width - drawnSize.width) / 2,
-                             y: (size.height - drawnSize.height) / 2)
-        let transform = RingTransform(
-            center: CGPoint(x: origin.x + ringCenter.x * scale,
-                            y: origin.y + ringCenter.y * scale),
-            majorRadius: majorRadius * scale,
-            minorRadius: minorRadius * scale,
-            major: CGVector(dx: cos(ringAngle), dy: sin(ringAngle)),
-            minor: CGVector(dx: -sin(ringAngle), dy: cos(ringAngle))
-        )
-
-        // The source already contains the complete ring and its planet occlusion.
-        // Draw only moving glints on the foreground arc, preserving every static
-        // edge and avoiding a synthetic, heavy annulus over the artwork.
-        context.drawLayer { glints in
-            drawParticles(in: &glints, transform: transform, time: time)
-        }
-    }
-
-    private static func drawParticles(
-        in context: inout GraphicsContext,
-        transform: RingTransform,
-        time: TimeInterval
-    ) {
-        let arcLength = foregroundEnd - foregroundStart
-        for index in 0..<particleCount {
-            let seed = Double(index)
-            let phase = positiveRemainder(seed * 1.71, Double(arcLength))
-            let speed = 0.082 + (seed.truncatingRemainder(dividingBy: 4) * 0.018)
-            let angle = foregroundStart + CGFloat(
-                positiveRemainder(Double(time) * speed + phase, Double(arcLength))
-            )
-            let widthOffset = CGFloat(sin(seed * 2.41)) * 0.46
-            let center = ringPoint(angle: angle, offset: widthOffset, transform: transform)
-            let tangent = ringTangent(angle: angle, transform: transform)
-            let radius = max(0.8, transform.minorRadius * CGFloat(0.011 + (seed.truncatingRemainder(dividingBy: 3) * 0.004)))
-            context.fill(
-                Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
-                                       width: radius * 2, height: radius * 2)),
-                with: .color(Color.white.opacity(0.12))
-            )
-
-            let tail = radius * 5.0
-            var streak = Path()
-            streak.move(to: CGPoint(x: center.x - tangent.dx * tail,
-                                    y: center.y - tangent.dy * tail))
-            streak.addLine(to: CGPoint(x: center.x + tangent.dx * radius,
-                                       y: center.y + tangent.dy * radius))
-            context.stroke(streak,
-                           with: .color(Color(red: 1.0, green: 0.90, blue: 0.72).opacity(0.095)),
-                           style: StrokeStyle(lineWidth: max(0.6, radius * 0.72), lineCap: .round))
-        }
-    }
-
-    private static func ringPoint(angle: CGFloat, offset: CGFloat, transform: RingTransform) -> CGPoint {
-        let cosAngle = cos(angle)
-        let sinAngle = sin(angle)
-        let majorDistance = transform.majorRadius * cosAngle
-        let minorDistance = transform.minorRadius * (sinAngle + offset)
-        return CGPoint(
-            x: transform.center.x + transform.major.dx * majorDistance + transform.minor.dx * minorDistance,
-            y: transform.center.y + transform.major.dy * majorDistance + transform.minor.dy * minorDistance
-        )
-    }
-
-    private static func ringTangent(angle: CGFloat, transform: RingTransform) -> CGVector {
-        let tangent = CGVector(
-            dx: -transform.majorRadius * sin(angle) * transform.major.dx
-                + transform.minorRadius * cos(angle) * transform.minor.dx,
-            dy: -transform.majorRadius * sin(angle) * transform.major.dy
-                + transform.minorRadius * cos(angle) * transform.minor.dy
-        )
-        let length = max(1, sqrt(tangent.dx * tangent.dx + tangent.dy * tangent.dy))
-        return CGVector(dx: tangent.dx / length, dy: tangent.dy / length)
-    }
-
-    private static func positiveRemainder(_ value: Double, _ modulus: Double) -> Double {
-        guard modulus > 0 else { return 0 }
-        let remainder = value.truncatingRemainder(dividingBy: modulus)
-        return remainder >= 0 ? remainder : remainder + modulus
     }
 }
 

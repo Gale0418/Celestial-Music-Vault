@@ -69,8 +69,13 @@ colors remain semantic and meet contrast requirements in every theme.
 - Motion explains player expansion, queue changes, source scanning, and navigation.
 - Ambient stars and auroras use a small bounded particle count and pause when the
   app is inactive.
-- 土星球體輪廓與星環固定；原創無縫雲圖沿球面經度旋轉，七個緯度帶分別以
-  24–48 秒一圈的速度運動，帶間柔和交融。星環只有淡淡星光，背景不發出聲音。
+- 土星球體輪廓與星環固定；原創無縫雲圖沿球面經度旋轉，十二個緯度帶交錯配置快慢流速，以
+  18–80 秒一圈的速度運動，帶間柔和交融。星環只有淡淡星光，背景不發出聲音。
+- 土星背後為 imagegen 原創銀河遠景；iPad 遠景位移上限 ±1.5 pt、中景 ±4 pt，
+  專輯卡片以 ±5° 傾斜及隨輸入改變的淡色反光呈現深度，靜置時沒有自動漂移。
+- 雲紋包含可追蹤的旋渦；固定暖金側光保留明暗交界。北極六角噴流為相對穩定的
+  雲帶邊界，按球面極區投影，近側面構圖只呈現可見部分，不改成正面六角貼紙。
+- 少數風暴區每隔一段時間短暫出現微小雲內閃電，隨所在緯度雲層移動；無全畫面閃爍或聲音。
 - Reduce Motion keeps the globe and rings static and replaces drifting/parallax effects
   with a composed sky.
 - Reduce Transparency uses opaque semantic surfaces with preserved hierarchy.

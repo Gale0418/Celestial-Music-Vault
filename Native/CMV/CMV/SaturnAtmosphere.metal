@@ -1,67 +1,132 @@
 #include <metal_stdlib>
-#include <SwiftUI/SwiftUI.h>
 using namespace metal;
 
-// All masks use the source artwork's coordinates. The foreground ring, limb,
-// and lighting stay in place while an original seamless cloud texture rotates on the sphere.
-static float cloudMask(float2 p) {
-    const float2 major = float2(0.87758256, -0.47942554);
-    const float2 minor = float2(0.47942554, 0.87758256);
-    float limbClearance = 553.0 - length(p - float2(1393.0, 420.0));
-    float sphere = smoothstep(8.0, 40.0, limbClearance);
-    float2 ringLocal = p - float2(980.0, 600.0);
-    float ringX = dot(ringLocal, major) / 760.0;
-    float ringY = dot(ringLocal, minor);
-    float ringClearance = 1000.0;
-    if (abs(ringX) < 1.1) {
-        float frontArc = 72.0 * sqrt(max(0.0, 1.0 - ringX * ringX));
-        ringClearance = abs(ringY - frontArc);
-    }
-    return sphere * smoothstep(88.0, 135.0, ringClearance);
-}
-
-[[ stitchable ]] half4 saturnAtmosphere(float2 position, SwiftUI::Layer layer,
-                                       float2 size, float time, texture2d<half> clouds) {
-    half4 original = layer.sample(position);
+// Original orthographic planet and ring geometry. There is no baked atmosphere
+// beneath this surface: every visible latitude samples the animated cloud map.
+[[ stitchable ]] half4 saturnScene(float2 position, half4 input, float2 size,
+                                  float time, texture2d<half> clouds) {
     float scale = max(size.x / 1586.0, size.y / 992.0);
-    if (scale <= 0.0) return original;
+    if (scale <= 0.0) return half4(0.0h);
     float2 origin = (size - float2(1586.0, 992.0) * scale) * 0.5;
-    float2 p = (position - origin) / scale;
-    float mask = cloudMask(p);
-    if (mask <= 0.001) return original;
+    float2 p = (position - origin) / scale - float2(1500.0, 620.0);
+    const float radius = 580.0;
+    const float2 major = float2(0.98877108, -0.14943813);
+    const float2 minor = float2(0.14943813, 0.98877108);
+    const float tilt = 0.35;
+    const float axisCosine = 0.9367497;
+    const float3 northAxis = float3(0.0, -axisCosine, tilt);
+    const float3 sun = float3(-0.8746, -0.3194, -0.3650);
+    float2 q = float2(dot(p, major), dot(p, minor)) / radius;
+    float r2 = dot(q, q);
+    float aa = 1.25 / (radius * scale);
+    float sphereCoverage = 1.0 - smoothstep(1.0 - aa, 1.0 + aa, sqrt(r2));
+    float z = sqrt(max(0.0, 1.0 - r2));
+    float3 normal = normalize(float3(q, z));
+    float3 rgb = float3(0.0);
+    float alpha = 0.0;
 
-    const float2 major = float2(0.87758256, -0.47942554);
-    const float2 minor = float2(0.47942554, 0.87758256);
-    float2 globe = p - float2(1393.0, 420.0);
-    float x = dot(globe, major) / 553.0;
-    float y = dot(globe, minor) / 553.0;
-    float z = sqrt(max(0.0, 1.0 - x * x - y * y));
-    float2 uv = float2(atan2(x, z) / (2.0 * M_PI_F) + 0.5,
-                      asin(clamp(y, -1.0, 1.0)) / M_PI_F + 0.5);
+    // A thin, stationary atmospheric rim. Only the gas texture rotates.
+    float limb = exp(-abs(sqrt(r2) - 1.0) * radius / 4.5);
+    float glow = limb * 0.13 * smoothstep(-0.12, 0.50, dot(normal, sun));
+    rgb = float3(1.0, 0.65, 0.28) * glow;
+    alpha = glow;
 
-    // Seven separately rotating latitude bands. All periods divide 5760,
-    // matching the Swift clock wrap, so neither time nor texture has a seam.
-    // Four times the original speed so cloud features visibly travel within seconds.
-    const float periods[7] = {36.0, 30.0, 45.0, 24.0, 40.0, 32.0, 48.0};
-    float band = clamp(uv.y * 7.0 - 0.5, 0.0, 6.0);
-    int lower = min(int(floor(band)), 5);
-    float feather = smoothstep(0.32, 0.68, band - lower);
-    constexpr sampler cloudSampler(coord::normalized, s_address::repeat,
-                                   t_address::clamp_to_edge, filter::linear);
-    half3 first = clouds.sample(cloudSampler, uv + float2(time / periods[lower], 0.0)).rgb;
-    half3 second = clouds.sample(cloudSampler, uv + float2(time / periods[lower + 1], 0.0)).rgb;
-    half3 cloudColor = mix(first, second, half(feather));
-
-    // Recover broad lighting from the fixed artwork. The atmosphere texture
-    // rotates independently of the illumination and foreground ring.
-    float2 safeMin = float2(0.5), safeMax = max(safeMin, size - 0.5);
-    half3 light = original.rgb * 0.2h;
-    const float2 offsets[4] = {major * 24.0, -major * 24.0, minor * 24.0, -minor * 24.0};
-    for (int tap = 0; tap < 4; ++tap) {
-        half3 sampled = layer.sample(clamp(position + offsets[tap] * scale, safeMin, safeMax)).rgb;
-        light += mix(original.rgb, sampled, half(cloudMask(p + offsets[tap]))) * 0.2h;
+    if (sphereCoverage > 0.0) {
+        float colatitude = acos(clamp(dot(normal, northAxis), -1.0, 1.0));
+        float longitude = atan2(normal.x, normal.z * axisCosine + normal.y * tilt);
+        float2 uv = float2(longitude / (2.0 * M_PI_F) + 0.5, colatitude / M_PI_F);
+        // Every period divides the 5760-second Swift clock wrap.
+        const float periods[12] = {18.0, 64.0, 24.0, 48.0, 20.0, 60.0,
+                                   30.0, 45.0, 80.0, 72.0, 32.0, 40.0};
+        float band = clamp(uv.y * 12.0 - 0.5, 0.0, 11.0);
+        int lower = min(int(floor(band)), 10);
+        float feather = smoothstep(0.32, 0.68, band - float(lower));
+        constexpr sampler cloudSampler(coord::normalized, s_address::repeat,
+                                       t_address::clamp_to_edge, filter::linear);
+        float3 first = float3(clouds.sample(cloudSampler, uv + float2(time / periods[lower], 0.0)).rgb);
+        float3 second = float3(clouds.sample(cloudSampler, uv + float2(time / periods[lower + 1], 0.0)).rgb);
+        float3 gas = mix(first, second, feather);
+        // Standing north-polar jet, on the same axis as the equator/ring plane.
+        float sector = fract((longitude + M_PI_F / 6.0) / (M_PI_F / 3.0)) * (M_PI_F / 3.0) - M_PI_F / 6.0;
+        float hexBoundary = 0.255 / cos(sector);
+        float jetOffset = (colatitude - hexBoundary) / 0.013;
+        float jet = exp(-jetOffset * jetOffset);
+        float eye = 1.0 - smoothstep(0.018, 0.050, colatitude);
+        float cap = 1.0 - smoothstep(hexBoundary - 0.008, hexBoundary + 0.008, colatitude);
+        gas *= mix(float3(1.0), float3(0.48, 0.68, 0.78), cap);
+        gas += jet * float3(0.20, 0.22, 0.18);
+        gas *= 1.0 - 0.65 * eye;
+        float diffuse = max(0.0, dot(normal, sun));
+        float light = 0.105 + 1.48 * pow(diffuse, 0.8);
+        float3 surface = gas * light * float3(1.08, 0.97, 0.80);
+        float rim = pow(1.0 - z, 4.0) * smoothstep(0.0, 0.55, diffuse);
+        surface += rim * float3(0.35, 0.19, 0.06);
+        // Tiny, silent intracloud flashes. Storm centers advect with their
+        // own latitude band; no screen-wide flash or moving illumination.
+        float lightning = 0.0;
+        for (int storm = 0; storm < 4; ++storm) {
+            int latitudeBand = storm + 3;
+            float stormLatitude = (float(latitudeBand) + 0.5) / 12.0;
+            float stormLongitude = 0.42 + float(storm) * 0.13;
+            float advectedLongitude = uv.x + time / periods[latitudeBand];
+            float dx = fract(advectedLongitude - stormLongitude + 0.5) - 0.5;
+            float2 distance = float2(dx / 0.0035, (uv.y - stormLatitude) / 0.0020);
+            float localGlow = exp(-dot(distance, distance));
+            float eventTime = fmod(time + float(storm) * 12.0, 48.0);
+            float firstPulse = smoothstep(0.0, 0.04, eventTime) * (1.0 - smoothstep(0.08, 0.16, eventTime));
+            float secondPulse = smoothstep(0.24, 0.28, eventTime) * (1.0 - smoothstep(0.31, 0.42, eventTime));
+            lightning += localGlow * (firstPulse + secondPulse * 0.55);
+        }
+        surface += lightning * float3(0.65, 0.78, 1.0);
+        rgb = surface * sphereCoverage + rgb * (1.0 - sphereCoverage);
+        alpha = sphereCoverage + alpha * (1.0 - sphereCoverage);
     }
-    half illumination = clamp(dot(light, half3(0.2126h, 0.7152h, 0.0722h)) / 0.65h, 0.08h, 1.4h);
-    half4 atmosphere = half4(cloudColor * illumination, 1.0h);
-    return mix(original, atmosphere, half(mask));
+
+    // Ray/plane intersection: northAxis · (x,y,z) = 0. The cloud equator
+    // and ring share this exact plane, including near/far planet occlusion.
+    float ringZ = q.y * axisCosine / tilt;
+    float ringRadius = length(float2(q.x, q.y / tilt));
+    // Derivatives are evaluated before the coverage branch so edge quads
+    // retain defined gradients. Fade frequencies before the Nyquist limit.
+    float radialFootprint = max(fwidth(ringRadius), 0.00001);
+    float ringAngle = atan2(q.y / tilt, q.x);
+    float angularFootprint = min(0.1, max(fwidth(ringAngle), 0.00001));
+    float ringAA = aa / tilt;
+    float ringCoverage = smoothstep(1.20 - ringAA, 1.20 + ringAA, ringRadius)
+        * (1.0 - smoothstep(2.26 - ringAA, 2.26 + ringAA, ringRadius));
+    if (ringCoverage > 0.0) {
+        float front = step(z, ringZ);
+        float visible = 1.0 - sphereCoverage * (1.0 - front);
+        float gap = smoothstep(1.91, 1.92, ringRadius) * (1.0 - smoothstep(1.97, 1.98, ringRadius));
+        float3 frequencies = float3(587.0, 1289.0, 2311.0);
+        float3 filter = 1.0 - smoothstep(float3(1.2), float3(M_PI_F), frequencies * radialFootprint);
+        float grain = 0.64 + dot(float3(0.17, 0.11, 0.06) * filter, sin(ringRadius * frequencies));
+        float density = mix(0.24, 0.88, smoothstep(1.43, 1.51, ringRadius));
+        density *= mix(1.0, 0.69, smoothstep(1.99, 2.03, ringRadius));
+        float opacity = ringCoverage * visible * density * (0.70 + grain * 0.30) * (1.0 - gap * 0.95);
+        float3 ringPoint = float3(q, ringZ);
+        float towardSun = dot(ringPoint, sun);
+        float rayDistance = dot(ringPoint, ringPoint) - towardSun * towardSun;
+        float shadow = (1.0 - smoothstep(0.94, 1.06, rayDistance)) * (1.0 - step(0.0, towardSun));
+        float3 ice = mix(float3(0.46, 0.35, 0.23), float3(1.0, 0.90, 0.70), grain);
+        ice *= 0.94 - shadow * 0.82;
+        // Five finite-sized icy glints, widened and flux-filtered when they
+        // become subpixel. Their positions stay fixed while brightness pulses.
+        float glint = 0.0;
+        float radialWidth = max(0.003, radialFootprint);
+        float angularWidth = max(0.008, angularFootprint);
+        for (int i = 0; i < 5; ++i) {
+            float seed = float(i);
+            float r = 1.55 + seed * 0.145;
+            float a = 2.36 + seed * 0.133;
+            float angleDelta = fract((ringAngle - a + M_PI_F) / (2.0 * M_PI_F)) * (2.0 * M_PI_F) - M_PI_F;
+            float2 distance = float2((ringRadius - r) / radialWidth, angleDelta / angularWidth);
+            glint += exp(-dot(distance, distance)) * (0.003 / radialWidth) * (0.008 / angularWidth)
+                * (0.50 + 0.25 * sin(time * (2.0 * M_PI_F / 8.0) + seed * 1.7));
+        }
+        ice += glint * float3(0.55, 0.48, 0.32) * (1.0 - shadow);
+        rgb = ice * opacity + rgb * (1.0 - opacity);
+        alpha = opacity + alpha * (1.0 - opacity);
+    }
+    return half4(half3(rgb), half(alpha)) * input.a;
 }

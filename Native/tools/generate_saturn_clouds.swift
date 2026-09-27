@@ -29,18 +29,38 @@ func cloudNoise(_ x: Double, _ y: Double, period: Int) -> Double {
     return sum
 }
 let width = 2048, height = 1024
+// Large, asymmetric vortices give the eye landmarks to follow as bands rotate.
+// Longitude distances wrap, keeping the generated texture seamless.
+let storms: [(u: Double, v: Double, radius: Double, spin: Double)] = [
+    (0.12, 0.27, 0.042, 1.0), (0.43, 0.39, 0.060, -1.0),
+    (0.75, 0.53, 0.048, 1.0), (0.28, 0.64, 0.055, -1.0),
+    (0.91, 0.76, 0.037, 1.0)
+]
 var pixels = [UInt8](repeating: 255, count: width * height * 4)
 for y in 0..<height {
     let v = Double(y) / Double(height - 1)
     for x in 0..<width {
         let u = Double(x) / Double(width)
-        let warp = cloudNoise(u * 8, v * 18, period: 8) * 0.026
-                 + cloudNoise(u * 24, v * 48, period: 24) * 0.006
-        let latitude = v + warp
-        let broad = sin(latitude * .pi * 26) * 0.075 + sin(latitude * .pi * 62 + 0.7) * 0.045
-        let fine = sin(latitude * .pi * 236 + cloudNoise(u * 16, v * 32, period: 16) * 7) * 0.030
-        let detail = cloudNoise(u * 32, v * 220, period: 32) * 0.42
-        let tone = min(1, max(0, 0.62 + broad + fine + detail))
+        var cloudU = u, cloudV = v, stormLight = 0.0
+        for storm in storms {
+            let delta = u - storm.u
+            let dx = (delta - floor(delta + 0.5)) / storm.radius
+            let dy = (v - storm.v) / (storm.radius * 0.55)
+            let radiusSquared = dx * dx + dy * dy
+            guard radiusSquared < 9 else { continue }
+            let envelope = exp(-radiusSquared * 0.85)
+            let twist = storm.spin * envelope * 4.8
+            cloudU += (dx * cos(twist) - dy * sin(twist) - dx) * storm.radius
+            cloudV += (dx * sin(twist) + dy * cos(twist) - dy) * storm.radius * 0.55
+            stormLight += envelope * (0.055 + 0.075 * sin(atan2(dy, dx) * 2 + sqrt(radiusSquared) * 7))
+        }
+        let warp = cloudNoise(cloudU * 8, cloudV * 18, period: 8) * 0.044
+                 + cloudNoise(cloudU * 24, cloudV * 48, period: 24) * 0.008
+        let latitude = cloudV + warp
+        let broad = sin(latitude * .pi * 26) * 0.095 + sin(latitude * .pi * 62 + 0.7) * 0.055
+        let fine = sin(latitude * .pi * 236 + cloudNoise(cloudU * 16, cloudV * 32, period: 16) * 7) * 0.035
+        let detail = cloudNoise(cloudU * 32, cloudV * 220, period: 32) * 0.48
+        let tone = min(1, max(0, 0.60 + broad + fine + detail + stormLight))
         let color = [0.45 + tone * 0.49, 0.34 + tone * 0.49, 0.23 + tone * 0.45]
         let offset = (y * width + x) * 4
         for channel in 0..<3 { pixels[offset + channel] = UInt8(min(255, max(0, Int(color[channel] * 255)))) }

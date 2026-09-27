@@ -38,6 +38,7 @@ struct CelestialParallaxSample: Equatable, Sendable {
 
     fileprivate func offset(for layer: CelestialParallaxLayer) -> CGSize {
         switch layer {
+        case .distantBackground: CGSize(width: x * 1.5, height: y * 1.5)
         case .background: backgroundOffset
         case .cover: coverOffset
         }
@@ -54,8 +55,45 @@ struct CelestialParallaxSample: Equatable, Sendable {
 }
 
 enum CelestialParallaxLayer {
+    case distantBackground
     case background
     case cover
+}
+
+/// A light response tied only to input, never to an idle animation clock.
+private struct CelestialCardSheen: ViewModifier {
+    let sample: CelestialParallaxSample
+    let enabled: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if enabled && !reduceTransparency {
+                    GeometryReader { geometry in
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0.15),
+                                .init(color: .cyan.opacity(0.12), location: 0.40),
+                                .init(color: .white.opacity(0.20), location: 0.49),
+                                .init(color: .yellow.opacity(0.10), location: 0.58),
+                                .init(color: .clear, location: 0.82)
+                            ], startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                        .offset(x: sample.x * geometry.size.width * 0.24,
+                                y: sample.y * geometry.size.height * 0.24)
+                        .blendMode(.screen)
+                    }
+                    .clipShape(Circle())
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+            }
+            .rotation3DEffect(.degrees(enabled ? -Double(sample.y) * 5 : 0),
+                              axis: (x: 1, y: 0, z: 0), perspective: 0.35)
+            .rotation3DEffect(.degrees(enabled ? Double(sample.x) * 5 : 0),
+                              axis: (x: 0, y: 1, z: 0), perspective: 0.35)
+    }
 }
 
 #if os(iOS)
@@ -192,6 +230,7 @@ private struct CelestialParallaxMotionModifier: ViewModifier {
         let visibleSample = shouldRun ? motion.sample : .zero
 
         content
+            .modifier(CelestialCardSheen(sample: visibleSample, enabled: layer == .cover && shouldRun))
             .offset(visibleSample.offset(for: layer))
             .rotationEffect(visibleSample.rotation(for: layer))
             .onAppear { reconcileLease() }
@@ -241,6 +280,7 @@ private struct CelestialParallaxHoverModifier: ViewModifier {
         let visibleSample = shouldTrack ? hoverSample : .zero
 
         content
+            .modifier(CelestialCardSheen(sample: visibleSample, enabled: layer == .cover && shouldTrack))
             .offset(visibleSample.offset(for: layer))
             .rotationEffect(visibleSample.rotation(for: layer))
             .onGeometryChange(for: CGSize.self) { proxy in
