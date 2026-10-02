@@ -144,7 +144,9 @@ struct PerformantQueueView: View {
                 }
                 .padding(8)
                 .background(
-                    reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.35)),
+                    theme.isStorybook
+                        ? AnyShapeStyle(theme.surface.opacity(0.72))
+                        : (reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.35))),
                     in: RoundedRectangle(cornerRadius: 8)
                 )
             }
@@ -186,7 +188,6 @@ struct PerformantQueueView: View {
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 12)
-        .background(.clear)
         .task { snapshot.bind(to: appModel) }
         .task(id: SearchKey(revision: snapshot.revision, query: search)) {
             guard expanded, !search.isEmpty else { filteredIndices = []; return }
@@ -257,7 +258,9 @@ struct PerformantQueueView: View {
         .padding(.vertical, 9)
         .padding(.horizontal, 10)
         .background(isCurrent
-                    ? (reduceTransparency ? theme.surface : theme.primary.opacity(0.16))
+                    ? (theme.isStorybook
+                        ? theme.secondary.opacity(0.26)
+                        : (reduceTransparency ? theme.surface : theme.primary.opacity(0.16)))
                     : .clear,
                     in: RoundedRectangle(cornerRadius: 14))
         .overlay {

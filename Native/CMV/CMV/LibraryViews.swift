@@ -94,6 +94,11 @@ struct SidebarView: View {
         .background(reduceTransparency
                     ? AnyShapeStyle(theme.surface)
                     : AnyShapeStyle(theme.surface.opacity(0.10)))
+        .background {
+            if theme.isStorybook {
+                theme.surface
+            }
+        }
         .navigationTitle(AppLanguage.localized("星穹私藏音樂庫"))
         .tint(theme.primary)
         .defaultScrollAnchor(.top)
@@ -226,7 +231,9 @@ struct NowPlayingView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("現在收聽").font(.headline).foregroundStyle(theme.metal)
             Text(current?.title ?? AppLanguage.localized("夜航收藏"))
-                .font(.system(.largeTitle, design: .serif, weight: .semibold))
+                .font(.system(.largeTitle,
+                              design: theme.isStorybook ? .rounded : .serif,
+                              weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
             Text(current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("私人曲庫"))
                 .font(.title3)
@@ -246,7 +253,11 @@ struct NowPlayingView: View {
             playbackActions
         }
         .background {
-            if theme.id == .titaniumEclipse {
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 24)
+                    // Keep the existing right-column measurement and card position.
+                    .padding(-24)
+            } else if theme.id == .titaniumEclipse {
                 RoundedRectangle(cornerRadius: 24)
                     .fill(solidSaturnPanels
                           ? AnyShapeStyle(theme.background)
@@ -330,30 +341,41 @@ struct NowPlayingView: View {
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
-                      ? AnyShapeStyle(theme.surface)
-                      : AnyShapeStyle(.ultraThinMaterial.opacity(theme.id == .titaniumEclipse ? 0.34 : 0.52)))
-                .overlay {
-                    if theme.id == .titaniumEclipse && !solidSaturnPanels {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(theme.background.opacity(0.14))
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 24)
+            } else {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
+                          ? AnyShapeStyle(theme.surface)
+                          : AnyShapeStyle(.ultraThinMaterial.opacity(theme.id == .titaniumEclipse ? 0.34 : 0.52)))
+                    .overlay {
+                        if theme.id == .titaniumEclipse && !solidSaturnPanels {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(theme.background.opacity(0.14))
+                        }
                     }
-                }
-                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(reduceTransparency
-                    ? AnyShapeStyle(theme.metal)
-                    : AnyShapeStyle(LinearGradient(
-                        colors: [theme.metal.opacity(0.56), theme.primary.opacity(0.28), .white.opacity(0.08)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )), lineWidth: 1)
+            if theme.isStorybook {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(theme.metal, lineWidth: 1.5)
+            } else {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(reduceTransparency
+                        ? AnyShapeStyle(theme.metal)
+                        : AnyShapeStyle(LinearGradient(
+                            colors: [theme.metal.opacity(0.56), theme.primary.opacity(0.28), .white.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )), lineWidth: 1)
+            }
         }
-        .shadow(color: reduceTransparency ? .clear : theme.primary.opacity(0.12), radius: 24, y: 12)
+        .shadow(color: theme.isStorybook ? .clear : (reduceTransparency ? .clear : theme.primary.opacity(0.12)),
+                radius: 24,
+                y: 12)
     }
 
     @ViewBuilder
@@ -393,12 +415,21 @@ struct NowPlayingView: View {
         .controlSize(.large)
         .padding(10)
         .background(
-            reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
-                ? AnyShapeStyle(theme.surface)
-                : AnyShapeStyle(.thinMaterial.opacity(theme.id == .titaniumEclipse ? 0.30 : 1)),
+            theme.isStorybook
+                ? AnyShapeStyle(theme.surface.opacity(0.82))
+                : (reduceTransparency || (theme.id == .titaniumEclipse && contrast == .increased)
+                    ? AnyShapeStyle(theme.surface)
+                    : AnyShapeStyle(.thinMaterial.opacity(theme.id == .titaniumEclipse ? 0.30 : 1))),
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
-        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(theme.metal.opacity(0.24)) }
+        .overlay {
+            if theme.isStorybook {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(theme.primary.opacity(0.22))
+            } else {
+                RoundedRectangle(cornerRadius: 20).strokeBorder(theme.metal.opacity(0.24))
+            }
+        }
     }
 
     private var primaryPlaybackActions: some View {
@@ -2133,17 +2164,27 @@ private struct PlaylistDetailView: View {
 }
 
 struct QueueView: View {
+    @Environment(\.cmvTheme) private var theme
+
     var body: some View {
         PerformantQueueView(expanded: true)
+            .background {
+                if theme.isStorybook {
+                    StorybookPaper(cornerRadius: 20)
+                        .padding(8)
+                }
+            }
             .celestialPageBackground()
     }
 }
 
 struct SettingsView: View {
+    @Environment(\.cmvTheme) private var theme
     @Environment(AppModel.self) private var appModel
     @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     var body: some View {
         settingsForm
+            .modifier(CMVStorybookContainerStyle())
             .celestialPageBackground()
     }
 
@@ -2158,6 +2199,7 @@ struct SettingsView: View {
                     Text("日本語").tag("ja")
                 }
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
             Section("CMV Pro") {
                 Button {
                     appModel.showingProUpgrade = true
@@ -2176,24 +2218,26 @@ struct SettingsView: View {
                     Label(AppLanguage.localized("Smart DJ"), systemImage: "wand.and.stars")
                 }
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
             Picker("天空主題", selection: Binding(
                 get: { appModel.selectedTheme },
                 set: { appModel.selectTheme($0) }
             )) {
-                ForEach(CMVThemeID.allCases) { theme in
-                    let requiresPro = theme != .crimsonNebula && theme != .amberDawn
+                ForEach(CMVThemeID.allCases) { themeID in
+                    let requiresPro = themeID != .crimsonNebula && themeID != .amberDawn
                     Label {
                         Text(requiresPro
-                             ? localizedFormat("%@ · Pro", AppLanguage.localized(theme.name))
-                             : AppLanguage.localized(theme.name))
+                             ? localizedFormat("%@ · Pro", AppLanguage.localized(themeID.name))
+                             : AppLanguage.localized(themeID.name))
                     } icon: {
                         if requiresPro && !appModel.proStore.hasPro {
                             Image(systemName: "lock.fill")
                         }
                     }
-                    .tag(theme)
+                    .tag(themeID)
                 }
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
             .id(appLanguage)
             .accessibilityHint(AppLanguage.localized("鎖定的 Pro 主題會開啟升級頁"))
             Section("曲庫") {
@@ -2202,11 +2246,14 @@ struct SettingsView: View {
                 }
                 Text("加入、重新授權與重新索引都集中在這裡，不占用日常導覽。").font(.caption).foregroundStyle(.secondary)
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
             Section("智慧快取") {
                 LabeledContent("預設上限", value: "10 GB")
                 Text("釘選內容不會被智慧快取淘汰。")
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
             Section("隱私") { Text("聲學分析與 Smart DJ 全部在裝置上完成。") }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
         }
         .formStyle(.grouped)
         .navigationTitle(AppLanguage.localized("設定"))
@@ -2230,6 +2277,7 @@ struct MusicSourcesSettingsView: View {
             } header: { Text("曲庫連線") } footer: {
                 Text("NAS 暫時離線不會清除曲庫；重新授權也會保留既有歌曲與歌單。")
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
 
             Section {
                 Button { appModel.showingImporter = true } label: { Label("加入音樂來源", systemImage: "plus.circle.fill") }
@@ -2240,6 +2288,7 @@ struct MusicSourcesSettingsView: View {
                     .disabled(sources.allSatisfy { $0.status == .scanning })
                 }
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
 
             Section("來源明細") {
                 if sources.isEmpty {
@@ -2249,8 +2298,10 @@ struct MusicSourcesSettingsView: View {
                     ForEach(sources) { source in sourceRow(source) }
                 }
             }
+            .listRowBackground(theme.isStorybook ? theme.surface : nil)
         }
         .formStyle(.grouped)
+        .modifier(CMVStorybookContainerStyle())
         .navigationTitle(AppLanguage.localized("音樂來源"))
         .celestialPageBackground()
         .tint(theme.primary)

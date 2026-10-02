@@ -28,3 +28,19 @@
 - 恢復前版量測、移除月環 cover parallax；依最新要求保留寬版右面板下移 24 pt、淡半透明歌曲／播放與詳情卡。流光限於指定 UI 背景，月環無流光。
 - 原生 macOS 簽署必須使用 `Native/CMV/CMV/CMV.entitlements`。本次交付曾誤用 `build/entitlements.mac.plist`（Electron）而讀到非 sandbox 資料位置，已重新簽署並於原生畫面確認既有 1,964 首曲目。未遷移或刪除曲庫。
 - 本輪局部 UI 完成不代表整個 Pro／StoreKit 發布任務完成。
+
+## 2026-10-02 羊羊彩虹繪本主題
+
+- 背景與整體 UI 改為明亮童話卡通：原創彩虹天空、粗描邊奶油雲朵、奶油紙卡、可可文字與圓體。依最新使用者回饋移除所有地面與固定羊，沿用既有羊流星。
+- 僅 emeraldAurora 套用；保留月環與播放區既有位置。背景圖片獨立於動畫 clock，羊流星遵循 Reduce Motion／scenePhase，最高 20 fps。
+- Mac arm64 Release 最終建置成功；原生 entitlements ad-hoc 簽章與 strict verify 通過。桌面 CMV.app 已更新，舊版備份於 <HOME_PATH>
+- CodeRabbit 共 2 次（各不超過 9 個小型 Swift 檔，排除大圖）；首次已確認佇列遮擋問題並修正，末次 9 檔 0 findings。獨立 Luna source／資產審查沒有確定 P0–P2。
+- 原生 UI 工具啟動失敗：failed to start Node runtime: No such file or directory。只確認圖片素材與原始碼，未宣稱整頁實機視覺驗收。
+- 初版 iPad Simulator Debug 曾建置、安裝與啟動；最終小修未重跑 iOS。使用者最新指定先完成 Mac，iPad 交付延後。此次自建測試 simulator 已關閉刪除。
+- 本輪主題修改不代表整個 Pro／StoreKit 發布任務完成。
+
+## 最新美術修正：日式動畫
+
+使用者於 2026-10-02 指定改為日式動畫風格。背景已重繪為清透藍天、暖白積雲、藍紫色賽璐璐明暗與乾淨輪廓；保留巨大彩虹、完全無地面與固定羊。UI 沿用奶油色與柔和梅紫控制，原有位置不變。這次僅替換點陣資產，不修改已審查的 Swift 邏輯。
+
+素材：imagegen `exec-09e84234-e175-4427-a2e3-b0ea88346ae0.png`。提示摘要：Original Japanese anime sky background; luminous cyan-blue summer sky, warm ivory cumulus clouds, blue-gray linework, lavender cel-shaded shadows, clean smooth painting, huge pastel rainbow; no ground, horizon, vegetation, buildings, sheep, text or interface.

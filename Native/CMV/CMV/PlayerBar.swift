@@ -37,12 +37,23 @@ struct PlayerBar: View {
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
         .background {
-            Rectangle()
-                .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
-                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
-                .clipped()
+            if theme.isStorybook {
+                theme.surface
+            } else {
+                Rectangle()
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                    .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                    .clipped()
+            }
         }
-        .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
+        .overlay(alignment: .top) {
+            if theme.isStorybook {
+                StorybookRainbowRule()
+            } else {
+                Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1)
+            }
+        }
+        .tint(theme.primary)
         .controlSize(.large)
         .accessibilityElement(children: .contain)
     }
@@ -110,7 +121,7 @@ struct PlayerBar: View {
         ZStack(alignment: .topTrailing) {
             Image(systemName: name)
                 .modifier(PlaybackIconSize())
-                .foregroundStyle(isOn ? theme.primary : Color.secondary)
+                .foregroundStyle(isOn ? theme.primary : (theme.isStorybook ? theme.mutedText : Color.secondary))
             if isOn {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 9, weight: .bold))
@@ -259,12 +270,23 @@ struct MiniPlayerBar: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background {
-            Rectangle()
-                .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
-                .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
-                .clipped()
+            if theme.isStorybook {
+                theme.surface
+            } else {
+                Rectangle()
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                    .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                    .clipped()
+            }
         }
-        .overlay(alignment: .top) { Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1) }
+        .overlay(alignment: .top) {
+            if theme.isStorybook {
+                StorybookRainbowRule()
+            } else {
+                Rectangle().fill(theme.primary.opacity(0.5)).frame(height: 1)
+            }
+        }
+        .tint(theme.primary)
     }
 }
 #endif

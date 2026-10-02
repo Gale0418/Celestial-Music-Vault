@@ -39,6 +39,18 @@ public struct CMVTheme: Sendable {
     public let starSecondary: Color
     public let skyStyle: CMVSkyStyle
 
+    public var isStorybook: Bool { id == .emeraldAurora }
+
+    /// Decorative pigments only; controls and status keep semantic ink colors.
+    public static let storybookRainbow: [Color] = [
+        Color(red: 0.88, green: 0.48, blue: 0.49),
+        Color(red: 0.93, green: 0.64, blue: 0.39),
+        Color(red: 0.92, green: 0.78, blue: 0.37),
+        Color(red: 0.49, green: 0.68, blue: 0.49),
+        Color(red: 0.42, green: 0.65, blue: 0.75),
+        Color(red: 0.62, green: 0.49, blue: 0.74)
+    ]
+
     public static func palette(_ id: CMVThemeID) -> CMVTheme {
         switch id {
         case .crimsonNebula:
@@ -82,20 +94,20 @@ public struct CMVTheme: Sendable {
         case .emeraldAurora:
             CMVTheme(
                 id: id,
-                background: Color(red: 0.10, green: 0.055, blue: 0.18),
-                surface: Color(red: 0.27, green: 0.13, blue: 0.31),
-                primary: Color(red: 1.0, green: 0.58, blue: 0.70),
-                secondary: Color(red: 0.48, green: 0.34, blue: 0.70),
-                text: .white,
-                mutedText: Color(red: 0.96, green: 0.82, blue: 0.92),
-                metal: Color(red: 1.0, green: 0.89, blue: 0.96),
-                skyZenith: Color(red: 0.055, green: 0.030, blue: 0.13),
-                skyMidpoint: Color(red: 0.22, green: 0.11, blue: 0.31),
-                skyHorizon: Color(red: 0.46, green: 0.24, blue: 0.39),
-                atmospherePrimary: Color(red: 1.0, green: 0.55, blue: 0.70),
-                atmosphereSecondary: Color(red: 0.52, green: 0.78, blue: 0.73),
-                starPrimary: Color(red: 1.0, green: 0.94, blue: 0.98),
-                starSecondary: Color(red: 0.72, green: 0.92, blue: 0.88),
+                background: Color(red: 0.98, green: 0.95, blue: 0.88),
+                surface: Color(red: 1.0, green: 0.98, blue: 0.93),
+                primary: Color(red: 0.43, green: 0.25, blue: 0.40),
+                secondary: Color(red: 0.80, green: 0.73, blue: 0.85),
+                text: Color(red: 0.24, green: 0.19, blue: 0.17),
+                mutedText: Color(red: 0.40, green: 0.33, blue: 0.30),
+                metal: Color(red: 0.49, green: 0.38, blue: 0.32),
+                skyZenith: Color(red: 0.68, green: 0.86, blue: 0.90),
+                skyMidpoint: Color(red: 0.83, green: 0.93, blue: 0.91),
+                skyHorizon: Color(red: 0.98, green: 0.91, blue: 0.74),
+                atmospherePrimary: Color(red: 0.93, green: 0.66, blue: 0.69),
+                atmosphereSecondary: Color(red: 0.57, green: 0.72, blue: 0.55),
+                starPrimary: Color(red: 0.76, green: 0.51, blue: 0.20),
+                starSecondary: Color(red: 0.63, green: 0.49, blue: 0.69),
                 skyStyle: .sheepDreamland
             )
         case .amberDawn:

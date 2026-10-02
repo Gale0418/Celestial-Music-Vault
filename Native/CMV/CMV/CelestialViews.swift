@@ -38,7 +38,15 @@ struct CelestialBackground: View {
         !reduceMotion && scenePhase == .active && isVisible
     }
 
-    var body: some View {
+    @ViewBuilder var body: some View {
+        if theme.isStorybook {
+            SheepStorybookBackground(seedOffset: starSeedOffset)
+        } else {
+            celestialSky
+        }
+    }
+
+    private var celestialSky: some View {
         GeometryReader { geometry in
         let overscan: CGFloat = theme.id == .titaniumEclipse ? 64 : 12
         let portraitShift = backgroundPortraitShift(for: geometry.size)
@@ -224,8 +232,8 @@ struct AlbumWorldView: View {
     var body: some View {
         ZStack {
             ZStack {
-                Circle().fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
-                if !reduceTransparency {
+                Circle().fill(theme.isStorybook ? AnyShapeStyle(theme.surface) : (reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial)))
+                if !reduceTransparency && !theme.isStorybook {
                     Circle().fill(RadialGradient(colors: [theme.primary.opacity(0.92), theme.secondary.opacity(0.55), .clear], center: .center, startRadius: 0, endRadius: size / 2))
                     ForEach(0..<7, id: \.self) { index in
                         Circle()
@@ -244,8 +252,8 @@ struct AlbumWorldView: View {
                 } else {
                     fallbackArtwork
                 }
-                Circle().stroke(AngularGradient(colors: [theme.primary, theme.metal, theme.secondary, theme.primary], center: .center), lineWidth: colorSchemeContrast == .increased ? 4 : 3)
-                    .shadow(color: reduceTransparency ? .clear : theme.primary,
+                Circle().stroke(AngularGradient(colors: theme.isStorybook ? CMVTheme.storybookRainbow + [CMVTheme.storybookRainbow[0]] : [theme.primary, theme.metal, theme.secondary, theme.primary], center: .center), lineWidth: theme.isStorybook ? 7 : (colorSchemeContrast == .increased ? 4 : 3))
+                    .shadow(color: reduceTransparency || theme.isStorybook ? .clear : theme.primary,
                             radius: colorSchemeContrast == .increased ? 22 : 18)
             }
             .frame(width: size, height: size)
@@ -291,10 +299,18 @@ struct AlbumWorldView: View {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options)
     }
 
-    private var fallbackArtwork: some View {
+    @ViewBuilder private var fallbackArtwork: some View {
+        if theme.isStorybook {
+            Image("SheepSleep")
+                .resizable()
+                .scaledToFit()
+                .padding(size * 0.12)
+                .accessibilityHidden(true)
+        } else {
         Image(systemName: "moon.stars.fill")
             .font(.system(size: size * 0.25, weight: .thin))
             .foregroundStyle(.white, theme.primary)
+        }
     }
 }
 
@@ -379,6 +395,30 @@ private struct AudioEnergyRing: View {
                 context.translateBy(x: center.x, y: center.y)
                 context.rotate(by: .radians(rotationRadians))
                 context.translateBy(x: -center.x, y: -center.y)
+
+                if theme.isStorybook {
+                    // A bounded ring of rounded pigment marks, driven by the same PCM.
+                    // No glow or extra timer is needed for the daylight illustration.
+                    for index in stride(from: 0, to: Self.segmentCount, by: 2) {
+                        let direction = Self.unitVectors[index]
+                        let previous = smoothedSample(at: index, samples: snapshot.previousSamples,
+                                                      writeIndex: snapshot.previousWriteIndex)
+                        let current = smoothedSample(at: index, samples: snapshot.samples,
+                                                     writeIndex: snapshot.writeIndex)
+                        let energy = isActive ? CGFloat(lerp(previous, current, blend)) : 0
+                        let startRadius = baseRadius + 7
+                        let endRadius = startRadius + 3 + min(32, energy * 42)
+                        var mark = Path()
+                        mark.move(to: CGPoint(x: center.x + direction.dx * startRadius,
+                                              y: center.y + direction.dy * startRadius))
+                        mark.addLine(to: CGPoint(x: center.x + direction.dx * endRadius,
+                                                 y: center.y + direction.dy * endRadius))
+                        context.stroke(mark,
+                                       with: .color(CMVTheme.storybookRainbow[(index / 22) % 6]),
+                                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    }
+                    return
+                }
 
                 var moonlightHaze = Path()
                 let beamColors = Gradient(stops: [
@@ -612,13 +652,13 @@ struct VideoMoonPortalView: View {
             Circle()
                 .stroke(
                     AngularGradient(
-                        colors: [theme.primary, theme.metal, theme.secondary, theme.primary],
+                        colors: theme.isStorybook ? CMVTheme.storybookRainbow + [CMVTheme.storybookRainbow[0]] : [theme.primary, theme.metal, theme.secondary, theme.primary],
                         center: .center
                     ),
                     lineWidth: 4
                 )
                 .frame(width: size, height: size)
-                .shadow(color: reduceTransparency ? .clear : theme.primary, radius: 18)
+                .shadow(color: reduceTransparency || theme.isStorybook ? .clear : theme.primary, radius: 18)
                 .allowsHitTesting(false)
 
             AudioEnergyRing(
@@ -636,7 +676,7 @@ struct VideoMoonPortalView: View {
                 Image(systemName: appModel.videoSession.isPlaying ? "pause.fill" : "play.fill")
                     .frame(width: 44, height: 44)
                     .background(
-                        reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
+                        reduceTransparency || theme.isStorybook ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
                         in: Circle()
                     )
             }
@@ -651,7 +691,7 @@ struct VideoMoonPortalView: View {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .frame(width: 44, height: 44)
                     .background(
-                        reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
+                        reduceTransparency || theme.isStorybook ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial),
                         in: Circle()
                     )
             }
@@ -668,20 +708,25 @@ struct CloudSurfaceModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.cmvTheme) private var theme
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial))
-                    .overlay {
-                        if !reduceTransparency {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(theme.surface.opacity(0.16))
+        if theme.isStorybook {
+            content.background { StorybookPaper(cornerRadius: 22) }
+        } else {
+            content
+                .background {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.ultraThinMaterial))
+                        .overlay {
+                            if !reduceTransparency {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(theme.surface.opacity(0.16))
+                            }
                         }
-                    }
-            }
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(reduceTransparency ? theme.metal : .white.opacity(0.16)))
+                }
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(reduceTransparency ? theme.metal : .white.opacity(0.16)))
+        }
     }
 }
 

@@ -150,7 +150,14 @@ struct ProUpgradeView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-        .background(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial))
+        .background {
+            if theme.isStorybook {
+                theme.surface
+            } else {
+                Rectangle()
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(.regularMaterial))
+            }
+        }
     }
 
     private func benefit(_ title: String, symbol: String, detail: String) -> some View {

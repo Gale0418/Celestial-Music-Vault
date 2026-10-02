@@ -94,10 +94,14 @@ struct SmartDJView: View {
             .accessibilityHint(AppLanguage.localized("從分段候選曲目產生新的 Smart DJ 播放清單"))
         }
         .padding(20)
-        .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.34)),
-            in: RoundedRectangle(cornerRadius: 18)
-        )
+        .background {
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 18)
+            } else {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.34)))
+            }
+        }
     }
 
     private var generatingCard: some View {
@@ -118,10 +122,14 @@ struct SmartDJView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.24)),
-            in: RoundedRectangle(cornerRadius: 16)
-        )
+        .background {
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 16)
+            } else {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.24)))
+            }
+        }
     }
 
     private var emptyCard: some View {
@@ -170,10 +178,14 @@ struct SmartDJView: View {
             }
         }
         .padding(20)
-        .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.28)),
-            in: RoundedRectangle(cornerRadius: 18)
-        )
+        .background {
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 18)
+            } else {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.28)))
+            }
+        }
     }
 
     private func smartDJRow(_ selection: DJSelection, rank: Int) -> some View {
@@ -221,10 +233,14 @@ struct SmartDJView: View {
             .frame(minHeight: 44)
         }
         .padding(24)
-        .background(
-            reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.92)),
-            in: RoundedRectangle(cornerRadius: 22)
-        )
+        .background {
+            if theme.isStorybook {
+                StorybookPaper(cornerRadius: 22)
+            } else {
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(reduceTransparency ? AnyShapeStyle(theme.surface) : AnyShapeStyle(theme.surface.opacity(0.92)))
+            }
+        }
         .frame(maxWidth: 560)
         .padding(24)
     }

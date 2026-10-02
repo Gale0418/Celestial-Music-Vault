@@ -35,7 +35,7 @@ not information architecture.
 | --- | --- | --- | --- | --- |
 | 緋紅星雲 | plum-black | rose | coral | warm stardust |
 | 土星環軌站 | midnight indigo | Saturn ring light | cyan | ice blue |
-| 綿羊幻想鄉 | deep teal | emerald mist | mint | prismatic green |
+| 綿羊幻想鄉 | pastel sky | cream clouds | plum | rainbow pigments |
 | 星海晨光 | lavender dusk | peach | amber | sunrise gold |
 
 Text, separators, selection, success, warning, error, unavailable, and focus
@@ -94,3 +94,17 @@ colors remain semantic and meet contrast requirements in every theme.
 - Text remains legible at all Dynamic Type sizes; layouts reflow instead of clipping.
 - The three approved compositions are references, not pixel-perfect constraints
   that override native accessibility behavior.
+
+## 綿羊幻想鄉：彩虹繪本（2026-10-02）
+
+使用者指定背景與整體 UI 都是童話卡通，且必須有彩虹。此主題採明亮粉彩繪本：原創粗描邊彩虹天空插畫（無地面或固定羊）、奶油紙面、可可文字、梅紫操作重點與圓潤系統字。側欄、曲庫、歌曲資訊、佇列、設定與底部播放列共用配色，其餘三個主題保持原樣。
+
+保留月環尺寸與控制位置，真實專輯封面不變；羊羊空封面採既有 SheepSleep。彩虹色只作裝飾，狀態仍用文字與圖示。紙卡支援提高對比與減少透明度。Reduce Motion 保留完整靜態彩虹圖；背景圖片不在 display clock 內，既有有限羊群最高 20 fps，離開畫面或背景時停止。
+
+素材與驗證見 docs/design/sheep-storybook-ui.md。
+
+## 最新美術修正：日式動畫
+
+使用者於 2026-10-02 指定改為日式動畫風格。背景已重繪為清透藍天、暖白積雲、藍紫色賽璐璐明暗與乾淨輪廓；保留巨大彩虹、完全無地面與固定羊。UI 沿用奶油色與柔和梅紫控制，原有位置不變。這次僅替換點陣資產，不修改已審查的 Swift 邏輯。
+
+素材：imagegen `exec-09e84234-e175-4427-a2e3-b0ea88346ae0.png`。提示摘要：Original Japanese anime sky background; luminous cyan-blue summer sky, warm ivory cumulus clouds, blue-gray linework, lavender cel-shaded shadows, clean smooth painting, huge pastel rainbow; no ground, horizon, vegetation, buildings, sheep, text or interface.

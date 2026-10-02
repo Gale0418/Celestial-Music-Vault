@@ -19,6 +19,46 @@ private func isFileImporterCancellation(_ error: Error) -> Bool {
     return cocoa.domain == NSCocoaErrorDomain && cocoa.code == CocoaError.Code.userCancelled.rawValue
 }
 
+/// 羊羊繪本只在主題分支內改變字體與預設文字色，避免覆蓋其他主題既有語意。
+struct CMVStorybookTextStyle: ViewModifier {
+    @Environment(\.cmvTheme) private var theme
+
+    func body(content: Content) -> some View {
+        content
+            .fontDesign(theme.isStorybook ? .rounded : nil)
+            .foregroundColor(theme.isStorybook ? theme.text : nil)
+    }
+}
+
+/// Native Form/List keep their semantic controls while using the paper stock in
+/// the daylight theme instead of an opaque platform background.
+struct CMVStorybookContainerStyle: ViewModifier {
+    @Environment(\.cmvTheme) private var theme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if theme.isStorybook {
+            content
+                .scrollContentBackground(.hidden)
+        } else {
+            content
+        }
+    }
+}
+
+struct CMVStorybookRowStyle: ViewModifier {
+    @Environment(\.cmvTheme) private var theme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if theme.isStorybook {
+            content.listRowBackground(StorybookPaper(cornerRadius: 16))
+        } else {
+            content
+        }
+    }
+}
+
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -48,8 +88,9 @@ struct RootView: View {
                 }
             }
             .celestialPointerSurface(enabled: appModel.selectedTheme == .titaniumEclipse)
+            .modifier(CMVStorybookTextStyle())
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(appModel.selectedTheme == .emeraldAurora ? .light : .dark)
             .overlay(alignment: .top) {
                 BackgroundActivityToast()
                     .padding(.top, 12)
@@ -58,6 +99,7 @@ struct RootView: View {
             .sheet(isPresented: $appModel.showingProUpgrade) {
                 ProUpgradeView()
                     .environment(appModel)
+                    .modifier(CMVStorybookTextStyle())
                     .environment(\.cmvTheme, .palette(appModel.selectedTheme))
                     #if os(iOS)
                     .presentationDetents([.large])
@@ -212,14 +254,21 @@ private struct WideRootView: View {
                 PerformantQueueView()
                     .frame(width: 350)
                     .frame(maxHeight: .infinity)
-                    .background(theme.surface.opacity(reduceTransparency ? 1 : 0.88))
                     .background {
-                        if !reduceTransparency {
-                            LinearGradient(
-                                colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                        if theme.isStorybook {
+                            StorybookPaper(cornerRadius: 20)
+                                .padding(8)
+                        } else {
+                            theme.surface.opacity(reduceTransparency ? 1 : 0.88)
+                                .background {
+                                    if !reduceTransparency {
+                                        LinearGradient(
+                                            colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    }
+                                }
                         }
                     }
                     .overlay(alignment: .leading) {
@@ -235,6 +284,12 @@ private struct WideRootView: View {
         libraryStage
             .inspector(isPresented: showingQueue) {
                 PerformantQueueView()
+                    .background {
+                        if theme.isStorybook {
+                            StorybookPaper(cornerRadius: 20)
+                                .padding(8)
+                        }
+                    }
                     .inspectorColumnWidth(min: 300, ideal: 350, max: 420)
             }
         #endif
