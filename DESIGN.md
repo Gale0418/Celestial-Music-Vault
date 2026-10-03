@@ -108,3 +108,9 @@ colors remain semantic and meet contrast requirements in every theme.
 使用者於 2026-10-02 指定改為日式動畫風格。背景已重繪為清透藍天、暖白積雲、藍紫色賽璐璐明暗與乾淨輪廓；保留巨大彩虹、完全無地面與固定羊。UI 沿用奶油色與柔和梅紫控制，原有位置不變。這次僅替換點陣資產，不修改已審查的 Swift 邏輯。
 
 素材：imagegen `exec-09e84234-e175-4427-a2e3-b0ea88346ae0.png`。提示摘要：Original Japanese anime sky background; luminous cyan-blue summer sky, warm ivory cumulus clouds, blue-gray linework, lavender cel-shaded shadows, clean smooth painting, huge pastel rainbow; no ground, horizon, vegetation, buildings, sheep, text or interface.
+
+## 動態偏好與溢出文字（2026-10-03）
+
+使用者偏好跑馬燈、動態條等會動的視覺回饋。單行歌曲卡與播放器資訊超出可用寬度時採平滑往返跑馬燈，首尾停留；完整可放入的文字維持靜態。無障礙標籤仍提供完整文字，開啟減少動態效果或 App 不活躍時保留靜態呈現。實作須通過實際畫面驗收，不能只憑編譯成功。
+
+音訊動態沿用真實 PCM 能量，處理進度對應實際工作狀態；這項偏好不更換已核准的月環配置，也不新增沒有實際訊號的播放能量條。動畫避免影響播放、操作和資訊可讀性。

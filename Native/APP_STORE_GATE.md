@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜送審前 gate
 
-更新：2026-09-26
+更新：2026-10-03
 
 這份清單是送 TestFlight 前的可重跑 gate，不把模擬器編譯誤當成實機核准。
 
@@ -48,6 +48,48 @@
 - 實體 iPad、背景音訊、PiP、Files provider、bookmark 重啟恢復、NAS 故障矩陣，以及
   Apple Sandbox 購買／恢復／退款／撤銷仍無足夠證據；`Native/APP_STORE_REVIEW_KIT.md`
   與 `Native/ASSET_RIGHTS_LEDGER.md` 的方括號欄位仍是人工 gate。
+
+## 2026-10-03 最新 evidence 與 source 邊界
+
+- 解鎖後最後 source 的 iPad Debug install／launch 成功；binary SHA-256
+  `f7f9105e356d249183248d7a5d73a8ca173c29aab69ebcfe4161d31724ea2786` 與 final source
+  manifest 相符。25 首原創 fixture、Track Info English、release `Not Available` 與多選
+  2 項 UI 通過；enqueue 為 Unknown，重複 future remove、重排與 terminate／restore
+  未驗證。
+- WDA runner 回報 `Test crashed with signal kill.`、host exit 65 後已離開；根因未知，不能
+  稱為 CMV crash。session DELETE 因 service unavailable 未確認，cleanup receipt 未見
+  owned host 存活，不能把資源收尾寫成完整 Pass。
+- Mac 同一最後 source 的原創 MOV 僅完成 Play／Pause、月環與 standalone native player
+  路由、EOF Not Playing／empty 與清除後曲庫 1,969 的單一 fixture 路徑；不代表 mixed
+  media race、PiP 或聽感認證。
+- App Store Connect Content Rights 已保存 `DOES_NOT_USE_THIRD_PARTY_CONTENT`，主要
+  類別為 Music；產品不內建歌曲、影片或圖片，範圍是 local user-authorized media。這是
+  商店選項與產品邊界，不是所有私人音樂的商業散布授權證明。
+- Marquee overflow source 修正、Marquee card／PlayerBar 已實作，新的雙平台 build 進行中；
+  先前 final Distribution archive／qualification 只屬舊 source candidate，最新 source
+  仍須重新 build／qualify，不能宣稱 final RC 或 upload。
+- [ACOUSTIC_REFERENCE_QA_20261003.md](ACOUSTIC_REFERENCE_QA_20261003.md) 提供四首
+  原創 fixture 與 pinned BS1770 的獨立比較摘要；programme matrix、Sandbox、screenshots、
+  無剪輯 demo、rights forms 與 formal critic budget 仍未完成，也不宣稱 EBU 認證。
+
+### 最新 checkpoint
+
+- ASC Draft 15／15 目標欄位 exact、24／24 保護欄位 exact；三語 canonical 四欄 Gemini 文案已完成，首發 What’s New 未 live 寫入。
+- 初版 Marquee candidate 的 Mac 佈局曾真實失敗，後以 `onGeometryChange`、positive-width guard、fixed container 修正；Debug binary `e913939…`／ad-hoc source `440bda…` 的限定驗收 PASS：Medium 全文、Small metadata 往返可讀，short title／Not Playing 靜態狀態與完整 AX labels 通過。Reduce Motion、完整 VoiceOver、性能仍未驗。
+- 新 Distribution 修正版建置中；source 修正前的 qualification 只屬舊 candidate。Mac 同 source 的 Cobalt 兩次入列、移除第二個 future 後一個 paused current／progress 0、quit／relaunch 還原一個 paused current，Clear own queue 後曲庫仍為 1,969。
+- iPad 第一 candidate install 成功但 launch Locked，沒有新的 WDA 證據，解鎖 pending；Sandbox、pending tests、critics、screens／demo 與完整雙平台矩陣仍未完成。
+
+### 最新 final-candidate checkpoint
+
+- 最新 `marquee-layout-final` candidate 與 67 項 compile inputs 相符；Mac Release universal archive／qualification／package 簽章通過，iOS archive／export／IPA qualification 通過，iPad Debug compile／codesign 通過。這仍是 candidate，非 formal RC，尚未 upload。
+- Mac Desktop Release 覆蓋成功；ad-hoc test binary `8bee1cc9b062c9b099dbded1aab55f63a60026e075af92de3ff31bfe595b59ad` 啟動後曲庫 1,969、空佇列、short title 靜態狀態與 long metadata 往返可讀，為限定 PASS；不等於完整 AX／VoiceOver、Reduce Motion 或性能 benchmark。
+- iPad 最新 source 安裝遇 CoreDevice 4000 disconnected，未 launch、未取得 WDA 證據。後續 fresh device available 且 `passcodeRequired=true`、`unlockedSinceBoot=true`；後者只代表本次開機曾解鎖，不代表目前已解鎖。已再次請使用者解鎖；目前無 build 等待，狀態維持 ToolLimited。
+
+### 解鎖後最新實機驗收
+
+- Fresh 解鎖後 latest Debug binary SHA `1f973a2c67ac28d74c62f86864dfeafce512c5a284805079ee302cd628368545` ；裝置即時 `passcodeRequired=false`；iPad install／launch success，短案例耗時 58 秒／總上限 170 秒。25 首曲目與 portrait 5 欄 cover 顯示在各自 card 內，限定 visual PASS；raw nested video AX image width 230 仍存在，不宣稱完整 AX bounds PASS。
+- Marquee 完整 AX label 與 frame movement 有證據，但完整 cycle、獨立 short case、Reduce Motion、VoiceOver 與性能仍未驗。Up Next 顯示 Synced／25 total，Play 可見且維持 paused；本輪沒有 queue mutation 或播放操作。
+- owned WDA session DELETE HTTP 200；host port 無法連線，SIGINT 後診斷停滯，僅終止本次自有 controller，相關程序已消失。私人曲庫封面與 raw receipts 不納入公開證據；先前 install／launch failure 仍保留為歷史紀錄。
 
 ## 可重跑命令
 

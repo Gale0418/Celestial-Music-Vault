@@ -132,3 +132,83 @@ CodeRabbit 第三輪 4 findings 已逐項查證：有效 3 項為混合影音 ap
 最後 production source 的 macOS universal Release、iPad device Debug build 均 BUILD SUCCEEDED；Mac Desktop 已覆蓋、strict codesign／bundle preflight 通過，1,969 首（原 1,964＋本次 5 首原創影音）保留，Track Info 可開啟並關閉。iPad 最後修正版安裝回讀 success；裝置再次鎖定，尚未完成此版操作驗收。兩平台修正後 Review Notes 遠端逐字回讀一致。
 
 WDA 前一 host 於 remote process connection invalidated 後結束，不能推論為 CMV crash。新 host 在 Xcode preflight 等待 iPad 解鎖；僅重啟本次自有 host，未建立第二個 session。實際原創測試素材、二進位與畫面證據置於 ignored runtime 目錄，未公開使用者曲庫畫面、裝置識別或 LAN 位址。
+
+## Review fixture 與最新受限驗收快照｜2026-10-03
+
+前段「尚未加入原創測試來源」及「尚未完成此版操作驗收」是各自當時的歷史快照。其後原創 fixture 已可由公開 prerelease 下載：[cmv-review-fixtures-20261003](https://github.com/Gale0418/Celestial-Music-Vault/releases/tag/cmv-review-fixtures-20261003)，ZIP SHA-256 為 `e3b766ec3a828fc8d11e8ac90b1468a5cea5e8f8ba600a79184aa39e68bf72d6`。這只更新素材可取得性，不把未完成的完整審核媒體或 Sandbox 驗收標成完成。
+
+本輪 iPad Files 解壓 AddMusic 來源由 20 首增至 25 首，通過。空佇列 Add → Play 的進度為 0，通過；佇列 `[Amber, Cobalt, Amber]` 移除未播放的 Cobalt 後為 `[Amber, Amber]`，目前曲目與進度維持不變，通過。此路徑是移除指定未播放 Cobalt，不是移除指定的重複 Amber。多選、重排、本版強制終止後還原尚未驗證；完整雙平台無剪輯影片、Split View／PiP 與 Sandbox 也尚未完成。私有 runtime evidence 僅作本機稽核，公開文件不帶裝置識別、網路位址或曲庫畫面。
+
+本輪 WDA 只使用自有 session；session DELETE 與 host 收尾成功，沒有本輪 simulator／worker 存活。這是資源清理證據，不代表完整實機矩陣通過。
+
+最新單一 production StoreKit listener recheck 以受限本機 log 回讀：exit 65；`activeEntitlements=1`、`unverified=0`，`allUpdates=0`、`matchingUpdates=0`、`orderRejections=0`、`hasPro=false`，約 32.3 秒逾時，判定 FAIL。診斷顯示 `compileHostFlag=true`，trace 只落在 `DEBUG && testHost`；未修改 production 解鎖邏輯，也不把結果歸咎 Apple。較早的 independent observer 32 秒 PASS 是延長等候的歷史結果，不能覆蓋本次 listener FAIL。
+
+TrackInfo locale 的最小修正仍待 build／UI 複驗；不可宣稱最新版安裝已涵蓋。三輪 CodeRabbit 審查的有效 finding 已修正；修正後未新增外部審查輪次，不能宣稱最終零 finding。這不取代尚未完成的實機與 Sandbox gates。
+
+## Mac Smart DJ 佇列還原缺口｜2026-10-03
+
+桌面第三輪修正版（binary SHA-256 `8c129df1eb3a62ee1e3140d4211b4e0412087c13715d0d0beeb0086c6317a398`）由 Settings → Smart DJ 產生四首原創 WAV，Add to Queue 後 Up Next 顯示 4 total、Play 按鈕與進度 0。正常關閉並重新啟動後 Up Next 為 0 total，曲庫仍為 1,969；本機磁碟快照仍保留 version 1／revision 29／entries 4／baseEntries 4／currentIndex 0。此為實際還原失敗，不以資料檔存在判定成功；正在診斷，尚未確認根因或修正。畫面與 AX 只保存在 ignored runtime 目錄。
+
+## Distribution 檢查修正與候選產物｜2026-10-03
+
+本機 iOS 2.0 (1) 使用既有 Distribution 身分完成 archive 與 IPA export；未上傳。qualification 原使用 `codesign -dv`，該輸出沒有 Authority 欄位而誤拒有效簽章，已改為 `--verbose=2`。實際正式 iOS archive（arm64）檢查 exit 0，Desktop ad-hoc 負例 exit 1，其他 profile／entitlement／privacy 檢查仍保留。此輪 archive 早於最新 queue restore 修正，僅作簽署流程證據，不冒稱最終 RC。Mac candidate 仍在串行建置。
+
+佇列還原旗標的最小修正已完成 source parse：取消中的 SwiftUI task 不再提前完成共享 restore flag；有效空快照仍採納 revision；成功 hydration 才完成 flag，既有 queue mutation guards 與不自動播放行為保留。實機重啟複驗尚未完成，取消事件本身也尚無 runtime trace，不能把推測觸發原因寫成定案。
+
+## 核對 candidate 後的 Mac 還原與語系驗收｜2026-10-03
+
+queuefix archive 的 binary SHA-256 為 `e59e77a7ecea161dd154840f6ccc230acc97a85bdfbbf7bc91e94f8f23c81d44`；複製為 Desktop ad-hoc 測試版後為 `dfdf4ec5debf967e16562b9dd6a903494336d766b9ffaa42a5df9725a1b7cb31`。CUA 啟動已還原四首原創 Cobalt／Violet／Amber／Silver，Up Next 4 total、Play、進度 0，曲庫 1,969；Track Info 的 Basic Information／File and Track／Done 與日期 Oct 3, 2026 為英文，限定路徑通過。較早一次複驗誤取 pre-queuefix archive，已更正 runtime receipt，不能當修正後 FAIL。
+
+此候選含 restore 完成旗標修正，尚未含後續獨立發現的併發 revision rebase 保護。還原等待期間的新 queue mutation 必須以已載入 revision 重新保存，以免 actor 拒絕較舊 save；最小 source 修正已完成 parse，暫時 OSLog 診斷已移除，正在建立同 source 的下一組候選。沒有 runtime cancellation trace，不把該觸發原因寫成定案。雙平台 archive／IPA／Mac package 已於前候選成功、qualification 通過，仍未上傳或正式送審。
+
+Mac 同一 queuefix 候選另驗明確 Play／Pause 狀態切換，接著對本次原創 WAV 啟動 Analyze This Track，畫面顯示 Analysis complete／Tempo around 62 BPM。這只證明該檔本機分析操作成功，不是 BPM／節目 loudness 準確度 reference 或完整使用者曲庫體感。
+
+## 最後同 source qualification 與實機邊界｜2026-10-03
+
+最後 distribution source manifest 與目前 source SHA 一致；Mac Release archive／signed package 及 iOS Distribution archive／IPA qualification 均通過。這些仍是 candidate 產物，尚未 upload，不等於最終 RC 或送審完成。
+
+最後 Mac desktop 覆蓋版以同 source 實際驗證四首原創 Cobalt／Violet／Amber／Silver：current Violet 位於 index 1，Up Next 還原、Play／progress 為 0，曲庫為 1,969 首；真正 restore 且沒有自動播放，通過此限定路徑。這項結果更新前述較早的畫面還原失敗歷史快照，不延伸成完整佇列矩陣或所有來源型態通過。
+
+最後 iPad Debug build 與 signing profile 通過，但安裝在 CoreDevice 3002／`IXRemote5 remote.installcoordination_proxy Error83` 失敗。最新鎖定狀態為 `passcodeRequired=true`、DDI usable；目前等待使用者解鎖後重試。舊 limited QA iPad 紀錄不能當成最後 source 覆蓋版通過證據。
+
+四首本專案原創 WAV 與 pinned BS1770 做獨立比較，±0.1 LU 全部通過，最大絕對差為 0.000324；receipt 留在 ignored runtime。這只建立 fixture-level 的獨立 loudness 比較，不代表 EBU 認證、全 genre 覆蓋或完整 release gate。Sandbox 仍 pending／fail，screenshots、無剪輯 demo、rights forms 與 critic budget 仍未完成。
+
+## 解鎖後最後 source 交付與影片路徑｜2026-10-03
+
+解鎖後，最後 source 的 iPad Debug install 與 launch 均成功；binary SHA-256 `f7f9105e356d249183248d7a5d73a8ca173c29aab69ebcfe4161d31724ea2786` 與 final source manifest 相符。實際 QA summary 顯示 25 首曲目與本專案原創 fixture、Track Info 英文與 release `Not Available`、多選 2 項 UI 通過；enqueue 結果 Unknown，重複曲目 future remove、重排與 terminate／restore 尚未驗證。先前的 install failure 保留為歷史紀錄，不被新的成功證據抹除。
+
+WDA test runner 本輪以 `Test crashed with signal kill.` 結束，host exit 65 後已離開；根因未知，不稱為 CMV crash。因 service unavailable，session DELETE 未能確認成功；cleanup receipt 沒有 owned host 仍存活的證據，不能把 cleanup uncertain 寫成完整通過。
+
+同一最後 source 的 Mac CUA 原創 MOV fixture 路徑已有限通過：Play → Pause 約 1.133872027 秒，月環 → standalone native player 約 1.1291 秒且保持 paused，Return to Moon 後約 1.133872027 秒未改變；EOF 後為 Not Playing／empty，清除本次原創影片後曲庫為 1,969。這只證明單一原創影片路徑，不代表 mixed media race、PiP 或聽感認證。
+
+App Store Connect Content Rights 已保存 `DOES_NOT_USE_THIRD_PARTY_CONTENT`，主要類別為 Music；主人再次確認不在 App 內提供內建歌曲、影片或圖片。產品範圍是 local user-authorized media，這只記錄商店權利選項與產品邊界，不等於所有私人音樂都已有可散布授權。Privacy 已有先前發佈證據。
+
+主人新增的 Marquee overflow scope 已有 source 修正，Marquee card／PlayerBar 也已實作，正在建立新的雙平台 build；因此先前 final Distribution qualification 只屬舊 source candidate，不能宣稱為最新 source qualification。Sandbox pending／fail、screenshots、無剪輯 demo、rights forms、完整 programme matrix 與 formal critic budget 仍待完成。節目級聲學比較摘要見 `Native/ACOUSTIC_REFERENCE_QA_20261003.md`，仍不等於節目認證。
+
+## 2026-10-03：AERO-U25 與三語商店草稿
+
+Gemini 的受控四欄文案已審閱後整合三語 canonical；App Store Connect app-info 三語副標題及 iOS／macOS 2.0 的描述、宣傳文字共 15 欄 exact readback，一般保護欄位 24 欄 exact preserved。首發 What’s New 未寫入，未上傳／提交 App。名稱、URL、關鍵字、版權、完整 App Review Notes 沿用。
+
+第一 Marquee candidate 雙平台編譯成功，但 Mac 實測長字部分移出可見範圍，故不能作 UI PASS。已改為每個元件 onGeometryChange 量測、要求正寬且固定動畫容器。Mac layout Debug 重建 exit 0、strict signature PASS；实际驗收中型卡片文字完整，小型卡片溢出資訊移到尾端仍可讀，短歌名與尚未播放保持固定，AX 保存完整標籤。這是有限畫面驗證，不宣稱完整 VoiceOver、Reduce Motion 實測或效能基準。修正版的雙平台 Distribution 候選仍重建中。
+
+AERO-Q12 同份 Mac Debug 補驗：空 queue 加入原創 Cobalt 保持暫停 0；再次加入同曲保留兩個項目；只移除未播放的第二項後，原目前項保留、總數 1、仍暫停 0；正常關閉重啟還原相同一筆暫停項。最後清除本次測試 queue，使用者曲庫 1,969 首不變。完整重排、混合影音與 iPad 矩陣仍未完成。
+
+首個 iPad candidate 已覆蓋安裝成功，但 SpringBoard 啟動回覆 Locked；沒有建立新的 WDA host/session。已要求解鎖，實機動畫與縮圖驗證維持 ToolLimited。raw screenshot／AX／ASC receipts 僅私有 runtime，不提交私人曲庫封面或裝置資料。
+
+最後 `marquee-layout-final` 雙平台候選已完成：67 個編譯輸入前後 SHA 一致；Mac universal archive qualification／pkg 簽章、iPad Debug build／codesign、iOS archive／export／IPA qualification 全部通過。它仍非正式 RC，沒有 upload。桌面已覆蓋最後 Release 的 ad-hoc 測試副本；實際啟動保留 1,969 首、空 queue 不自動播放，短歌名固定、溢出資訊在活躍時可讀往返。
+
+最後 iPad source 安裝另遇 CoreDevice 4000「連線後立即斷線」，未嘗試 launch／WDA。root bounded 診斷後裝置已 available／tunnel 可讀，但 `passcodeRequired=true`；`unlockedSinceBoot=true` 只代表開機後曾解鎖，不可當成目前解鎖 PASS。已在全部建置結束後再要求即時解鎖，避免等待建置導致自動鎖定。未完成前維持 ToolLimited。
+
+遙控短案例的操作補充：先完成建置，再即時確認 `passcodeRequired=false`，依序 install／launch／啟動唯一自有 WDA host。從當次 host log 取得 URL，每次操作先讀新 source，優先點 Button／Tab，避免同名 StaticText；source 與 screenshot 串行，單一 HTTP 上限 35 秒，整個短案例上限 170 秒。畫面與幾何回讀各自驗證，不能把 HTTP 成功當 UI 通過。完成後 DELETE 自有 session 並核對回應，再 SIGINT 自有 host、確認程序結束；不終止其他任務的 runner。
+
+公開資料整理另外遮罩歷史簽章 Team 識別碼；AERO-G17 的既有 completion passport 僅依官方 canonical digest 算法重新綁定遮罩後 task identity，status／verification／evidenceRefs／findings 完全保留，未新增或重做 QA。原 digest 與 HEAD 一致，新 digest 與目前紀錄一致；Doctor exit 0、80 tasks 通過，既有缺 passport 的 legacy warnings 如實保留。重新綁定 lineage receipt 只留私有 runtime。
+
+StoreKit pending 唯讀診斷：最後 single-listener 測試的 `compileHostFlag=true`，approval 後 matching transaction 已 purchased、真實 `currentEntitlements` 的 activeProductCount=1；production listener allUpdates／matching／orderRejections 均為 0。因此目前證據指向事件尚未進入 receive，不能歸因 productID 過濾或交易順序拒絕，也不能定案為 Apple SDK bug。下一個最小診斷是在獨立串行 case 保留原事件契約失敗，再驗證 approval 後 production refresh 可否採納真實 verified entitlement；refresh 通過也不能替代 listener case。此輪未改測試、未重跑、未把 pending FAIL 改成 PASS。
+
+## 最後 Marquee candidate：解鎖後 iPad 驗收｜2026-10-03
+
+即時 `passcodeRequired=false` 後，最後 Debug binary `1f973a2c67ac28d74c62f86864dfeafce512c5a284805079ee302cd628368545` 成功覆蓋安裝並啟動。58 秒短案例顯示 Loaded: 25、直向五欄縮圖視覺收在各 card 內，未見跨欄。Raw AX 的 nested video image 仍有 width=230，不能把子節點 rect 當外層裁切結果或宣稱所有 AX bounds 都通過。
+
+兩張畫面有文字位移，AX 保留完整標題及 metadata；完整循環、獨立短標題、VoiceOver、Reduce Motion 及效能尚未驗，Marquee runtime 判 Limited。Up Next 顯示 Synced with Up Next · 25 total／Play 且保持 paused；沒有播放或修改 queue／曲庫、沒有 NAS 或購買操作。
+
+自有 WDA session DELETE 回 HTTP 200，host endpoint 已不可連；SIGINT 後自有 diagnostics 停滯，核對 ownership 後 TERM，controller 及診斷程序均已消失。root 獨立核對最新 binary、四個圖／XML SHA 與程序退出。私人曲庫封面和原始 receipts 只留 ignored runtime；不作公開商店素材。未建立本輪 simulator。

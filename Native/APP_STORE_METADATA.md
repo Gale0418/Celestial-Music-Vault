@@ -33,9 +33,9 @@
 
 本機欄位檢查結果：
 
-- `en-US.md`：Name 21、Subtitle 26、Keywords 77、Promotional text 145 字元。
-- `zh-Hant.md`：名稱 7、副標題 13、關鍵字 36、宣傳文字 53 字元。
-- `ja-JP.md`：名前 21、サブタイトル 10、キーワード 47、プロモーションテキスト 66 字元。
+- `en-US.md`：Name 21、Subtitle 29、Keywords 77、Promotional text 168 字元。
+- `zh-Hant.md`：名稱 7、副標題 24、關鍵字 36、宣傳文字 87 字元。
+- `ja-JP.md`：名前 21、サブタイトル 22、キーワード 47、プロモーションテキスト 87 字元。
 
 上述是檔案內容與字數檢查，不是 App Store Connect 寫入或審核結果。
 
@@ -79,3 +79,30 @@ App 介面已有 `en`／`zh-Hant`／`ja` 字串資源，但商店頁的三語輸
 本輪已將三語 app-info 與兩平台 2.0 version metadata 寫入 App Store Connect。每組三個 locales 全數成功，逐欄回讀共 33 欄與 canonical 一致，0 mismatches。首次上架版本不接受 What’s New，CLI 明確回報後省略該欄；檔案保留內容供日後版本使用，不把它當成本次已寫入。公開 Support／Privacy URL 已填入。審核聯絡與版權欄位依使用者明確授權沿用已上架 MediBuddy 資料；私人姓名、電話與帳號不進 repository。
 
 年齡問卷按現存功能與原創 App 素材填寫 NONE／false；CMV 無內建網頁瀏覽、內容廣泛分享、社群、聊天或廣告。本機使用者選取媒體不等於 App 的內容廣泛散布，採 Apple [age ratings 定義](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/) 的 User-Generated Content 範圍判讀。尚未宣稱問卷的最終審核結果、Build 上傳或正式送審完成。
+
+## 2026-10-03 最新送審證據與限制
+
+- 解鎖後最後 source 的 iPad Debug install／launch 成功；binary SHA-256 `f7f9105e356d249183248d7a5d73a8ca173c29aab69ebcfe4161d31724ea2786` 與 final source manifest 相符。25 首原創 fixture、Track Info English、release `Not Available` 與多選 2 項 UI 通過；enqueue 為 Unknown，重複 future remove、重排與 terminate／restore 未驗證。
+- 同一最後 source 的 Mac 原創 MOV 僅完成單一 fixture 路徑：Play→Pause 約 1.133872027 秒，月環與 standalone native player 間切換保持 paused，EOF 後 Not Playing／empty，清除本次影片後曲庫 1,969。這不能支撐 mixed media race、PiP 或聽感認證宣稱。
+- App Store Connect Content Rights 已保存 `DOES_NOT_USE_THIRD_PARTY_CONTENT`，主要類別為 Music；主人確認 App 不提供內建歌曲、影片或圖片。CMV 的產品範圍是 local user-authorized media；此選項不等於所有私人音樂均已有商業散布授權，個別 rights forms 仍須完成。
+- Marquee overflow scope 已進入 source 修正，Marquee card／PlayerBar 已實作，新的雙平台 build 正在建立。先前 final Distribution archive／qualification 只代表舊 source candidate，不能當作最新 source 的 qualification；正式上傳前需重建並重新回讀。
+- 節目級聲學比較摘要已整理於 [ACOUSTIC_REFERENCE_QA_20261003.md](ACOUSTIC_REFERENCE_QA_20261003.md)，但 programme matrix 尚未完成；Sandbox、screenshots、無剪輯 preview、rights forms 與 formal critic budget 仍是未完成項目。
+
+## 最新 checkpoint｜2026-10-03
+
+- ASC Draft 已完成 15／15 目標欄位 exact readback，24／24 保護欄位保持原字；三語 canonical 的 subtitle、promotional text、description、What’s New 已完成 Gemini 文案整合，但首發 What’s New 未 live 寫入。
+- 初版 Marquee candidate 的 Mac 佈局曾真實失敗，後以 `onGeometryChange`、positive-width guard 與 fixed container 修正；Mac Debug binary `e913939…`／ad-hoc test source `440bda…` 的限定驗收為 PASS：Medium 全文與 Small metadata 可往返讀取，short title／Not Playing 靜態狀態與完整 AX labels 已核對。Reduce Motion、完整 VoiceOver 與性能仍未驗。
+- 新 Distribution 修正版仍在建置；Marquee source 變更前的 qualification 只屬舊 candidate，不能代表最新 source。
+- 同一 Mac Debug source 的原創 Cobalt 加入兩次後保留兩個 occurrences；移除第二個 future occurrence 後剩一個 paused current、progress 0；quit／relaunch 還原一個 paused current，最後 Clear own queue 後曲庫仍為 1,969。iPad 第一 candidate 雖 install 成功，但 launch 遇 Locked、未取得新的 WDA 證據，解鎖待處理。Sandbox、pending tests、critics、screens／demo 與完整雙平台矩陣仍未完成。
+
+### 最新 final-candidate checkpoint
+
+- 最新 `marquee-layout-final` candidate 與 67 項 compile inputs 相符；Mac Release universal archive／qualification／package 簽章、iOS archive／export／IPA qualification、iPad Debug compile／codesign 通過。仍是 candidate，非 formal RC，尚未 upload。
+- Mac Desktop Release 覆蓋成功；ad-hoc test binary `8bee1cc9b062c9b099dbded1aab55f63a60026e075af92de3ff31bfe595b59ad` 啟動後 library 1,969、empty queue、short title 靜態狀態與 long metadata 往返可讀，限定 PASS；不代表完整 AX／VoiceOver、Reduce Motion 或性能 benchmark。
+- iPad 最新 source install 遇 CoreDevice 4000 disconnected，未 launch／未取得 WDA。fresh device available 後曾有 `passcodeRequired=true`、`unlockedSinceBoot=true`，後者只表示曾解鎖，不代表目前 unlocked；已再詢問使用者解鎖，無 build 等待，狀態為 ToolLimited。Sandbox、pending tests、critics、screens／demo 與完整雙平台矩陣仍未完成。
+
+#### 解鎖後最新實機驗收
+
+- Fresh 解鎖後 latest Debug binary SHA `1f973a2c67ac28d74c62f86864dfeafce512c5a284805079ee302cd628368545` ；裝置即時 `passcodeRequired=false`；install／launch success，短案例耗時 58 秒／總上限 170 秒。25 首曲目與 portrait 5 欄 cover 均在各自 card 內，限定 visual PASS；raw nested video AX image width 230 仍存在，不代表完整 AX bounds PASS。
+- Marquee 完整 AX label 與 frame movement 有證據；完整 cycle、獨立 short case、Reduce Motion、VoiceOver、性能未驗。Up Next 為 Synced／25 total，Play 可見且 paused，本輪沒有 queue mutation 或播放。
+- owned WDA DELETE HTTP 200；host port 不可連，SIGINT 後診斷停滯，僅終止本次自有 controller，相關程序已消失。私人曲庫封面與 raw receipts 排除公開；先前 install／launch failure 保留為歷史紀錄。Sandbox、pending tests、critics、screens／demo 與完整雙平台矩陣仍未完成。

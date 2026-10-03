@@ -45,6 +45,25 @@ public final class ProStore {
     private var messageKey: String?
     private var revision: UInt64 = 0
     private var refreshGeneration: UInt64 = 0
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+    struct StoreKitTestDiagnostics: Sendable {
+        let allUpdates: Int
+        let matchingVerifiedNonConsumableUpdates: Int
+        let transactionOrderRejections: Int
+    }
+
+    private var testStoreKitAllUpdates = 0
+    private var testStoreKitMatchingVerifiedNonConsumableUpdates = 0
+    private var testStoreKitTransactionOrderRejections = 0
+
+    var storeKitTestDiagnostics: StoreKitTestDiagnostics {
+        StoreKitTestDiagnostics(
+            allUpdates: testStoreKitAllUpdates,
+            matchingVerifiedNonConsumableUpdates: testStoreKitMatchingVerifiedNonConsumableUpdates,
+            transactionOrderRejections: testStoreKitTransactionOrderRejections
+        )
+    }
+#endif
 
     public init(productID: String? = nil) {
         let injected = Self.validProductID(productID)
@@ -301,6 +320,9 @@ public final class ProStore {
     }
 
     private func receive(transactionResult: VerificationResult<Transaction>) async {
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        testStoreKitAllUpdates &+= 1
+#endif
         guard let productID,
               case let .verified(transaction) = transactionResult,
               transaction.productID == productID,
@@ -309,6 +331,9 @@ public final class ProStore {
             return
         }
 
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        testStoreKitMatchingVerifiedNonConsumableUpdates &+= 1
+#endif
         applyVerified(transaction, source: .update)
         await transaction.finish()
     }
@@ -321,7 +346,12 @@ public final class ProStore {
 
     private func applyVerified(_ transaction: Transaction, source: VerificationSource) {
         guard transactionOrder.accept(id: transaction.id, signedDate: transaction.signedDate,
-                                      revoked: transaction.revocationDate != nil) else { return }
+                                      revoked: transaction.revocationDate != nil) else {
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+            testStoreKitTransactionOrderRejections &+= 1
+#endif
+            return
+        }
         if transaction.revocationDate != nil {
             applyTransition(.revoked(revision: nextRevision()))
             messageKey = "Pro 權益已撤銷。"

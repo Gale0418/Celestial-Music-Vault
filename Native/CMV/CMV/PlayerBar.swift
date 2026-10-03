@@ -142,9 +142,13 @@ struct PlayerBar: View {
             }
             .frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 3) {
-                Text(current?.title ?? AppLanguage.localized("尚未播放")).font(.headline).lineLimit(1)
-                Text(current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                MarqueeText(text: current?.title ?? AppLanguage.localized("尚未播放"))
+                    .font(.headline)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                MarqueeText(text: current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(minWidth: 180, maxWidth: 300, alignment: .leading)
@@ -230,9 +234,13 @@ struct MiniPlayerBar: View {
                         ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal) }
                             .frame(width: 42, height: 42)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(current?.title ?? AppLanguage.localized("尚未播放")).font(.headline).lineLimit(1)
-                            Text(current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            MarqueeText(text: current?.title ?? AppLanguage.localized("尚未播放"))
+                                .font(.headline)
+                                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                            MarqueeText(text: current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                         }
                         Spacer(minLength: 0)
                     }

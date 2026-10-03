@@ -161,7 +161,7 @@ if [[ "$skip_codesign" != 1 ]]; then
   if [[ "$distribution" == 1 ]]; then
     command -v security >/dev/null || { print -u2 -- "error: 缺少 security"; exit 1; }
     command -v python3 >/dev/null || { print -u2 -- "error: 缺少 python3"; exit 1; }
-    codesign -dv "$app_path" 2> "$cmv_qualification_scratch/signature.txt"
+    codesign -dv --verbose=2 "$app_path" 2> "$cmv_qualification_scratch/signature.txt"
     cmv_signature_text=$(<"$cmv_qualification_scratch/signature.txt")
     if [[ "$cmv_signature_text" != *'Authority=Apple Distribution:'* && "$cmv_signature_text" != *'Authority=iPhone Distribution:'* && "$cmv_signature_text" != *'Authority=3rd Party Mac Developer Application:'* ]]; then
       print -u2 -- "error: 必須使用 App Store Distribution identity；Development／ad-hoc 不合格"

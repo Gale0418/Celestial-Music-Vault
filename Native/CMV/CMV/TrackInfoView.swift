@@ -13,8 +13,8 @@ struct TrackInfoView: View {
             Form {
                 Section("基本資訊") {
                     infoRow("歌名", track.title)
-                    infoRow("歌手", track.artist)
-                    infoRow("專輯", track.album)
+                    infoRow("歌手", AppLanguage.localizedArtist(track.artist))
+                    infoRow("專輯", AppLanguage.localizedAlbum(track.album))
                     infoRow("專輯歌手", track.albumArtist.isEmpty ? unavailableText : track.albumArtist)
                     infoRow("類型", track.genre?.isEmpty == false ? track.genre! : unavailableText)
                     infoRow("發行日期", track.releaseDate.map(Self.dateFormatter.string) ?? unavailableText)
@@ -38,18 +38,20 @@ struct TrackInfoView: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 420)
+        .environment(\.locale, AppLanguage.currentLocale)
     }
 
     private func infoRow(_ title: LocalizedStringKey, _ value: String) -> some View {
         LabeledContent(title, value: value)
     }
 
-    private static let dateFormatter: DateFormatter = {
+    private static var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
+        formatter.locale = AppLanguage.currentLocale
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter
-    }()
+    }
 
     private static let durationFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()

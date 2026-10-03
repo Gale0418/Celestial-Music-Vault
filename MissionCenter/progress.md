@@ -3,9 +3,9 @@
 
 - 專案: 星穹私藏音樂庫 Celestial Music Vault（CMV）維護與交付
 - 目標: 以 SwiftUI Apple 平台外殼＋Rust 純邏輯核心交付可獨立使用的 macOS 15+ 與 iPadOS 18+ 私人曲庫播放器
-- 目前狀態: 125/173 estimated
+- 目前狀態: 125/175 estimated
 - 里程碑: SwiftData 來源授權、五萬首增量掃描與首個可驗證流程
-- 進度條: [#######---] 72%
+- 進度條: [#######---] 71%
 - 進行中任務:
   - AERO-MON29 制定免費＋一次性 Pro 方案與上市文案 (Review)
   - AERO-MON30 完成一次性 Pro 商品、功能解鎖與購買驗收 (In Progress)

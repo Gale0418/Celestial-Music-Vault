@@ -51,50 +51,6 @@ final class ProStoreTransactionTests: XCTestCase {
         var hasProduct: Bool { activeProductCount > 0 }
     }
 
-    private enum UpdateObservation: Sendable {
-        case verified
-        case unverified
-        case streamEnded
-        case timedOut
-
-        var label: String {
-            switch self {
-            case .verified: "verified"
-            case .unverified: "unverified"
-            case .streamEnded: "streamEnded"
-            case .timedOut: "timedOut"
-            }
-        }
-    }
-
-    private func startIndependentUpdateObserver() -> Task<UpdateObservation, Never> {
-        let expectedProductID = productID
-        return Task { @MainActor in
-            await withTaskGroup(of: UpdateObservation.self) { group in
-                group.addTask {
-                    for await result in Transaction.updates {
-                        switch result {
-                        case let .verified(transaction) where transaction.productID == expectedProductID:
-                            return .verified
-                        case let .unverified(transaction, _) where transaction.productID == expectedProductID:
-                            return .unverified
-                        default:
-                            continue
-                        }
-                    }
-                    return .streamEnded
-                }
-                group.addTask {
-                    try? await Task.sleep(for: .seconds(30))
-                    return .timedOut
-                }
-                let result = await group.next() ?? .streamEnded
-                group.cancelAll()
-                return result
-            }
-        }
-    }
-
     private func readEntitlements() async -> EntitlementState {
         var count = 0
         var activeProductCount = 0
@@ -139,6 +95,18 @@ final class ProStoreTransactionTests: XCTestCase {
             if store.hasPro == expected { return }
             try await Task.sleep(for: .milliseconds(250))
         }
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        let diagnostics = store.storeKitTestDiagnostics
+        let entitlementState = await readEntitlements()
+        print(
+            "StoreKit diagnostic production listener: allUpdates=\(diagnostics.allUpdates) "
+                + "matchingVerifiedNonConsumableUpdates=\(diagnostics.matchingVerifiedNonConsumableUpdates) "
+                + "transactionOrderRejections=\(diagnostics.transactionOrderRejections) "
+                + "currentEntitlementsCount=\(entitlementState.count) "
+                + "activeProductCount=\(entitlementState.activeProductCount) "
+                + "unverifiedCount=\(entitlementState.unverifiedCount)"
+        )
+#endif
         XCTFail("Timed out waiting for ProStore state: expected=\(expected)")
     }
 
@@ -238,9 +206,6 @@ final class ProStoreTransactionTests: XCTestCase {
         XCTAssertFalse(store.hasPro)
         XCTAssertEqual(store.message, AppLanguage.localized("購買正在等待核准。"))
         let pending = try await waitForPendingAskToBuyTransaction(in: session)
-        let independentUpdates = startIndependentUpdateObserver()
-        defer { independentUpdates.cancel() }
-        await Task.yield()
         try session.approveAskToBuyTransaction(identifier: pending.identifier)
         // approveAskToBuyTransaction is synchronous from the test API's point
         // of view, while the transaction update is delivered asynchronously.
@@ -248,14 +213,6 @@ final class ProStoreTransactionTests: XCTestCase {
         let afterApproval = session.allTransactions().filter { $0.productIdentifier == productID }
         let states = afterApproval.map { String(describing: $0.state) }.joined(separator: ",")
         print("StoreKit diagnostic after approval: states=\(states) productMatches=\(afterApproval.count)")
-        let updateObservation = await independentUpdates.value
-        let entitlementState = await readEntitlements()
-        print(
-            "StoreKit diagnostic independent updates: event=\(updateObservation.label) "
-                + "count=\(entitlementState.count) "
-                + "activeProductCount=\(entitlementState.activeProductCount) "
-                + "unverifiedCount=\(entitlementState.unverifiedCount)"
-        )
         // Deliberately do not call refresh: approval must arrive through the
         // production Transaction.updates listener.
         try await waitForStoreState(store, expected: true)

@@ -38,3 +38,7 @@ swiftc -module-cache-path /tmp/cmv-review-media-module-cache Native/ReviewMedia/
 ```
 
 The output directory is disposable and intentionally outside the repository. The manifest is generated only after AVAsset duration/track read-back and PNG dimension validation succeed.
+
+## 本輪公開下載
+
+原倉庫的 [原創審核測試附件](https://github.com/Gale0418/Celestial-Music-Vault/releases/tag/cmv-review-fixtures-20261003) 提供同一批 6 份媒體與 manifest。ZIP SHA-256：`e3b766ec3a828fc8d11e8ac90b1468a5cea5e8f8ba600a79184aa39e68bf72d6`。

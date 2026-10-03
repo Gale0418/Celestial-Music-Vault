@@ -982,33 +982,52 @@ final class AppModel {
             return
         }
         let initialQueueRevision = queueRevision
-        queueRestored = true
-        guard let snapshot = await queueSnapshotStore.load() else { return }
+        let restoreGuardReason: () -> String? = {
+            if Task.isCancelled { return "cancelled" }
+            if self.queueRevision != initialQueueRevision { return "queue_revision" }
+            if !self.playback.queue.tracks.isEmpty { return "route_nonempty" }
+            if self.mixedQueue != nil { return "mixed_nonempty" }
+            if self.currentTrackID != nil { return "current_non_nil" }
+            return nil
+        }
+        let rebaseCurrentRouteAfterMutation: () -> Bool = {
+            guard self.queueRevision != initialQueueRevision, self.queueRestored else { return false }
+            self.persistPlaybackQueueSnapshot()
+            return true
+        }
+        guard let snapshot = await queueSnapshotStore.load() else {
+            if rebaseCurrentRouteAfterMutation() { return }
+            guard restoreGuardReason() == nil else { return }
+            queueRestored = true
+            return
+        }
         // `load()` advances the store's revision even for a valid empty snapshot.
         // Adopt it before any early return so the next mutation cannot be rejected
         // as stale by the actor-backed store.
         queueSnapshotRevision = max(queueSnapshotRevision, snapshot.revision)
-        guard !snapshot.entries.isEmpty else { return }
-        guard !Task.isCancelled,
-              queueRevision == initialQueueRevision,
-              playback.queue.tracks.isEmpty,
-              mixedQueue == nil,
-              currentTrackID == nil else { return }
+        if rebaseCurrentRouteAfterMutation() { return }
+        guard restoreGuardReason() == nil else { return }
+        guard !snapshot.entries.isEmpty else {
+            queueRestored = true
+            return
+        }
         do {
             let ids = Array(Set(snapshot.entries.map(\.trackID)))
             let fetched = try await repository(for: context).tracks(ids: ids, includeArtwork: false)
+            if rebaseCurrentRouteAfterMutation() { return }
+            guard restoreGuardReason() == nil else { return }
             let tracksByID = Dictionary(uniqueKeysWithValues: fetched.map { ($0.id, $0) })
             let restoredEntries = snapshot.entries.compactMap { entry -> (PlaybackQueueOccurrence, Track)? in
                 guard let track = tracksByID[entry.trackID] else { return nil }
                 return (entry, track)
             }
             let tracks = restoredEntries.map(\.1)
-            guard !tracks.isEmpty else { return }
-            guard !Task.isCancelled,
-                  queueRevision == initialQueueRevision,
-                  playback.queue.tracks.isEmpty,
-                  mixedQueue == nil,
-                  currentTrackID == nil else { return }
+            guard !tracks.isEmpty else {
+                // Every saved ID is gone. This is a completed restore attempt,
+                // so a later panel task must not retry the same stale snapshot.
+                queueRestored = true
+                return
+            }
             let restoredCurrentIndex = snapshot.current.flatMap { current in
                 restoredEntries.firstIndex { $0.0.occurrenceID == current.occurrenceID }
             }
@@ -1057,6 +1076,9 @@ final class AppModel {
                 tracks: baseTracks,
                 currentIndex: hasCompleteBase ? baseIndex : currentIndex
             )
+            // setQueue can synchronously publish queue callbacks. Mark restore
+            // complete first so those callbacks persist the hydrated snapshot.
+            queueRestored = true
             playback.setQueue(restoredQueue, baseQueue: restoredBaseQueue)
             playback.restoreQueueModes(
                 shuffleEnabled: snapshot.shuffleEnabled && mixedQueue == nil && hasCompleteBase,
@@ -1066,6 +1088,7 @@ final class AppModel {
             restoredQueueNeedsPreparation = true
             markQueueChanged()
         } catch {
+            guard !Task.isCancelled else { return }
             // A stale queue entry is harmless; preserve the snapshot and let
             // the next mutation overwrite it after valid IDs are available.
             errorMessage = cmvLocalized("無法還原播放佇列：%@", arguments: error.localizedDescription)

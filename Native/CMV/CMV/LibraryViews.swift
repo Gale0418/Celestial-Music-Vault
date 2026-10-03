@@ -1098,9 +1098,14 @@ struct TrackListView: View {
                                     ? localizedFormat("取消選取%@", track.title)
                                     : localizedFormat("選取%@", track.title))
             }
-            Text(track.title).font(.headline).lineLimit(1).help(track.title)
-            Text(mediaMetadataText(artist: track.artist, album: track.album))
-                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            MarqueeText(text: track.title)
+                .font(.headline)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .help(track.title)
+            MarqueeText(text: mediaMetadataText(artist: track.artist, album: track.album))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 2) {
                 Button("播放", systemImage: "play.fill") {
                     appModel.play(tracks: rowTracks, startingAt: index, context: context,
@@ -1431,18 +1436,24 @@ private struct TrackArtworkThumbnail: View {
     @State private var image: CGImage?
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10).fill(.quaternary)
-            if let image {
-                Image(decorative: image, scale: 1, orientation: .up)
-                    .resizable().scaledToFill()
-            } else {
-                Image(systemName: track.mediaKind == .video ? "film" : "music.note")
-                    .font(.system(size: 40)).foregroundStyle(.secondary)
-            }
-        }
+        RoundedRectangle(cornerRadius: 10)
+        .fill(.quaternary)
         .aspectRatio(1, contentMode: .fit)
-        .clipped()
+        .overlay {
+            Group {
+                if let image {
+                    Image(decorative: image, scale: 1, orientation: .up)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: track.mediaKind == .video ? "film" : "music.note")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .task(id: "\(track.id.uuidString)-\(track.modifiedAt.timeIntervalSince1970)-\(maximumPixelSize)") {
             image = nil

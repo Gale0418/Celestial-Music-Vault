@@ -5,25 +5,34 @@ Canonical source for App Store Connect English (U.S.) fields. The values below d
 ## Store fields
 
 - **Name:** Celestial Music Vault
-- **Subtitle:** Your local music, your sky
+- **Subtitle:** Your local music sky ヾ(•ω•`)o
 - **Keywords:** music,player,local library,NAS,offline,playlist,audio,video,lossless,Smart DJ
-- **Promotional text:** Bring your own music into a private local library. Search, organize, and play your collection across Mac and iPad, with no account or cloud sync.
+- **Promotional text:** Bring your music and videos into a private starry sky ヾ(•ω•`)o Play and organize local or mounted-NAS files on Mac and iPad—no accounts, no cloud sync, just your media.
 - **Description:**
 
-  Celestial Music Vault gives your local music and video collection a private sky of its own.
+  Bring your music and video collection into a private starry sky of its own! ヾ(•ω•`)o
 
-  Bring folders from your Mac or iPad into one local library, including folders already mounted through Finder or Files. Search by song, artist, album, and metadata. Keep favorites, ratings, and playlists close at hand, then build a queue for the way you want to listen.
+  Celestial Music Vault (CMV) gives your Mac and iPad a quiet local media experience. Select local folders or personal NAS shares already mounted in Finder or Files.
 
-  CMV supports local audio and compatible video playback. Continue listening in the background on iPad, use Picture in Picture for video, or open video in a separate Mac window. A source can go offline without silently clearing your library; reconnect it when you are ready.
+  【Free Everyday Playback & Organization】
+  • Search & Curate: Search by track, artist, album, and metadata. Manage favorites, ratings, playlists, and your everyday queue.
+  • Audio & Compatible Video: Play local audio and compatible video. iPad supports background audio and Picture in Picture (PiP); Mac features a separate video window with return-to-moon navigation.
+  • Source Recovery: If a drive goes offline, your library is not silently erased; reconnect it later to use the library again.
 
-  CMV Pro is an optional one-time purchase. It adds offline pinning and smart prefetch, advanced library actions, additional visual themes, on-device acoustic analysis, and Smart DJ recommendations with selection reasons. The purchase is not a subscription; the storefront displays the applicable price.
+  【CMV Pro Lifetime Upgrade】
+  An optional one-time purchase with no subscription (applicable price shown on storefront):
+  • Offline Pinning & Smart Prefetch: prepare selected media for offline playback.
+  • On-Device Acoustic Analysis & Smart DJ with explainable selection reasons.
+  • Extra Starry Themes & Advanced Library Actions (｀・ω・´)ゞ.
 
-  Your media stays yours. CMV does not require a CMV account, upload audio or video, provide music streaming, store NAS passwords, use local-network discovery, sync libraries to the cloud, show advertising, or use third-party tracking. Media, artwork, metadata, listening history, and analysis remain on your devices.
+  【Pure Privacy】
+  No CMV account, no cloud sync, no ads, no tracking, and no cloud AI. Your files and acoustic data stay on your devices.
 
-  CMV plays the files you provide and have the right to use. It does not include a music catalogue.
+  【Note】
+  CMV does not include music or video catalogs; it plays files you supply and have the right to use. Background art is original. Enjoy your private sky!
 - **What’s New:**
 
-  CMV 2.0 is the native Mac and iPad release.
+  CMV 2.0 supports Mac and iPad natively.
 
   • Local and mounted-NAS library indexing with source recovery
   • Search, metadata browsing, favorites, ratings, playlists, and queue controls
@@ -51,5 +60,5 @@ The app does not implement CMV accounts, SMB login, local-network discovery, clo
 7. With an App Review Sandbox account, purchase CMV Pro, use Restore Purchases, pin a rights-cleared item for offline playback, and open Smart DJ to inspect its reasons and play the generated queue.
 
 Review contact: `[RUNTIME_REQUIRED: legal name / reachable email / phone with country code]`
-Review media: `[RUNTIME_REQUIRED: rights-cleared media locator]`
+Review media: https://github.com/Gale0418/Celestial-Music-Vault/releases/tag/cmv-review-fixtures-20261003 (original WAV, H.264/AAC video, PNG, and SHA-256 manifest; download and extract the ZIP before selecting its folder).
 Test environment: `[RUNTIME_REQUIRED: platform / OS version / date]`
