@@ -93,6 +93,8 @@
 
 ## 可重跑命令
 
+2026-10-03 正式 completion council 已完成三席盲評與獨立仲裁，結論為 blocked。新增 qualification 收據已在同 source 67 項 SHA 前後一致時，對 Mac archive、iOS archive／IPA bundle 明確指定 Distribution、2.0(1)，三次通過並保存 exact argv／artifact hashes。Mac duplicate 正常重啟已補完整前後 AX，仍不是完整 queue 矩陣。Pro pending listener FAIL、同版功能／無障礙／Sandbox coverage 未完成；評論工具實際 27／24 次、控管偏差已記錄並停止追加，不能宣稱 clean closeout。未上傳／送審。
+
 先用統一 preflight 檢查既有產物；它會驗證 bundle、Info.plist、privacy manifest、架構，
 以及（除非指定 `--skip-codesign`）strict codesign：
 

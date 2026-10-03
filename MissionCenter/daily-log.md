@@ -1,5 +1,7 @@
 # 每日紀錄
 
+- 2026-10-03｜AERO-E3／V3／Q12／RC4：主人批准 formal completion council 預算後，三席 Luna 盲評＋獨立 Luna 仲裁完成，整體 blocked；視覺無可定案缺陷，Pro pending FAIL 與完整實機 coverage 保留。補最後桌面同曲兩筆正常重啟／暫停完整 AX 與三次 exact Distribution 2.0(1) qualification 收據，App source 未改。評論工具實際 27／24 次，已記控管偏差並停止追加；tokens 12,580 僅各席自估。原創測試 queue 已清空、曲庫 1,969 不變；私有評論與 raw 證據排除 Git，未 upload／送審。
+
 - 2026-10-03｜AERO-U25／Q12／MD4：完成單行溢出跑馬燈及影片縮圖邊界修正；第一候選實測失敗後改用局部量測，最後同 source 雙平台 Distribution candidate qualification 通過，Mac Desktop 已覆蓋並有限驗收。Gemini 三語文案已整合，ASC 15 欄 exact／24 保護欄位 preserved；未 upload 或送審。原創曲目 duplicate future remove／正常重啟還原限定通過。公開資料遮罩歷史簽章識別後，只重新綁定 G17 passport digest、保留原驗證；Doctor 80 tasks pass，legacy warnings 保留。iPad 即時解鎖後最新版本 install／launch 成功，58 秒短案例見縮圖不跨欄、文字位移及完整 AX 標籤；Up Next 25 項維持暫停；自有 session DELETE 200、host 與診斷程序已退出。完整動畫循環仍 Limited；Sandbox pending、完整實機／無障礙／效能矩陣及 formal critic budget 尚未完成。
 
 - 2026-09-27｜AERO-MON30／SC31／F25／F26：Pro 批次編輯、歌單多選移除、批次離線與 Smart DJ 已實作；台灣買斷價格為已由 Apple API 回讀的 NT$150。土星採主代理親繪無縫雲圖與 Metal 球面七緯度差速旋轉，保留固定星環、輪廓與光照；依原圖九個輪廓點修正圓心／半徑，移除假雲帶刮痕與球緣重影。美術、工程、無障礙與 shader 分身複查後，本次範圍 P0／P1／P2 均無待修項；Mac 短間隔及約 40 秒截圖確認雲紋動、球／環固定。CodeRabbit 共六輪，遵守每小時三次及每次不超過 150 檔，有效問題均修正；兩次字串 catalog 重複報告以 JSON 與單一 version 證據判為誤報。Swift 64／0（含 50k）、安全測試、474 組語系、雙平台 Release 與 strict codesign 通過。桌面已覆蓋啟動，1,964 首曲目保留，舊 App 留垃圾桶；實體 iPad 已安裝、啟動並確認程序存活。依使用者授權移除八個一般模擬器，保留 CMV iPad Air 與 MediBuddy 專用裝置，可用空間由約 1.4 GiB 回升約 12 GiB。iPad 傾斜視差、GPU 耗能、真實 NAS 與 Sandbox 交易仍待完整實測，未宣稱 App Store 發佈完成。

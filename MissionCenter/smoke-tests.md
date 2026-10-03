@@ -196,3 +196,12 @@ AERO-Q12 同份 Mac Debug 補驗：空 queue 加入原創 Cobalt 保持暫停 0�
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-03 | AERO-U25／AERO-DV4 | 最新 source 覆蓋與縮圖邊界 | 即時 lockState、install／launch、58 秒短案例；root 核對 binary 及圖／XML SHA | 最新版啟動、縮圖不跨欄、溢出文字可動且不消失 | binary 1f973a2… matching；Loaded: 25；五欄 cover 視覺在 card 內；長字幀位移與完整 AX label 可見；nested image width=230 仍存在，不代表外層裁切失敗 | 通過（delivery／縮圖視覺／AX label 限定）；完整動畫循環、短字、VoiceOver、Reduce Motion、效能 Limited | ipad / marquee / thumbnail / accessibility |
 | 2026-10-03 | AERO-Q12／AERO-DV4 | Up Next 暫停與自有遙控資源收尾 | 根頁進入 Up Next；DELETE session、SIGINT 後核對 ownership 並 TERM 自有停滯 host；程序回讀 | 原資料不變、不自動播放；只回收本次資源 | Synced with Up Next · 25 total／Play；未播放或 mutation；DELETE HTTP 200、endpoint 不可連，controller／diagnostics 程序消失 | 通過（限定 paused 狀態／cleanup）；完整 queue 矩陣未驗 | ipad / queue / wda / cleanup |
+
+## 正式評論後的本機證據補強｜2026-10-03
+
+| 日期 | Task ID | 案例 | 動作 | 預期 | 觀察 | 結果 | Tags |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-03 | AERO-Q12 | 最後 Release 桌面副本的 duplicate 正常重啟 | 空 queue 加入原創 Cobalt 兩次；保存完整 AX；正常 quit／relaunch；回 Up Next；只清本次 queue | 兩筆保留、current 不變、paused／progress 0、不自動播放；原曲庫保留 | 重啟前後 Synced with Up Next · 2 total、current Cobalt、Play／progress 0；完整 AX 已保存；清理後 0 total／Not Playing，曲庫 1,969 | 通過（限定 cardinality／正常重啟／no autoplay）；occurrence ID、future remove、重排、強制終止、iPad 與 mixed matrix 未驗 | macos / queue / persistence / evidence |
+| 2026-10-03 | AERO-SG4／AERO-RC4 | exact candidate qualification 收據 | 同 source 67 項 SHA 前後一致；Mac archive、iOS archive、IPA bundle 指定 `--distribution --expected-version 2.0 --expected-build 1` | 每次指令、source／artifact identity、版本與結果同收據綁定 | 三次 exit 0；argv、qualifier／source manifest／executable／IPA SHA 均記錄；source 未改，未 upload | 通過（收據與 candidate qualification）；formal RC／完整發行 gate 未完成 | signing / qualification / provenance |
+
+正式評論另有三席獨立盲稿與第四席仲裁，整體 blocked；這是 advisory critique，不是 smoke PASS。評論工具實際 27／24 次、預算偏差與未完成收斂已保留於紀錄。

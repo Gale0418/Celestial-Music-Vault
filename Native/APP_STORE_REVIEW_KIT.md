@@ -93,6 +93,8 @@ Pro 使用 Apple App Review Sandbox。首次上架不接受 What’s New 欄位�
 
 ## 送審前狀態
 
+2026-10-03 completion council 已完成三席獨立盲評及第四席仲裁，結論 blocked。已補最後 Release 桌面同曲兩筆正常重啟、暫停及進度 0 的完整 AX；qualification 另保存三次 exact Distribution 2.0(1) 指令與產物綁定收據。仍欠完整宣稱功能的同版驗收、Pro pending／Sandbox 與無障礙等 coverage，沒有最終獨立收斂複查，未 upload／送審。評論工具 27／24 次超額已記錄；raw 稿件與私人曲庫證據排除 Git。
+
 - [x] Privacy Policy URL 公開可讀。
 - [x] Support URL 與公開客服聯絡方式已建立。
 - [x] 審核聯絡資料依使用者授權沿用已上架 App，已填入兩平台。

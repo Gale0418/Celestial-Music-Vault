@@ -13,6 +13,7 @@ dist-app
 dist-ssr
 output/mission-center-assets
 output/mission-center-runtime
+output/mission-center-critique/
 MissionCenter/.mission-center/
 *.local
 

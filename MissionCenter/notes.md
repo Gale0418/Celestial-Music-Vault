@@ -212,3 +212,15 @@ StoreKit pending 唯讀診斷：最後 single-listener 測試的 `compileHostFla
 兩張畫面有文字位移，AX 保留完整標題及 metadata；完整循環、獨立短標題、VoiceOver、Reduce Motion 及效能尚未驗，Marquee runtime 判 Limited。Up Next 顯示 Synced with Up Next · 25 total／Play 且保持 paused；沒有播放或修改 queue／曲庫、沒有 NAS 或購買操作。
 
 自有 WDA session DELETE 回 HTTP 200，host endpoint 已不可連；SIGINT 後自有 diagnostics 停滯，核對 ownership 後 TERM，controller 及診斷程序均已消失。root 獨立核對最新 binary、四個圖／XML SHA 與程序退出。私人曲庫封面和原始 receipts 只留 ignored runtime；不作公開商店素材。未建立本輪 simulator。
+
+## 正式完成評論：首輪與證據補強｜2026-10-03
+
+主人以「准奏」批准先前 16,000 tokens、每席 4,000、工具 24 次、30 分鐘的預算。已派三位獨立 Luna 分別盲評流程／文案、視覺／可及性、故障／持久化，再由第四位獨立 Luna 仲裁；快照為 c42375f、candidate 2.0(1)。所有稿件已封存，評論不當 smoke PASS。
+
+視覺席在四張指定畫面中未發現可定案缺陷，仍保留 VoiceOver／Reduce Motion／效能等 unknown。仲裁保留四項：廣泛功能宣稱尚缺完整同版實機證據（High，release gate，非已證實功能不存在）、Mac 還原附件只保存 AX diff 而非完整狀態（Medium）、StoreKit pending listener 測試失敗（High，根因未知）、qualification 未保存 exact invocation 綁定（Medium，非否定一般 preflight 的 optional 設計）。
+
+主持者已補跑最後 Release 桌面副本的原創 Cobalt：空 queue → 同曲兩筆 → 正常 quit／relaunch → 兩筆保留、current Cobalt、Play／progress 0；完整前後 AX 已保存。最後只清本次 queue，Not Playing、曲庫 1,969 不變。這補強 Mac duplicate cardinality／正常重啟／不自動播放證據，不代表 occurrence ID、重排、future remove、強制終止、iPad 或混合矩陣全部通過。
+
+同 source 67 項 SHA 在前後均一致；已重新對 Mac archive、iOS archive 與 IPA 展開 bundle 明確執行 `--distribution --expected-version 2.0 --expected-build 1`，三次 exit 0。新私有收據記錄完整 argv、source manifest／qualifier／artifact executable／IPA SHA，補齊本次 qualification invocation 證據缺口；沒有更改 App source 或弱化簽章檢查。
+
+預算控管偏差：流程 6、視覺 6、故障 8、仲裁 7，共 27／24 次評論工具；故障及仲裁超過各席上限。報告自估 tokens 合計 12,580，並非系統精確 usage。已停止追加評論，不宣稱預算合規或完成收斂。整體 gate 為 blocked；pending FAIL、完整實機／無障礙／聲學／Sandbox 等 coverage 尚未補齊，沒有 Done、upload 或送審。全部 raw 報告與私有路徑已排除 Git。
