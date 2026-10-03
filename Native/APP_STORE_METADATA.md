@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜App Store Connect metadata gate
 
-更新：2026-09-08
+更新：2026-10-03
 
 這份文件是送審前的 metadata 與授權資料單一清單。它不把本機建置或
 模擬器測試當成 Apple 審核資料，也不在工作區保存 Apple ID、憑證或 NAS 帳密。
@@ -24,8 +24,8 @@
 以下資料涉及帳號、網址或法律責任，不能由本機程式碼推定；在填妥並核准前保持
 `AERO-V3`／`AERO-R3` 未完成：
 
-1. Privacy Policy URL（公開可存取的隱私權政策）。
-2. Support URL（公開可存取的支援頁面與聯絡方式）。
+1. Privacy Policy URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/PRIVACY.md`。
+2. Support URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/SUPPORT.md`；公開客服 `coderb0418@gmail.com`，沿用使用者指定的 G.A.I／MediBuddy 公開支援資料。這兩個 URL 必須在 repository 公開後以未登入連線回讀 HTTP 200，才能填入商店。
 3. 繁中／英文／日文 App subtitle、description、keywords、promotional text 與 screenshots。
 4. 年齡分級、版權聲明、出口合規與 App Review notes。
 5. 內建或測試節目級音訊、字體、插圖與產生式圖示的授權／來源紀錄，以及完整

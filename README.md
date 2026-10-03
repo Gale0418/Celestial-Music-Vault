@@ -16,6 +16,10 @@ Celestial Music Vault（CMV）是一個以 **macOS 15+／iPadOS 18+** 為目標�
 
 完整產品邊界請看 [`PRODUCT.md`](PRODUCT.md)，視覺與互動契約請看 [`DESIGN.md`](DESIGN.md)。
 
+## 支援與隱私權
+
+操作問題與錯誤回報請看 [使用支援](SUPPORT.md)；資料處理方式請看 [隱私權政策](PRIVACY.md)。GitHub Issues 是公開頁面，請先遮蔽私人媒體、路徑與聯絡資料，不要提交帳密或購買憑證。
+
 ## 技術架構
 
 ```text
@@ -55,7 +59,7 @@ Native/scripts/run-fast-gates.sh
 Native/scripts/run-local-gates.sh
 ```
 
-`run-local-gates.sh` 會跑 Rust／Swift 測試、macOS／iPad Simulator Release build、bundle／AppIcon／privacy preflight、canonical macOS archive qualification、Rust 1.98.1 toolchain contract 與 MissionCenter Doctor。它需要可用的 canonical archive 與 MissionCenter scripts；實機、Distribution、TestFlight 等外部 gate 不會被本機腳本假裝完成。
+`run-local-gates.sh` 會跑 Rust／Swift 測試、macOS／iPad Simulator Release build、bundle／AppIcon／privacy preflight、canonical macOS archive qualification、Rust 1.98.1 toolchain contract 與 MissionCenter Doctor。它需要可用的 canonical archive 與 MissionCenter Rust CLI；實機、Distribution、TestFlight 等外部 gate 不會被本機腳本假裝完成。
 
 ### Legacy Electron 1.3.2
 

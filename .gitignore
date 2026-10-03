@@ -41,3 +41,17 @@ Native/.DerivedData-*/
 Native/**/target/
 *.xcuserstate
 xcuserdata/
+
+# Private release inputs and local device evidence
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+*.gitbundle
+.asc/
+Native/StoreKit/evidence/*.png
