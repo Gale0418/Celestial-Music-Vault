@@ -102,6 +102,7 @@ struct BatchMetadataEditor: View {
             }
         }
         .frame(maxWidth: 520, minHeight: 360)
+        .environment(\.locale, AppLanguage.currentLocale)
     }
 
     private var previewMessage: String {

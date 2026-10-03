@@ -4,7 +4,6 @@ import CMVDomain
 import CMVLibrary
 import CMVThemes
 import UniformTypeIdentifiers
-import ImageIO
 #if os(macOS)
 import AppKit
 #endif
@@ -102,14 +101,16 @@ struct SidebarView: View {
         .navigationTitle(AppLanguage.localized("星穹私藏音樂庫"))
         .tint(theme.primary)
         .defaultScrollAnchor(.top)
-        .task(id: sources.map(\.updatedAt)) { refreshTrackCount() }
+        .task(id: sources.map(\.updatedAt)) { await refreshTrackCount() }
     }
 
-    private func refreshTrackCount() {
-        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
+    private func refreshTrackCount() async {
         do {
-            trackCount = try context.fetchCount(descriptor)
+            let count = try await appModel.libraryTrackCount(context: context)
+            guard !Task.isCancelled else { return }
+            trackCount = count
         } catch {
+            guard !Task.isCancelled else { return }
             appModel.errorMessage = localizedFormat("無法讀取曲庫數量：%@", error.localizedDescription)
         }
     }
@@ -1435,6 +1436,22 @@ private struct TrackArtworkThumbnail: View {
     let maximumPixelSize: Int
     @State private var image: CGImage?
 
+    private struct ArtworkThumbnailRequest: Hashable {
+        let trackID: UUID
+        let modifiedAt: Date
+        let maximumPixelSize: Int
+        let artworkData: Data?
+    }
+
+    private var requestID: ArtworkThumbnailRequest {
+        ArtworkThumbnailRequest(
+            trackID: track.id,
+            modifiedAt: track.modifiedAt,
+            maximumPixelSize: maximumPixelSize,
+            artworkData: track.artworkData
+        )
+    }
+
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
         .fill(.quaternary)
@@ -1455,7 +1472,7 @@ private struct TrackArtworkThumbnail: View {
             .clipped()
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .task(id: "\(track.id.uuidString)-\(track.modifiedAt.timeIntervalSince1970)-\(maximumPixelSize)") {
+        .task(id: requestID) {
             image = nil
             if track.mediaKind == .video {
                 let loaded = await appModel.videoThumbnail(for: track, maximumPixelSize: maximumPixelSize, context: context)
@@ -1464,18 +1481,18 @@ private struct TrackArtworkThumbnail: View {
                 return
             }
             guard let data = track.artworkData else { return }
-            let loaded = await Task.detached(priority: .utility) {
-                let options: CFDictionary = [
-                    kCGImageSourceCreateThumbnailFromImageAlways: true,
-                    kCGImageSourceThumbnailMaxPixelSize: maximumPixelSize,
-                    kCGImageSourceCreateThumbnailWithTransform: true,
-                    kCGImageSourceShouldCacheImmediately: true
-                ] as CFDictionary
-                guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil as CGImage? }
-                return CGImageSourceCreateThumbnailAtIndex(source, 0, options)
-            }.value
-            guard !Task.isCancelled else { return }
-            image = loaded
+            do {
+                let loaded = try await ArtworkThumbnailCache.shared.image(
+                    for: data,
+                    maximumPixelSize: maximumPixelSize
+                )
+                guard !Task.isCancelled else { return }
+                image = loaded
+            } catch is CancellationError {
+                return
+            } catch {
+                image = nil
+            }
         }
         .onDisappear { image = nil }
     }
@@ -1731,21 +1748,44 @@ private struct CatalogTrackDetailView: View {
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 4)
-                    Button("播放", systemImage: "play.fill") { appModel.play(tracks: tracks, startingAt: index, context: context) }
-                        .labelStyle(.iconOnly)
-                    Button("加入接下來播放", systemImage: "text.badge.plus") {
+                    Button { appModel.play(tracks: tracks, startingAt: index, context: context) } label: {
+                        Label("播放", systemImage: "play.fill")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    Button {
                         appModel.addToPlaybackQueue([track], context: context)
-                    }.labelStyle(.iconOnly)
-                    Button("最愛", systemImage: appModel.isFavorite(for: track) ? "heart.fill" : "heart") {
+                    } label: {
+                        Label("加入接下來播放", systemImage: "text.badge.plus")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    Button {
                         appModel.setFavorite(track, context: context)
-                    }.labelStyle(.iconOnly)
+                    } label: {
+                        Label("最愛", systemImage: appModel.isFavorite(for: track) ? "heart.fill" : "heart")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
                 }
                 .frame(minHeight: 48)
+                .padding(12)
+                .cloudSurface()
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
                 .task { if index == tracks.count - 1 { await loadMore() } }
             }
             if loading { ProgressView("正在讀取更多曲目") }
         }
         .navigationTitle(kind == .artist ? AppLanguage.localizedArtist(group.key) : AppLanguage.localizedAlbumGroup(group.key))
+        .listStyle(.plain)
+        .padding(.horizontal, 24)
         .celestialPageBackground()
         .task {
             let catalogKind: LibraryCatalogKind = kind == .artist ? .artist : .album
@@ -1778,6 +1818,7 @@ struct FavoriteTracksView: View {
     var body: some View {
         ScrollView { TrackRows(tracks: tracks, onLast: { await loadNextPage() }).padding(24) }
             .navigationTitle(AppLanguage.localized("最愛"))
+            .cloudSurface()
             .celestialPageBackground()
             .task { await loadNextPage() }
             .overlay {
@@ -1866,8 +1907,6 @@ private struct TrackRows: View {
 struct PlaylistHubView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
-    @Environment(\.cmvTheme) private var theme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var playlists: [Playlist] = []
     @State private var editingPlaylist: Playlist?
     @State private var editedName = ""
@@ -1889,6 +1928,11 @@ struct PlaylistHubView: View {
                 }
             }
             .frame(minHeight: 52)
+            .padding(14)
+            .cloudSurface()
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
             ForEach(playlists) { playlist in
                 HStack {
                     NavigationLink {
@@ -1915,6 +1959,11 @@ struct PlaylistHubView: View {
                     }
                 }
                 .frame(minHeight: 52)
+                .padding(14)
+                .cloudSurface()
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                 .contextMenu {
                     if !playlist.trackIDs.isEmpty {
                         Button("立即播放", systemImage: "play.fill") { appModel.play(playlist: playlist, context: context) }
@@ -1931,6 +1980,10 @@ struct PlaylistHubView: View {
                 }
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
         .navigationTitle(AppLanguage.localized("歌單"))
         .celestialPageBackground()
         .toolbar {
@@ -1947,9 +2000,10 @@ struct PlaylistHubView: View {
                         ContentUnavailableView("尚未建立歌單", systemImage: "music.note.list", description: Text("建立歌單後，可以從歌曲的更多操作加入曲目。"))
                     }
                 }
+                .frame(maxWidth: 420)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(20)
-                .background(reduceTransparency ? theme.surface : theme.surface.opacity(0.9),
-                            in: RoundedRectangle(cornerRadius: 20))
+                .cloudSurface()
                 .frame(maxWidth: 460)
             }
         }
@@ -2062,6 +2116,10 @@ private struct PlaylistDetailView: View {
                             }
                         }
                         .frame(minHeight: 52)
+                        .padding(12)
+                        .cloudSurface()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                         } else {
                             HStack {
                                 Button {
@@ -2092,6 +2150,10 @@ private struct PlaylistDetailView: View {
                                 }
                             }
                             .frame(minHeight: 52)
+                            .padding(12)
+                            .cloudSurface()
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                     }
                     if loadedCount < playlist.trackIDs.count, !entriesFailed {
@@ -2243,16 +2305,9 @@ private struct PlaylistDetailView: View {
 }
 
 struct QueueView: View {
-    @Environment(\.cmvTheme) private var theme
-
     var body: some View {
         PerformantQueueView(expanded: true)
-            .background {
-                if theme.isStorybook {
-                    StorybookPaper(cornerRadius: 20)
-                        .padding(8)
-                }
-            }
+            .cloudSurface()
             .celestialPageBackground()
     }
 }
@@ -2264,6 +2319,7 @@ struct SettingsView: View {
     var body: some View {
         settingsForm
             .modifier(CMVStorybookContainerStyle())
+            .cloudSurface()
             .celestialPageBackground()
     }
 
@@ -2382,6 +2438,7 @@ struct MusicSourcesSettingsView: View {
         .formStyle(.grouped)
         .modifier(CMVStorybookContainerStyle())
         .navigationTitle(AppLanguage.localized("音樂來源"))
+        .cloudSurface()
         .celestialPageBackground()
         .tint(theme.primary)
         .fileImporter(isPresented: $isReauthorizationPickerPresented, allowedContentTypes: [.folder]) { result in

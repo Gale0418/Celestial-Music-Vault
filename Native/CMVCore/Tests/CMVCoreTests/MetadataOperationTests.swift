@@ -3,6 +3,25 @@ import SwiftData
 import CMVDomain
 import CMVLibrary
 
+private actor CancellationGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var waiting = false
+
+    func wait() async {
+        waiting = true
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func waitUntilWaiting() async {
+        while !waiting { await Task.yield() }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 final class MetadataOperationTests: XCTestCase {
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
@@ -172,5 +191,61 @@ final class MetadataOperationTests: XCTestCase {
         let pageTwo = try await repository.tracks(matching: "", sort: .addedAt, ascending: true, limit: 2, offset: 1)
         XCTAssertEqual(all.map(\.id), pageOne.map(\.id) + pageTwo.map(\.id))
         XCTAssertEqual(all.map(\.addedAt).sorted(), all.map(\.addedAt))
+    }
+
+    func testTrackCountExcludesExcludedTracks() async throws {
+        let repository = try makeRepository()
+        let sourceID = UUID()
+        try await repository.applyReconciliation(upserts: [
+            ScannedMediaFile(relativePath: "visible.flac", fileIdentifier: "visible", fileSize: 1,
+                             modifiedAt: .now, title: "可見"),
+            ScannedMediaFile(relativePath: "excluded.flac", fileIdentifier: "excluded", fileSize: 1,
+                             modifiedAt: .now, title: "隱藏")
+        ], missingIdentifiers: [], sourceID: sourceID)
+        let tracks = try await repository.tracks(sourceID: sourceID)
+        let excluded = try XCTUnwrap(tracks.first { $0.fileIdentifier == "excluded" })
+
+        let initialCount = try await repository.trackCount()
+        XCTAssertEqual(initialCount, 2)
+        try await repository.excludeTracks(ids: [excluded.id])
+        let excludedCount = try await repository.trackCount()
+        XCTAssertEqual(excludedCount, 1)
+    }
+
+    func testCancelledAnalysisDoesNotPersistProfile() async throws {
+        let repository = try makeRepository()
+        let sourceID = UUID()
+        try await repository.applyReconciliation(upserts: [
+            ScannedMediaFile(relativePath: "analysis.flac", fileIdentifier: "analysis", fileSize: 1,
+                             modifiedAt: .now, title: "分析")
+        ], missingIdentifiers: [], sourceID: sourceID)
+        let tracks = try await repository.tracks(sourceID: sourceID)
+        let track = try XCTUnwrap(tracks.first)
+        let original = AnalysisProfile(version: 1, bpm: 90, musicalKey: "C",
+                                       integratedLoudnessLUFS: -18, energy: 0.2, brightness: 0.3)
+        try await repository.setAnalysis(trackID: track.id, profile: original)
+
+        let gate = CancellationGate()
+        let replacement = AnalysisProfile(version: 2, bpm: 120, musicalKey: "G",
+                                           integratedLoudnessLUFS: -12, energy: 0.8, brightness: 0.9)
+        let task = Task {
+            await gate.wait()
+            try await repository.setAnalysis(trackID: track.id, profile: replacement)
+        }
+        await gate.waitUntilWaiting()
+        task.cancel()
+        await gate.release()
+
+        do {
+            try await task.value
+            XCTFail("取消的分析不應寫入 profile")
+        } catch is CancellationError {
+            // Expected: LibraryDataActor checks cancellation before mutation.
+        }
+        let afterTracks = try await repository.tracks(sourceID: sourceID)
+        let after = try XCTUnwrap(afterTracks.first)
+        XCTAssertEqual(after.analysis?.version, original.version)
+        XCTAssertEqual(after.analysis?.bpm, original.bpm)
+        XCTAssertEqual(after.analysis?.musicalKey, original.musicalKey)
     }
 }

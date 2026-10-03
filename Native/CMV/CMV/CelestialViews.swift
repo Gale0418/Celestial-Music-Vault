@@ -206,6 +206,7 @@ private struct CelestialPageBackground: ViewModifier {
             .background { CelestialBackground(showsLabels: showsLabels) }
         #else
         content
+            .scrollContentBackground(.hidden)
         #endif
     }
 }

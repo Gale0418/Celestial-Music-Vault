@@ -8772,6 +8772,28 @@
         }
       }
     },
+    "隱藏側邊欄": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Sidebar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーを非表示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隱藏側邊欄"
+          }
+        }
+      }
+    },
     "隱藏接下來播放": {
       "localizations": {
         "en": {

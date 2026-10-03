@@ -198,6 +198,7 @@ final class ReliabilityRegressionTests: XCTestCase {
             .appendingPathComponent("CMV-missing-\(UUID().uuidString).caf")])
         await fulfillment(of: [reportedFailure], timeout: 5)
         XCTAssertEqual(engine.queue.tracks.map(\.id), [current.id])
+        XCTAssertEqual(engine.baseQueueSnapshot.tracks.map(\.id), [current.id])
     }
 
     @MainActor
@@ -301,6 +302,67 @@ final class ReliabilityRegressionTests: XCTestCase {
         await fulfillment(of: [reportedFailure, finished], timeout: 5)
 
         XCTAssertEqual(engine.queue.tracks.map(\.id), [first.id])
+        XCTAssertEqual(engine.baseQueueSnapshot.tracks.map(\.id), [first.id])
+    }
+
+    @MainActor
+    func testFailedFutureOpenPreservesDuplicateBaseOccurrencesAndSnapshotValidity() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let current = Track(sourceID: sourceID, relativePath: "current-duplicate.caf",
+                            fileIdentifier: "current-duplicate", title: "Current",
+                            duration: 1, fileSize: 1, modifiedAt: .now)
+        let missing = Track(sourceID: sourceID, relativePath: "missing-duplicate.caf",
+                            fileIdentifier: "missing-duplicate", title: "Missing",
+                            duration: 1, fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+        try await engine.load(PlaybackQueue(tracks: [current]), resolvedURLs: [current.id: audioURL])
+        engine.toggleShuffle()
+
+        let reportedFailure = expectation(description: "unplayable duplicate route entry reported")
+        engine.onPlaybackError = { _ in reportedFailure.fulfill() }
+        engine.appendToQueue(
+            [missing, current],
+            resolvedURLs: [
+                missing.id: audioURL.deletingLastPathComponent()
+                    .appendingPathComponent("CMV-missing-duplicate-\(UUID().uuidString).caf"),
+                current.id: audioURL
+            ]
+        )
+        await fulfillment(of: [reportedFailure], timeout: 5)
+
+        XCTAssertEqual(engine.queue.tracks.map(\.id), [current.id, current.id])
+        XCTAssertEqual(engine.baseQueueSnapshot.tracks.map(\.id), [current.id, current.id])
+        XCTAssertEqual(engine.baseQueueSnapshot.currentIndex, 0)
+
+        var occurrencePool: [UUID: [UUID]] = [:]
+        let entries = engine.queue.tracks.map { track in
+            let occurrence = PlaybackQueueOccurrence(trackID: track.id)
+            occurrencePool[track.id, default: []].append(occurrence.occurrenceID)
+            return occurrence
+        }
+        var unmatchedBaseOccurrence = false
+        let baseEntries = engine.baseQueueSnapshot.tracks.map { track in
+            guard var occurrences = occurrencePool[track.id], !occurrences.isEmpty else {
+                unmatchedBaseOccurrence = true
+                return PlaybackQueueOccurrence(trackID: track.id)
+            }
+            let occurrenceID = occurrences.removeFirst()
+            occurrencePool[track.id] = occurrences
+            return PlaybackQueueOccurrence(occurrenceID: occurrenceID, trackID: track.id)
+        }
+        XCTAssertFalse(unmatchedBaseOccurrence)
+        let snapshot = PlaybackQueueSnapshot(
+            entries: entries,
+            baseEntries: baseEntries,
+            currentIndex: engine.queue.currentIndex
+        )
+        XCTAssertTrue(PlaybackQueuePlanner.isWellFormed(snapshot))
+
+        engine.toggleShuffle()
+        XCTAssertEqual(engine.queue.tracks.map(\.id), [current.id, current.id])
+        XCTAssertEqual(engine.baseQueueSnapshot.tracks.map(\.id), [current.id, current.id])
     }
 
     @MainActor

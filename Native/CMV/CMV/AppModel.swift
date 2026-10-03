@@ -376,7 +376,10 @@ final class AppModel {
     private var mixedQueueSegmentStart: Int?
     private var activePlaybackContext: ModelContext?
     private var libraryPlaybackContinuation: LibraryPlaybackContinuation?
-    @ObservationIgnored private let queueSnapshotStore = PlaybackQueueSnapshotStore.defaultStore()
+    @ObservationIgnored private let queueSnapshotStore: PlaybackQueueSnapshotStore
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+    @ObservationIgnored var queueRestoreTestAfterSnapshot: (() async -> Void)?
+#endif
     private var queueSnapshotRevision: Int64 = 0
     private var queueRestored = false
     private var mixedQueueBaseOrder: [Track]?
@@ -408,7 +411,12 @@ final class AppModel {
         return repository
     }
 
-    init() {
+    func libraryTrackCount(context: ModelContext) async throws -> Int {
+        try await repository(for: context).trackCount()
+    }
+
+    init(queueSnapshotStore: PlaybackQueueSnapshotStore = .defaultStore()) {
+        self.queueSnapshotStore = queueSnapshotStore
         selectedTheme = UserDefaults.standard.string(forKey: Self.themeDefaultsKey)
             .flatMap(CMVThemeID.init(rawValue:)) ?? .crimsonNebula
         videoPresentationMode = UserDefaults.standard.string(forKey: Self.videoPresentationDefaultsKey)
@@ -836,17 +844,21 @@ final class AppModel {
                 && !pendingSourceScans.contains(where: { $0.source.id == source.id })
         }.map { (id: $0.id, bookmark: $0.bookmarkData) }
         let provider = sourceProvider
-        let results = await Task.detached(priority: .utility) {
-            probes.map { probe in
+        let probeTask = Task.detached(priority: .utility) {
+            var results: [SourceStatusProbeResult] = []
+            for probe in probes {
+                guard !Task.isCancelled else { break }
+                let result: SourceStatusProbeResult
                 do {
                     let resolution = try provider.resolveWithRefresh(bookmark: probe.bookmark)
-                    guard resolution.url.startAccessingSecurityScopedResource() else {
-                        return SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: nil, status: .permissionRequired)
+                    if resolution.url.startAccessingSecurityScopedResource() {
+                        defer { resolution.url.stopAccessingSecurityScopedResource() }
+                        let status: MediaSourceStatus = FileManager.default.isReadableFile(atPath: resolution.url.path)
+                            ? .available : .offline
+                        result = SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: resolution.refreshedBookmark, status: status)
+                    } else {
+                        result = SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: nil, status: .permissionRequired)
                     }
-                    defer { resolution.url.stopAccessingSecurityScopedResource() }
-                    let status: MediaSourceStatus = FileManager.default.isReadableFile(atPath: resolution.url.path)
-                        ? .available : .offline
-                    return SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: resolution.refreshedBookmark, status: status)
                 } catch {
                     let status: MediaSourceStatus
                     if let accessError = error as? MediaSourceAccessError,
@@ -855,10 +867,19 @@ final class AppModel {
                     } else {
                         status = .offline
                     }
-                    return SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: nil, status: status)
+                    result = SourceStatusProbeResult(id: probe.id, originalBookmark: probe.bookmark, refreshedBookmark: nil, status: status)
                 }
+                results.append(result)
             }
-        }.value
+            return results
+        }
+        // Cancel remaining probes when the view's task ends. A synchronous
+        // provider call already in progress must finish before scope release.
+        let results = await withTaskCancellationHandler {
+            await probeTask.value
+        } onCancel: {
+            probeTask.cancel()
+        }
         let sourcesByID = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0) })
         var originals: [UUID: SourceStateSnapshot] = [:]
         var didChange = false
@@ -982,8 +1003,11 @@ final class AppModel {
             return
         }
         let initialQueueRevision = queueRevision
+        let initialPreparationGeneration = playbackPreparationGeneration
         let restoreGuardReason: () -> String? = {
             if Task.isCancelled { return "cancelled" }
+            if self.queueRestored { return "restore_superseded" }
+            if self.playbackPreparationGeneration != initialPreparationGeneration { return "playback_preparation" }
             if self.queueRevision != initialQueueRevision { return "queue_revision" }
             if !self.playback.queue.tracks.isEmpty { return "route_nonempty" }
             if self.mixedQueue != nil { return "mixed_nonempty" }
@@ -1011,6 +1035,9 @@ final class AppModel {
             queueRestored = true
             return
         }
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        await queueRestoreTestAfterSnapshot?()
+#endif
         do {
             let ids = Array(Set(snapshot.entries.map(\.trackID)))
             let fetched = try await repository(for: context).tracks(ids: ids, includeArtwork: false)
@@ -1088,7 +1115,7 @@ final class AppModel {
             restoredQueueNeedsPreparation = true
             markQueueChanged()
         } catch {
-            guard !Task.isCancelled else { return }
+            guard restoreGuardReason() == nil else { return }
             // A stale queue entry is harmless; preserve the snapshot and let
             // the next mutation overwrite it after valid IDs are available.
             errorMessage = cmvLocalized("無法還原播放佇列：%@", arguments: error.localizedDescription)
@@ -3151,6 +3178,7 @@ final class AppModel {
         )
         defer { endBackgroundActivity(activityID) }
         let profile = try await analyzer.analyze(trackID: trackID, url: url)
+        try Task.checkCancellation()
         try await repository(for: context).setAnalysis(trackID: trackID, profile: profile)
         return profile
     }

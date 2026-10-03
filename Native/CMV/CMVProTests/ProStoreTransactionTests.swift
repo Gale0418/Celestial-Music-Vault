@@ -242,6 +242,50 @@ final class ProStoreTransactionTests: XCTestCase {
         XCTAssertFalse(session.allTransactions().contains { $0.state == .purchased || $0.state == .restored })
     }
 
+    /// Separately verifies reconciliation after approval. A pass here is not
+    /// evidence that the pending Transaction.updates acceptance test passed.
+    func testPendingApprovalRefreshReconcilesVerifiedEntitlement() async throws {
+        let session = try await makeSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        session.askToBuyEnabled = true
+        let store = try await readyStore()
+        await store.purchase()
+        XCTAssertFalse(store.hasPro)
+        let pending = try await waitForPendingAskToBuyTransaction(in: session)
+        try session.approveAskToBuyTransaction(identifier: pending.identifier)
+        try await waitForTransactionState(.purchased, in: session)
+        try await waitForCurrentEntitlement(true)
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        let before = store.storeKitTestDiagnostics
+        print("StoreKit diagnostic before reconciliation: hasPro=\(store.hasPro) allUpdates=\(before.allUpdates)")
+#endif
+        await store.refresh()
+        XCTAssertTrue(store.hasPro, "A verified approved entitlement must reconcile through production refresh")
+        XCTAssertEqual(store.operation, .idle)
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        let after = store.storeKitTestDiagnostics
+        print("StoreKit diagnostic after reconciliation: hasPro=\(store.hasPro) allUpdates=\(after.allUpdates)")
+#endif
+    }
+
+    /// An off-device purchase probes the same production listener without the
+    /// Ask to Buy approval path or a second transaction consumer.
+    func testExternalPurchaseArrivesThroughUpdates() async throws {
+        let session = try await makeSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let store = try await readyStore()
+        do {
+            let transaction = try await session.buyProduct(identifier: productID)
+            XCTAssertEqual(transaction.productID, productID)
+        } catch {
+            let failure = error as NSError
+            print("StoreKit diagnostic external purchase error: domain=\(failure.domain) code=\(failure.code)")
+            throw error
+        }
+        try await waitForCurrentEntitlement(true)
+        try await waitForStoreState(store, expected: true)
+    }
+
     private enum TestFailure: Error {
         case productUnavailable
         case pendingTransactionMissing

@@ -211,18 +211,28 @@ private struct WideRootView: View {
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var showingSidebar = true
 
     var body: some View {
         @Bindable var appModel = appModel
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 210, ideal: 235, max: 275)
-        } detail: {
-            detailColumn(showingQueue: $appModel.showingQueue)
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                if showingSidebar {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(AppLanguage.localized("星穹私藏音樂庫"))
+                            .font(.headline)
+                            .lineLimit(2)
+                            .padding()
+                        SidebarView()
+                    }
+                    .frame(width: min(275, max(210, proxy.size.width * 0.2)))
+                    .background { sidePanelBackground }
+                    .transition(reduceMotion ? .identity : .move(edge: .leading).combined(with: .opacity))
+                }
+                detailColumn(showingQueue: $appModel.showingQueue)
+            }
+            .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingSidebar)
         }
-        .navigationSplitViewStyle(.balanced)
-        .modifier(TransparentNavigationSplitBackground())
         #if os(macOS)
         // Artwork follows the navigation's size; it does not propose its own
         // scaled-to-fill dimensions back into the primary layout.
@@ -234,6 +244,27 @@ private struct WideRootView: View {
             return !urls.isEmpty
         }
         #endif
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack {
+                Button { showingSidebar.toggle() } label: {
+                    Label(showingSidebar ? AppLanguage.localized("隱藏側邊欄") : AppLanguage.localized("顯示側邊欄"), systemImage: "sidebar.left")
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityValue(showingSidebar ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
+                Spacer()
+                Button { appModel.showingQueue.toggle() } label: {
+                    Label(appModel.showingQueue ? AppLanguage.localized("隱藏接下來播放") : AppLanguage.localized("顯示接下來播放"), systemImage: "music.note.list")
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityValue(appModel.showingQueue ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .controlSize(.large)
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .background(theme.surface.opacity(reduceTransparency ? 1 : 0.3))
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 BackgroundActivityRail()
@@ -245,96 +276,40 @@ private struct WideRootView: View {
 
     @ViewBuilder
     private func detailColumn(showingQueue: Binding<Bool>) -> some View {
-        #if os(macOS)
-        HStack(spacing: 0) {
-            libraryStage
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                libraryStage
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if showingQueue.wrappedValue {
-                PerformantQueueView()
-                    .frame(width: 350)
-                    .frame(maxHeight: .infinity)
-                    .background {
-                        if theme.isStorybook {
-                            StorybookPaper(cornerRadius: 20)
-                                .padding(8)
-                        } else {
-                            theme.surface.opacity(reduceTransparency ? 1 : 0.88)
-                                .background {
-                                    if !reduceTransparency {
-                                        LinearGradient(
-                                            colors: [theme.primary.opacity(0.08), theme.secondary.opacity(0.04), .clear],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    }
-                                }
+                if showingQueue.wrappedValue {
+                    PerformantQueueView()
+                        .frame(width: min(350, max(260, proxy.size.width * 0.4)))
+                        .frame(maxHeight: .infinity)
+                        .background { sidePanelBackground }
+                        .overlay(alignment: .leading) {
+                            Rectangle()
+                                .fill(theme.metal.opacity(0.20))
+                                .frame(width: 1)
                         }
-                    }
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(theme.metal.opacity(0.20))
-                            .frame(width: 1)
-                    }
-                    .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
+                        .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
+                }
             }
+            .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingQueue.wrappedValue)
         }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingQueue.wrappedValue)
-        #else
-        libraryStage
-            .inspector(isPresented: showingQueue) {
-                PerformantQueueView()
-                    .background {
-                        if theme.isStorybook {
-                            StorybookPaper(cornerRadius: 20)
-                                .padding(8)
-                        }
-                    }
-                    .inspectorColumnWidth(min: 300, ideal: 350, max: 420)
-            }
-        #endif
+    }
+
+    @ViewBuilder private var sidePanelBackground: some View {
+        if theme.isStorybook {
+            StorybookPaper(cornerRadius: 20).padding(8)
+        } else {
+            theme.surface.opacity(reduceTransparency ? 1 : 0.88)
+        }
     }
 
     private var libraryStage: some View {
         LibraryStageView()
-            .navigationSplitViewColumnWidth(min: 560, ideal: 800)
-            .toolbar {
-                #if os(iOS)
-                if columnVisibility == .detailOnly {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button(AppLanguage.localized("顯示側邊欄"), systemImage: "sidebar.left") {
-                            if reduceMotion {
-                                columnVisibility = .all
-                            } else {
-                                withAnimation(.snappy(duration: 0.25)) {
-                                    columnVisibility = .all
-                                }
-                            }
-                        }
-                        .labelStyle(.iconOnly)
-                    }
-                }
-                #endif
-                ToolbarItem(placement: .automatic) {
-                    Button(appModel.showingQueue ? AppLanguage.localized("隱藏接下來播放") : AppLanguage.localized("顯示接下來播放"),
-                           systemImage: "music.note.list") {
-                        appModel.showingQueue.toggle()
-                    }
-                    .labelStyle(.iconOnly)
-                    .accessibilityValue(appModel.showingQueue ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
-                }
-            }
     }
-}
 
-private struct TransparentNavigationSplitBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        #if os(iOS)
-        content.containerBackground(.clear, for: .navigationSplitView)
-        #else
-        content
-        #endif
-    }
 }
 
 #if os(iOS)

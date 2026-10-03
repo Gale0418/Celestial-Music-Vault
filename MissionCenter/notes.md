@@ -224,3 +224,36 @@ StoreKit pending 唯讀診斷：最後 single-listener 測試的 `compileHostFla
 同 source 67 項 SHA 在前後均一致；已重新對 Mac archive、iOS archive 與 IPA 展開 bundle 明確執行 `--distribution --expected-version 2.0 --expected-build 1`，三次 exit 0。新私有收據記錄完整 argv、source manifest／qualifier／artifact executable／IPA SHA，補齊本次 qualification invocation 證據缺口；沒有更改 App source 或弱化簽章檢查。
 
 預算控管偏差：流程 6、視覺 6、故障 8、仲裁 7，共 27／24 次評論工具；故障及仲裁超過各席上限。報告自估 tokens 合計 12,580，並非系統精確 usage。已停止追加評論，不宣稱預算合規或完成收斂。整體 gate 為 blocked；pending FAIL、完整實機／無障礙／聲學／Sandbox 等 coverage 尚未補齊，沒有 Done、upload 或送審。全部 raw 報告與私有路徑已排除 Git。
+
+
+## 2026-10-04 全程式抓蟲續輪（進行中）
+
+使用者授權全面稽核、最小修復與覆蓋 Mac／iPad／可回收模擬器測試。沿用 AERO-U24／Q12／F26／MON30，主代理整合；Luna 唯讀檢查播放佇列與來源背景工作，Gemini 只讀診斷 StoreKit pending。目標為沒有未修 P0/P1，並修復本輪查證的 P2/P3，不宣稱無限範圍無 bug。
+
+2026-10-04T00:05:34+08:00 使用者同意新評論預算：critic_full／converge，總計 24,000 tokens、每席每次 3,000、工具合計 24 次、40 分鐘，涵蓋三位獨立專家、證據裁判及必要 delta／cleanup closure。正式評論須先完成本地修復驗證並凍結新 snapshot；計時從正式 dispatch 開始，既有上一輪 27/24 超支紀錄保留，不重置成通過。
+
+本輪已確認 future audio prepare 失敗只刪 active queue 而遺留 base queue，會在關閉 shuffle 復活失效曲目並使 snapshot 不合法；restore 等待 repository 時也未檢查新播放 preparation generation。準備最小修復及實際回歸。StoreKit 加獨立 refresh reconciliation 與 external purchase probes，原 pending listener acceptance 不改成 refresh PASS。
+
+### 2026-10-04 歌單畫面追加稽核（AERO-U24／AERO-I13）
+主人指出 iPad Playlist 畫面及左右欄邏輯不一致。本輪新版實機直向 screenshot／AX 證實：空歌單 ContentUnavailableView overlay 擴張成整頁高且覆蓋 Smart DJ。先修提示卡依內容尺寸，保留 Smart DJ 操作；左右欄採實際橫向觀察與主人回覆釐清，不盲目切换導覽架構。私有證據置於 reliability-20261004 ignored 目錄。
+主人已明確指定左右側欄使用一致的開關與佈局，並要求右欄長文字跑馬燈。本輪 AERO-U24 範圍追加：將寬版 iPad queue 從 inspector 改為與 Mac 共用的 inline panel；保留原 Queue 資料／操作，按鈕語意與 Reduce Motion 設定；長曲名沿用已有限幅跑馬燈，非另寫動畫循環。
+主人追加指出 iPad 底部播放列視覺漂浮。本轮 AERO-U24 修復僅將 PlayerBar／MiniPlayerBar 的背景延伸至底部 container safe area，保留操作與 Home indicator 的安全距離；不移除整個 App 的安全區。須分別看直／橫向圖與 Mac 無回歸。
+主人要求左右伸縮按鈕使用不同圖案：左 sidebar.left、右 music.note.list；保留同一個欄位控制 row 及 44-point 觸控區，無關資料／播放邏輯不變。
+
+正式盲評補充發現 NativeAudioAnalyzer 的 idle cancel 會留下 UUID，讓下一次同曲分析誤取消；此屬 AERO-F27 取消契約。LocalAudioAnalyzer 已有 in-flight guard。Native 修正以每次 request token 記錄 active/cancelled，完成時清理，避免取消完成或尚未開始的請求污染下一次；八聲道焦點測試加入 idle／完成後 cancel 再分析的回歸。修復後需新 snapshot 與焦點驗證，先前 UI snapshot 不自動沿用為新程式全面通過。
+主人現看桌面歌單頁指出與其他頁面格式不同；CUA 對照專輯页證實 PlaylistHub 的 List opaque white background 蓋住主題，Smart DJ row 未套共同 cloudSurface。追加 AERO-U24／I13 最小樣式修復：隱藏List底、保留List swipe/context actions，列使用同一主題卡片及邊距，空卡沿用同一surface；不是重寫歌單資料與導覽。新畫面需實測。
+逐頁翻查又實際確認 CatalogTrackDetail 的 Mac List 白底遮天；共用 celestialPageBackground 在 macOS 分支原本是 no-op，補上 scrollContentBackground(.hidden)，沿用 WideRootView 的同一背景，不重複建立動畫。其他設定與來源頁保持 Form 的語意／操作。
+英文 UI 的 BatchMetadataEditor 實測仍混中文標題／欄位／確認與取消，追加 AERO-I13 三語漏譯修補；Luna 工程席只負責 catalog／必要局部source，主代理驗收，不計作 formal critic 或以此取代獨立評論。
+
+2026-10-04 評論窗口 checkpoint：新預算正式 dispatch 起算 01:37:14，截止 02:17:14；三位獨立評論＋視覺補充與獨立裁判共 15／24 次底層工具，流程席 4 次高於 chair packet 3 次。精確 tokens 不可得，不宣稱精確合規。舊四個 stable findings IDs 保留；restore 漏 guard 與任意像素輸入推測以 frozen source 反證拒絕，取消殘留已以 request token 與 hosted 2/0 修復。最終 UI／locale／取消 delta 未獨立複驗，正式 gate 仍 blocked／interrupted，不作 Done。Hardlink 增量凍結因 workspace filesystem 不支援而中止，沒有評論使用該半成品。
+逐頁 Mac 八主頁與七子頁／modal 已實看；最後版 batch editor 英文 locale 已確認，取消編輯且清空測試選取，自建空 QA 歌單已回收。Catalog 白底隱藏後發現曲目文字對比不足，追加 cloudSurface 行卡片並覆用於歌單正常／缺失曲目列；双平台建置成功。iPad 真實安裝與啟動已成功，橫向空歌單／Smart DJ／貼底播放列有限驗證；最終對比版交付與驗證仍續行。
+
+本輪逐頁後補：expanded 接下來播放主頁加共同卡片背板，避免星座標籤穿過曲目／狀態；專輯／歌手子頁三個操作 label 44-point contentShape 與 borderless，避免小觸控區及 List 自動按鈕行為。Mac 最終 universal Release build 成功，桌面覆蓋簽章驗證通過；iPad 同源最終 build／驗收續行。
+
+最終逐頁回看追加：右欄空提示預設 ContentUnavailableView 裁字，改以可換行共用提示並保留 accessibility header；最愛空提示、設定與音樂來源 Form 使用共同 cloudSurface 背板，避免背景星座標籤穿過文字。來源頁未點重索引／重新授權，不改使用者設定與媒體。
+
+2026-10-04 最後交付：Mac universal Release／iPad Debug 同源建置成功並覆蓋舊版本；桌面 strict／deep ad-hoc 簽章驗證成功，非 Distribution 資格。Mac 八主頁與七子頁／modal 已翻查，最後待播、右欄空提示、最愛、設定與來源頁補看。iPad 解鎖後最後版啟動成功，橫／直向歌單卡與 Smart DJ 分離、底部背景貼齊、待播背板與右欄跑馬燈已看；左右欄逐一收合／展開恢復；專輯子頁三個按鈕讀回 44 × 44。未點曲目操作、改評分、重索引或授權，保留原 25 筆待播及暫停狀態，恢復測試前橫向。原創 QA 空歌單已回收，桌面原空 queue 保留且雙欄恢復收合。
+
+遙控補充：同名 label 不足以判斷目的，例如曲目「最愛」按鈕與側欄「最愛」；必須按所在區域與 element type 篩選，每次以新 source 驗證後才操作。最後 source delta／建置 log／二進位 SHA／實機 PNG 與 AX 存 ignored 私有 checkpoint；沒有追加逾期正式評論。Pro pending listener FAIL、完整 NAS／無障礙／聲學／Sandbox／Distribution 及最後獨立 delta 仍未完成，不宣稱 P0/P1 清零或已送審。
+
+最後資源收尾：自有 WDA session DELETE 回應成功，核對自有 host 命令後 SIGINT，確認程序結束；本次 Simulator 已刪除，測試空歌單與選取已回收。未終止其他任務程序；舊桌面副本保留可回復備份。私有交付 checkpoint 保留最終 delta、二進位 SHA 與 PNG／AX，與先前正式評論快照分開，不能冒充獨立 delta PASS。

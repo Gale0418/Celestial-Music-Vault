@@ -37,14 +37,19 @@ struct PlayerBar: View {
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
         .background {
-            if theme.isStorybook {
-                theme.surface
-            } else {
-                Rectangle()
-                    .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
-                    .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
-                    .clipped()
+            Group {
+                if theme.isStorybook {
+                    theme.surface
+                } else {
+                    Rectangle()
+                        .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                        .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                        .clipped()
+                }
             }
+            #if os(iOS)
+            .ignoresSafeArea(.container, edges: .bottom)
+            #endif
         }
         .overlay(alignment: .top) {
             if theme.isStorybook {
@@ -278,14 +283,19 @@ struct MiniPlayerBar: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background {
-            if theme.isStorybook {
-                theme.surface
-            } else {
-                Rectangle()
-                    .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
-                    .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
-                    .clipped()
+            Group {
+                if theme.isStorybook {
+                    theme.surface
+                } else {
+                    Rectangle()
+                        .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                        .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
+                        .clipped()
+                }
             }
+            #if os(iOS)
+            .ignoresSafeArea(.container, edges: .bottom)
+            #endif
         }
         .overlay(alignment: .top) {
             if theme.isStorybook {

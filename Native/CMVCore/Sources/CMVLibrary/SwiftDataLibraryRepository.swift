@@ -99,6 +99,10 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         try await worker.tracks(ids: ids, includeArtwork: includeArtwork)
     }
 
+    public func trackCount() async throws -> Int {
+        try await worker.trackCount()
+    }
+
     public func playlistEntries(ids: [UUID], includeArtwork: Bool = true) async throws -> [PlaylistTrackEntry] {
         try await worker.playlistEntries(ids: ids, includeArtwork: includeArtwork)
     }
@@ -458,6 +462,11 @@ public actor LibraryDataActor {
             record.sourceID == sourceID
         })
         return try modelContext.fetch(descriptor).map(\.domain)
+    }
+
+    public func trackCount() throws -> Int {
+        let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { !$0.isExcluded })
+        return try modelContext.fetchCount(descriptor)
     }
 
     public func scanSnapshots(sourceID: UUID) throws -> [ScanTrackSnapshot] {
@@ -1037,6 +1046,7 @@ public actor LibraryDataActor {
     }
 
     public func setAnalysis(trackID: UUID, profile: AnalysisProfile) throws {
+        try Task.checkCancellation()
         let record = try trackRecord(id: trackID)
         record.analysisVersion = profile.version
         record.bpm = profile.bpm

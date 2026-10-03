@@ -152,16 +152,14 @@ struct PerformantQueueView: View {
             }
 
             if tracks.isEmpty {
-                ContentUnavailableView(
-                    AppLanguage.localized("佇列是空的"),
+                emptyState(
+                    title: AppLanguage.localized("佇列是空的"),
                     systemImage: "music.note.list",
-                    description: Text(AppLanguage.localized("從歌曲、多選工具列或歌單選擇「加入接下來播放」。"))
+                    description: AppLanguage.localized("從歌曲、多選工具列或歌單選擇「加入接下來播放」。")
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if isSearching && searchIsCurrent && filteredIndices.isEmpty {
-                ContentUnavailableView(AppLanguage.localized("找不到曲目記錄"), systemImage: "magnifyingglass",
-                                       description: Text(AppLanguage.localized("試試其他歌名、歌手或專輯關鍵字。")))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyState(title: AppLanguage.localized("找不到曲目記錄"), systemImage: "magnifyingglass",
+                           description: AppLanguage.localized("試試其他歌名、歌手或專輯關鍵字。"))
             } else {
                 List {
                     if isSearching {
@@ -218,6 +216,25 @@ struct PerformantQueueView: View {
         .onDisappear { snapshot.unbind() }
     }
 
+    private func emptyState(title: String, systemImage: String, description: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.title2.bold())
+                .accessibilityAddTraits(.isHeader)
+            Text(description)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .multilineTextAlignment(.center)
+        .padding(16)
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private func queueRow(_ track: Track, index: Int, tracks: [Track]) -> some View {
         let isCurrent = index == snapshot.currentIndex && track.id == snapshot.currentTrackID
         let durationSeconds = max(0, Int(track.duration))
@@ -233,16 +250,14 @@ struct PerformantQueueView: View {
                     .frame(width: 44, height: 44)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(track.title).lineLimit(1)
-                        Text("\(AppLanguage.localizedArtist(track.artist)) · \(AppLanguage.localizedAlbum(track.album))")
+                        MarqueeText(text: track.title)
+                        MarqueeText(text: "\(AppLanguage.localizedArtist(track.artist)) · \(AppLanguage.localizedAlbum(track.album))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
                         if let status = statusText(for: track, isCurrent: isCurrent) {
-                            Text(status)
+                            MarqueeText(text: status)
                                 .font(.caption2)
                                 .foregroundStyle(theme.metal)
-                                .lineLimit(1)
                         }
                         if expanded {
                             let mediaKind = AppLanguage.localized(track.mediaKind == .video ? "影片" : "音樂")

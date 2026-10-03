@@ -1,5 +1,5 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=2982e8e072476c53c90bc20bf2af3eb0265f06773c33814a545612a0c8969b9f -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=94486dffe130ced0ab7055c1c9b63856fe89c5898d9b8619d02ef3fc62bc2187 -->
 # 當前工作集
 
 - 唯一真實來源: `tasks.md`
@@ -7,7 +7,7 @@
 
 | ID | 標題 | 優先級 | 狀態 | 下一步 | 依賴 | 驗證方式 | 阻塞原因 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AERO-MON30 | 完成一次性 Pro 商品、功能解鎖與購買驗收 | P0 | In Progress | StoreKit 2／升級頁／action gates 切片完成；2026-09-26 台灣價格改為 NT$150 並由 Apple API 回讀，App 免費，真實 iPad 升級頁審核截圖已上傳且商品 READY_TO_SUBMIT；批次離線、CMV 資料庫批次編輯、Smart DJ 操作及土星環軌站主題已實作；接續 StoreKit／Sandbox 矩陣、iPad 實機購買與素材 gate | AERO-MON29 | 免費日常播放無退步；成功、取消、待處理、失敗、退款／撤銷、恢復與已購離線啟動皆有證據；兩平台商品、文案與 RC 一致 |  |
+| AERO-MON30 | 完成一次性 Pro 商品、功能解鎖與購買驗收 | P0 | In Progress | 純 pending listener acceptance 仍 FAIL：active entitlement 1、updates0、hasProfalse；detached 實驗無改善已撤回，refresh 診斷 PASS 不能取代 acceptance；接續可控外部事件／SDK配置診斷與真實 Sandbox，商品準備證據保留 | AERO-MON29 | 免費日常播放無退步；成功、取消、待處理、失敗、退款／撤銷、恢復與已購離線啟動皆有證據；兩平台商品、文案與 RC 一致 |  |
 | AERO-E3 | AeroMusic 2.0 SwiftUI＋Rust 原生重建 | P0 | In Progress | c42375f 正式三席盲評＋獨立仲裁為 blocked；已補 Mac 完整還原 AX 與 exact Distribution qualification 收據，接續 StoreKit pending 根因／Sandbox 與完整同版 coverage，未收斂前不進 TestFlight | AERO-E2 | macOS 15+ 與 iPadOS 18+ 通過完整驗收並可送審 |  |
 | AERO-V3 | 效能、故障、實機、隱私與 App Store 驗證 | P0 | In Progress | 🦀 本輪核心回歸通過，StoreKit pending 與完整實機矩陣仍未完成；依 `Native/APP_STORE_GATE.md` 補授權節目 reference material、實機／沙盒／隱私驗證、送審 metadata 與 Distribution archive，完成後進入 AERO-R3 TestFlight | AERO-A3, AERO-C3, AERO-U3 | 自動測試、實機矩陣、隱私與沙盒檢查通過；最終 critic findings 全數 disposition |  |
 | AERO-R3 | TestFlight、App Store 送審與 Electron 安全退場 | P0 | In Progress | 先執行 AERO-AC4 唯讀盤點；同步等候 AERO-RC4 的程式品質依賴完成 | AERO-V3 | iPadOS／macOS 分平台完成簽章、實機、Metadata、TestFlight、strict submission health 與送審；原生版核准穩定且退場清單再獲核准 |  |

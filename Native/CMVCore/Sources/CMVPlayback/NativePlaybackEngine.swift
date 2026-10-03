@@ -848,7 +848,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         let nextIndex = currentIndex + 1
         guard queue.tracks.indices.contains(nextIndex) else { return }
         guard let nextURL = resolvedURLs[queue.tracks[nextIndex].id] else {
-            queue.tracks.remove(at: nextIndex)
+            removeQueueOccurrence(at: nextIndex)
             onQueueChanged?()
             onPlaybackError?(NativePlaybackError.unresolvedTrack)
             if pendingFinishedQueueIndex == currentIndex {
@@ -882,7 +882,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
                 // A file can disappear after its path was resolved. Remove the
                 // unplayable queue entry and try the following song instead of
                 // leaving a permanent ghost at the next position.
-                queue.tracks.remove(at: nextIndex)
+                removeQueueOccurrence(at: nextIndex)
                 onQueueChanged?()
                 onPlaybackError?(error)
                 scheduleFollowingTrack()
@@ -1101,6 +1101,24 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     }
 
     private func shuffleUpcomingTrackIfNeeded() { queue = shuffledQueue(queue) }
+
+    private func removeQueueOccurrence(at index: Int) {
+        guard queue.tracks.indices.contains(index) else { return }
+        let track = queue.tracks[index]
+        let ordinal = occurrenceOrdinal(of: index, in: queue.tracks)
+        queue.tracks.remove(at: index)
+
+        guard let baseIndex = occurrenceIndex(of: track.id, ordinal: ordinal, in: baseQueue.tracks) else {
+            return
+        }
+        baseQueue.tracks.remove(at: baseIndex)
+        if baseQueue.tracks.isEmpty {
+            baseQueue.currentIndex = 0
+        } else {
+            if baseIndex < baseQueue.currentIndex { baseQueue.currentIndex -= 1 }
+            baseQueue.currentIndex = min(baseQueue.currentIndex, baseQueue.tracks.count - 1)
+        }
+    }
 
     private func occurrenceOrdinal(of index: Int, in tracks: [Track]) -> Int {
         guard tracks.indices.contains(index) else { return 0 }
