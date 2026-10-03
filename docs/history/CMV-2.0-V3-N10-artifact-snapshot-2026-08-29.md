@@ -60,7 +60,7 @@ Support 或任何 NAS 憑證。
 
 ## 驗證快照
 
-- 身分／toolchain：專案根目錄為 `<VOLUME_PATH>`；原生與 Electron Bundle ID 均為 `com.windsheep.cmv`，URL scheme 為 `cmv://`；`rustc 1.98.0` 且兩個 crate 的 MSRV 均為 1.98。
+- 身分／toolchain：專案根目錄為 `<WORKSPACE_ROOT>`；原生與 Electron Bundle ID 均為 `com.windsheep.cmv`，URL scheme 為 `cmv://`；`rustc 1.98.0` 且兩個 crate 的 MSRV 均為 1.98。
 - Rust：workspace 19 core＋8 FFI＋1 shared tests、fmt、Clippy `-D warnings`。
 - Swift：完整 16/16 tests；Metadata 使用 AVURLAsset async load 與嚴格 ReplayGain/R128 tag parser；搜尋 snapshot mutation、媒體種類持久化與不完整掃描保留曲目 regression 均通過。
 - 原生媒體：MP4／MOV／M4V 依實際 AVAsset 軌道分流至 AVKit；Mac 影片視窗與 iPad 原生全螢幕／PiP 編譯通過，實際 NAS MP4 已驗證可見動態畫面。

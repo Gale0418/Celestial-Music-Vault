@@ -180,6 +180,11 @@ struct PerformantQueueView: View {
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                         }
+                        .onMove { offsets, destination in
+                            for source in offsets.sorted(by: >) {
+                                appModel.movePlaybackQueueItem(from: source, to: destination, context: context)
+                            }
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -188,7 +193,10 @@ struct PerformantQueueView: View {
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 12)
-        .task { snapshot.bind(to: appModel) }
+        .task {
+            snapshot.bind(to: appModel)
+            await appModel.restorePlaybackQueueIfNeeded(context: context)
+        }
         .task(id: SearchKey(revision: snapshot.revision, query: search)) {
             guard expanded, !search.isEmpty else { filteredIndices = []; return }
             do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
@@ -252,6 +260,23 @@ struct PerformantQueueView: View {
 
             QueueStarRatingControl(rating: appModel.rating(for: track), width: 100) { rating in
                 appModel.setRating(track, rating: rating, context: context)
+            }
+
+            if expanded && index > snapshot.currentIndex {
+                Menu {
+                    Button(AppLanguage.localized("移到最前"), systemImage: "arrow.up.to.line") {
+                        appModel.movePlaybackQueueItem(from: index, to: snapshot.currentIndex + 1, context: context)
+                    }
+                    Button(AppLanguage.localized("移除"), systemImage: "minus.circle", role: .destructive) {
+                        appModel.removePlaybackQueueItem(at: index, context: context)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
+                }
+                .menuOrder(.fixed)
+                .accessibilityLabel(AppLanguage.localized("佇列曲目操作"))
             }
         }
         .frame(minHeight: 60)

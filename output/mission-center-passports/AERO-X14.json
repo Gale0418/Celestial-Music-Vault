@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-X14",
+  "taskDigest": "e1e5539e2e2bac415aaa7249c6ae1edb55760d6bbe4a938b74c1ba6491ad4e1b",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "Native/SMART_LIBRARY_SCOPE.md",
+      "output/mission-center-critique/AERO-X14-20261003-scope.json"
+    ]
+  },
+  "findings": []
+}

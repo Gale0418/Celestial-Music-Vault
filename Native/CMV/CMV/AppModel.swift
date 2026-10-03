@@ -289,6 +289,9 @@ final class AppModel {
     private(set) var queueRevision = 0
     private(set) var playlistRevision = 0
     private(set) var libraryRevision = 0
+    private var lastMetadataUndo: MetadataUndoReceipt?
+    private var metadataOperationInFlight = false
+    var hasMetadataUndo: Bool { lastMetadataUndo != nil && !metadataOperationInFlight }
     private(set) var mixedMediaShuffleEnabled = false
 
     var currentTrack: Track? {
@@ -301,6 +304,7 @@ final class AppModel {
     }
     var displayQueue: PlaybackQueue {
         _ = playbackRevision
+        if let stagedPlaybackQueue { return stagedPlaybackQueue }
         guard let mixedQueue, !mixedQueue.isEmpty else { return playback.queue }
         let index = mixedRouteIndex(in: mixedQueue)
             ?? playback.queue.currentIndex
@@ -311,6 +315,7 @@ final class AppModel {
     /// playback revision used by elapsed-time and transport controls.
     var queuePanelDisplayQueue: PlaybackQueue {
         _ = queueRevision
+        if let stagedPlaybackQueue { return stagedPlaybackQueue }
         guard let mixedQueue, !mixedQueue.isEmpty else { return playback.queue }
         let index = mixedRouteIndex(in: mixedQueue)
             ?? playback.queue.currentIndex
@@ -371,6 +376,14 @@ final class AppModel {
     private var mixedQueueSegmentStart: Int?
     private var activePlaybackContext: ModelContext?
     private var libraryPlaybackContinuation: LibraryPlaybackContinuation?
+    @ObservationIgnored private let queueSnapshotStore = PlaybackQueueSnapshotStore.defaultStore()
+    private var queueSnapshotRevision: Int64 = 0
+    private var queueRestored = false
+    private var mixedQueueBaseOrder: [Track]?
+    private var playbackHistory: [UUID] = []
+    private var queueMutationGeneration = 0
+    private var stagedPlaybackQueue: PlaybackQueue?
+    private var restoredQueueNeedsPreparation = false
     @ObservationIgnored private var libraryContinuationTask: Task<Void, Never>?
     @ObservationIgnored private var playbackPreparationGeneration = 0
     @ObservationIgnored private var smartPrefetchTask: Task<Void, Never>?
@@ -420,7 +433,15 @@ final class AppModel {
         }
         playback.onCurrentTrackChanged = { [weak self] track in
             guard let self else { return }
+            let previousTrackID = self.currentTrackID
             self.currentTrackID = track?.id
+            if let track, previousTrackID != track.id {
+                self.playbackHistory.removeAll { $0 == track.id }
+                self.playbackHistory.append(track.id)
+                if self.playbackHistory.count > PlaybackQueuePlanner.historyLimit {
+                    self.playbackHistory.removeFirst(self.playbackHistory.count - PlaybackQueuePlanner.historyLimit)
+                }
+            }
             self.audioEnergy.beginTrack(track?.id, knownBPM: track?.analysis?.bpm)
             self.currentArtworkData = track?.artworkData
             self.artworkLoadTask?.cancel()
@@ -432,7 +453,7 @@ final class AppModel {
                mixedQueue[segmentStart + self.playback.queue.currentIndex].id == track.id {
                 self.mixedQueueCurrentIndex = segmentStart + self.playback.queue.currentIndex
             }
-            self.queueRevision &+= 1
+            self.markQueueChanged()
         }
         playback.onQueueFinished = { [weak self] in self?.advanceAfterAudioQueue() }
         playback.onQueueChanged = { [weak self] in self?.markQueueChanged() }
@@ -452,7 +473,9 @@ final class AppModel {
             playback.$isRepeatEnabled.removeDuplicates().map { _ in () },
             playback.$sleepTimerEndDate.removeDuplicates().map { _ in () }
         ).sink { [weak self] in
-            self?.playbackControlsRevision &+= 1
+            guard let self else { return }
+            self.playbackControlsRevision &+= 1
+            if self.queueRestored { self.persistPlaybackQueueSnapshot() }
         }.store(in: &transportObservations)
         playback.onRemotePlayRequested = { [weak self] in
             guard let self else { return }
@@ -508,6 +531,7 @@ final class AppModel {
 
     private func markQueueChanged() {
         queueRevision &+= 1
+        if queueRestored { persistPlaybackQueueSnapshot() }
     }
 
     private func mixedRouteIndex(in route: [Track]) -> Int? {
@@ -521,6 +545,108 @@ final class AppModel {
             currentID: currentTrackID,
             preferredIndex: nil
         )
+    }
+
+    /// Apply a future-only route edit to the persisted mixed-media base order.
+    /// Runtime queues only carry Track values, so duplicate occurrences are
+    /// matched by their ordinal within the displayed route.
+    private func mixedBaseOrder(
+        old: PlaybackQueue,
+        updated: PlaybackQueue,
+        base: [Track],
+        playNext: Bool
+    ) -> [Track] {
+        guard let current = old.current else { return updated.tracks }
+        let currentOrdinal = old.tracks[..<old.currentIndex].reduce(into: 0) { count, track in
+            if track.id == current.id { count += 1 }
+        }
+        guard let baseCurrentIndex = base.indices.first(where: {
+            base[$0].id == current.id
+        }), base[baseCurrentIndex].id == current.id else {
+            return updated.tracks
+        }
+        let matchingBaseCurrent = base.indices.filter { base[$0].id == current.id }
+            .dropFirst(currentOrdinal).first
+        guard let matchingBaseCurrent else { return updated.tracks }
+
+        let oldFuture = Array(old.tracks.dropFirst(old.currentIndex + 1))
+        let newFuture = Array(updated.tracks.dropFirst(updated.currentIndex + 1))
+        let basePrefix = Array(base.prefix(matchingBaseCurrent + 1))
+        let baseIndicesForOldFuture = oldFuture.indices.map { offset -> Int? in
+            let queueIndex = old.currentIndex + 1 + offset
+            let id = old.tracks[queueIndex].id
+            let ordinal = old.tracks[..<queueIndex].reduce(into: 0) { count, track in
+                if track.id == id { count += 1 }
+            }
+            return base.indices.filter { base[$0].id == id }.dropFirst(ordinal).first
+        }
+        var matchedOld = Array(repeating: false, count: oldFuture.count)
+        var desiredMatches: [Int?] = []
+        for track in newFuture {
+            if let oldIndex = oldFuture.indices.first(where: {
+                !matchedOld[$0] && oldFuture[$0].id == track.id
+            }) {
+                matchedOld[oldIndex] = true
+                desiredMatches.append(oldIndex)
+            } else {
+                desiredMatches.append(nil)
+            }
+        }
+        let allExistingMatched = desiredMatches.allSatisfy { $0 != nil }
+            && matchedOld.allSatisfy { $0 }
+            && baseIndicesForOldFuture.allSatisfy { $0 != nil }
+        if allExistingMatched {
+            return basePrefix + desiredMatches.compactMap { match in
+                guard let match, let baseIndex = baseIndicesForOldFuture[match] else { return nil }
+                return base[baseIndex]
+            }
+        }
+
+        let removedBaseIndices = Set(baseIndicesForOldFuture.enumerated().compactMap { offset, baseIndex in
+            matchedOld[offset] ? nil : baseIndex
+        })
+        let retainedFuture = base.enumerated().compactMap { index, track -> Track? in
+            guard index > matchingBaseCurrent else { return nil }
+            return removedBaseIndices.contains(index) ? nil : track
+        }
+        let firstMatchedOffset = desiredMatches.firstIndex { $0 != nil } ?? newFuture.count
+        let leadingInsertions = newFuture.enumerated().compactMap { offset, track in
+            offset < firstMatchedOffset && desiredMatches[offset] == nil ? track : nil
+        }
+        let trailingInsertions = newFuture.enumerated().compactMap { offset, track in
+            offset >= firstMatchedOffset && desiredMatches[offset] == nil ? track : nil
+        }
+        if playNext {
+            return basePrefix + leadingInsertions + retainedFuture + trailingInsertions
+        }
+        return basePrefix + retainedFuture + leadingInsertions + trailingInsertions
+    }
+
+    private func playbackOccurrenceSignature() -> (trackID: UUID, ordinal: Int)? {
+        let queue = playback.queue
+        guard let current = queue.current else { return nil }
+        let ordinal = queue.tracks[..<queue.currentIndex].reduce(into: 0) { count, track in
+            if track.id == current.id { count += 1 }
+        }
+        return (current.id, ordinal)
+    }
+
+    private func rebaseQueueToCurrent(_ queue: PlaybackQueue, after oldIndex: Int) -> PlaybackQueue? {
+        guard let currentTrackID else { return nil }
+        let start = min(queue.tracks.count, max(0, oldIndex + 1))
+        let index = queue.tracks.indices.dropFirst(start).first { queue.tracks[$0].id == currentTrackID }
+            ?? queue.tracks.firstIndex { $0.id == currentTrackID }
+        var result = queue
+        if let index {
+            result.currentIndex = index
+        } else if let active = playback.queue.current {
+            let insertion = min(queue.tracks.count, max(0, oldIndex + 1))
+            result.tracks.insert(active, at: insertion)
+            result.currentIndex = insertion
+        } else {
+            return nil
+        }
+        return result
     }
 
     @discardableResult
@@ -847,11 +973,162 @@ final class AppModel {
         libraryPlaybackContinuation = nil
     }
 
+    /// Restore the compact queue snapshot once the SwiftData context is ready.
+    /// Restoration only hydrates queue metadata and never starts playback.
+    func restorePlaybackQueueIfNeeded(context: ModelContext) async {
+        guard !queueRestored else { return }
+        guard playback.queue.tracks.isEmpty, mixedQueue == nil, currentTrackID == nil else {
+            queueRestored = true
+            return
+        }
+        let initialQueueRevision = queueRevision
+        queueRestored = true
+        guard let snapshot = await queueSnapshotStore.load() else { return }
+        // `load()` advances the store's revision even for a valid empty snapshot.
+        // Adopt it before any early return so the next mutation cannot be rejected
+        // as stale by the actor-backed store.
+        queueSnapshotRevision = max(queueSnapshotRevision, snapshot.revision)
+        guard !snapshot.entries.isEmpty else { return }
+        guard !Task.isCancelled,
+              queueRevision == initialQueueRevision,
+              playback.queue.tracks.isEmpty,
+              mixedQueue == nil,
+              currentTrackID == nil else { return }
+        do {
+            let ids = Array(Set(snapshot.entries.map(\.trackID)))
+            let fetched = try await repository(for: context).tracks(ids: ids, includeArtwork: false)
+            let tracksByID = Dictionary(uniqueKeysWithValues: fetched.map { ($0.id, $0) })
+            let restoredEntries = snapshot.entries.compactMap { entry -> (PlaybackQueueOccurrence, Track)? in
+                guard let track = tracksByID[entry.trackID] else { return nil }
+                return (entry, track)
+            }
+            let tracks = restoredEntries.map(\.1)
+            guard !tracks.isEmpty else { return }
+            guard !Task.isCancelled,
+                  queueRevision == initialQueueRevision,
+                  playback.queue.tracks.isEmpty,
+                  mixedQueue == nil,
+                  currentTrackID == nil else { return }
+            let restoredCurrentIndex = snapshot.current.flatMap { current in
+                restoredEntries.firstIndex { $0.0.occurrenceID == current.occurrenceID }
+            }
+            let nextAvailable = Set(snapshot.entries.dropFirst(snapshot.currentIndex).map(\.occurrenceID))
+            let currentIndex = restoredCurrentIndex
+                ?? restoredEntries.firstIndex { nextAvailable.contains($0.0.occurrenceID) }
+                ?? tracks.count - 1
+            if restoredCurrentIndex == nil {
+                errorMessage = cmvLocalized("先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。")
+            }
+            let restoredQueue = PlaybackQueue(tracks: tracks, currentIndex: currentIndex)
+            mixedQueue = tracks.contains(where: { routeContainsVideo([$0]) }) ? tracks : nil
+            let restoredBaseEntries = snapshot.baseEntries.compactMap { entry -> (PlaybackQueueOccurrence, Track)? in
+                guard let track = tracksByID[entry.trackID] else { return nil }
+                return (entry, track)
+            }
+            let restoredOccurrenceIDs = Set(restoredEntries.map { $0.0.occurrenceID })
+            let hasCompleteBase = restoredBaseEntries.count == restoredEntries.count
+                && Set(restoredBaseEntries.map { $0.0.occurrenceID }) == restoredOccurrenceIDs
+            let baseTracks = hasCompleteBase ? restoredBaseEntries.map(\.1) : tracks
+            mixedQueueBaseOrder = mixedQueue != nil && hasCompleteBase ? baseTracks : nil
+            mixedQueueCurrentIndex = mixedQueue == nil ? nil : currentIndex
+            mixedQueueSegmentStart = nil
+            activePlaybackContext = context
+            playbackHistory = snapshot.history.compactMap { occurrenceID in
+                restoredEntries.first { $0.0.occurrenceID == occurrenceID }?.1.id
+            }
+            if let continuation = snapshot.continuation {
+                let query = LibraryPlaybackQuery(
+                    query: continuation.query,
+                    sort: continuation.sortRawValue.flatMap(LibraryTrackSort.init(rawValue:)),
+                    ascending: continuation.ascending,
+                    randomTrackIDs: continuation.randomTrackIDs,
+                    nextOffset: continuation.nextOffset,
+                    pageSize: continuation.pageSize
+                )
+                libraryPlaybackContinuation = LibraryPlaybackContinuation(
+                    query: query,
+                    exhausted: continuation.exhausted
+                )
+            }
+            let baseIndex = snapshot.current.flatMap { current in
+                restoredBaseEntries.firstIndex { $0.0.occurrenceID == current.occurrenceID }
+            } ?? currentIndex
+            let restoredBaseQueue = PlaybackQueue(
+                tracks: baseTracks,
+                currentIndex: hasCompleteBase ? baseIndex : currentIndex
+            )
+            playback.setQueue(restoredQueue, baseQueue: restoredBaseQueue)
+            playback.restoreQueueModes(
+                shuffleEnabled: snapshot.shuffleEnabled && mixedQueue == nil && hasCompleteBase,
+                repeatEnabled: snapshot.repeatMode == .all
+            )
+            mixedMediaShuffleEnabled = snapshot.shuffleEnabled && mixedQueue != nil && hasCompleteBase
+            restoredQueueNeedsPreparation = true
+            markQueueChanged()
+        } catch {
+            // A stale queue entry is harmless; preserve the snapshot and let
+            // the next mutation overwrite it after valid IDs are available.
+            errorMessage = cmvLocalized("無法還原播放佇列：%@", arguments: error.localizedDescription)
+        }
+    }
+
+    private func persistPlaybackQueueSnapshot() {
+        let queue = queuePanelDisplayQueue
+        guard !queue.tracks.isEmpty else {
+            queueSnapshotRevision &+= 1
+            let empty = PlaybackQueueSnapshot(revision: queueSnapshotRevision)
+            Task { try? await queueSnapshotStore.save(empty) }
+            return
+        }
+        queueSnapshotRevision &+= 1
+        var occurrencePool: [UUID: [UUID]] = [:]
+        let entries = queue.tracks.map { track -> PlaybackQueueOccurrence in
+            let occurrence = PlaybackQueueOccurrence(trackID: track.id)
+            occurrencePool[track.id, default: []].append(occurrence.occurrenceID)
+            return occurrence
+        }
+        let baseTracks = mixedQueueBaseOrder ?? (mixedQueue == nil ? playback.baseQueueSnapshot.tracks : queue.tracks)
+        let baseEntries = baseTracks.map { track -> PlaybackQueueOccurrence in
+            if var occurrences = occurrencePool[track.id], !occurrences.isEmpty {
+                let occurrenceID = occurrences.removeFirst()
+                occurrencePool[track.id] = occurrences
+                return PlaybackQueueOccurrence(occurrenceID: occurrenceID, trackID: track.id)
+            }
+            return PlaybackQueueOccurrence(trackID: track.id)
+        }
+        let historyOccurrences = playbackHistory.compactMap { trackID in
+            entries.first { $0.trackID == trackID }?.occurrenceID
+        }
+        let continuation = libraryPlaybackContinuation.map { value in
+            PlaybackQueueContinuationSnapshot(
+                query: value.query.query,
+                sortRawValue: value.query.sort?.rawValue,
+                ascending: value.query.ascending,
+                randomTrackIDs: value.query.randomTrackIDs,
+                nextOffset: value.query.nextOffset,
+                pageSize: value.query.pageSize,
+                exhausted: value.exhausted
+            )
+        }
+            let snapshot = PlaybackQueueSnapshot(
+            revision: queueSnapshotRevision,
+            entries: entries,
+            baseEntries: baseEntries,
+            currentIndex: queue.currentIndex,
+            history: historyOccurrences,
+            continuation: continuation,
+            shuffleEnabled: isShuffleEnabled,
+            repeatMode: playback.isRepeatEnabled ? .all : .off
+        )
+        Task { try? await queueSnapshotStore.save(snapshot) }
+    }
+
     var canContinueLibraryPlayback: Bool {
         libraryPlaybackContinuation?.exhausted == false
     }
 
     func stopVideoPlayback(invalidatePendingPreparation: Bool = true) {
+        stagedPlaybackQueue = nil
         if invalidatePendingPreparation {
             playbackPreparationGeneration &+= 1
             smartPrefetchTask?.cancel()
@@ -894,8 +1171,18 @@ final class AppModel {
             return
         }
         if playback.queue.currentIndex + 1 < playback.queue.tracks.count {
+            if restoredQueueNeedsPreparation {
+                play(tracks: playback.queue.tracks, startingAt: playback.queue.currentIndex + 1,
+                     context: context, preserveLibraryPlaybackContinuation: true)
+                return
+            }
             do { try playback.skipForward() }
             catch { errorMessage = cmvLocalized("無法播放下一首：%@", arguments: AppLanguage.localizedError(error)) }
+            return
+        }
+        if restoredQueueNeedsPreparation {
+            play(tracks: playback.queue.tracks, startingAt: playback.queue.currentIndex,
+                 context: context, preserveLibraryPlaybackContinuation: true)
             return
         }
         if canContinueLibraryPlayback {
@@ -928,6 +1215,17 @@ final class AppModel {
         smartPrefetchTask = nil
         guard videoURL != nil else {
             if !playPreviousMixedMedia(context: context) {
+                if restoredQueueNeedsPreparation {
+                    let queue = playback.queue
+                    guard queue.tracks.indices.contains(queue.currentIndex - 1) else {
+                        play(tracks: queue.tracks, startingAt: queue.currentIndex,
+                             context: context, preserveLibraryPlaybackContinuation: true)
+                        return
+                    }
+                    play(tracks: queue.tracks, startingAt: queue.currentIndex - 1,
+                         context: context, preserveLibraryPlaybackContinuation: true)
+                    return
+                }
                 do { try playback.skipBackward() }
                 catch { errorMessage = cmvLocalized("無法播放上一首：%@", arguments: AppLanguage.localizedError(error)) }
             }
@@ -953,11 +1251,22 @@ final class AppModel {
               routeContainsVideo(route),
               let currentIndex = mixedRouteIndex(in: route) else {
             playback.toggleShuffle()
+            markQueueChanged()
             return
         }
+        if !mixedMediaShuffleEnabled { mixedQueueBaseOrder = route }
         mixedMediaShuffleEnabled.toggle()
         guard mixedMediaShuffleEnabled else {
             playbackRevision &+= 1
+            let base = mixedQueueBaseOrder
+            mixedQueue = base ?? route
+            mixedQueueBaseOrder = nil
+            if let restored = mixedQueue, let currentTrackID {
+                let ordinal = route[..<currentIndex].filter { $0.id == currentTrackID }.count
+                mixedQueueCurrentIndex = restored.indices.filter { restored[$0].id == currentTrackID }
+                    .dropFirst(ordinal).first
+            }
+            markQueueChanged()
             return
         }
         let protectedEndIndex: Int
@@ -981,6 +1290,7 @@ final class AppModel {
             if videoURL != nil { playback.setQueue(PlaybackQueue(tracks: route, currentIndex: currentIndex)) }
         }
         playbackRevision &+= 1
+        markQueueChanged()
     }
 
     private func routeContainsVideo(_ tracks: [Track]) -> Bool {
@@ -993,6 +1303,7 @@ final class AppModel {
     func playStandaloneVideo(url: URL) {
         smartPrefetchTask?.cancel()
         smartPrefetchTask = nil
+        restoredQueueNeedsPreparation = false
         playbackPreparationGeneration &+= 1
         let requestGeneration = playbackPreparationGeneration
         Task { @MainActor [weak self] in
@@ -1040,6 +1351,11 @@ final class AppModel {
                     errorMessage = cmvLocalized("無法載入曲庫：%@", arguments: error.localizedDescription)
                 }
             }
+            return
+        }
+        if restoredQueueNeedsPreparation {
+            play(tracks: playback.queue.tracks, startingAt: playback.queue.currentIndex,
+                 context: context, preserveLibraryPlaybackContinuation: true)
             return
         }
         do { try playback.play() }
@@ -1251,6 +1567,12 @@ final class AppModel {
 
     private func play(tracks: [Track], startingAt: Int, context: ModelContext,
                       preserveLibraryPlaybackContinuation: Bool) {
+        let restoringAudioQueue = restoredQueueNeedsPreparation && mixedQueue == nil
+            && playback.queue.tracks.map(\.id) == tracks.map(\.id)
+        let restoredBaseQueue = restoringAudioQueue ? playback.baseQueueSnapshot : nil
+        queueRestored = true
+        queueMutationGeneration &+= 1
+        stagedPlaybackQueue = nil
         if !preserveLibraryPlaybackContinuation {
             cancelLibraryPlaybackContinuation()
         }
@@ -1301,6 +1623,7 @@ final class AppModel {
                     disableAudioOnlyQueueModesForMixedMedia(tracks)
                     playback.clearQueue()
                     playback.setQueue(PlaybackQueue(tracks: tracks, currentIndex: startingAt))
+                    restoredQueueNeedsPreparation = false
                     mixedQueue = tracks
                     mixedQueueCurrentIndex = startingAt
                     mixedQueueSegmentStart = nil
@@ -1324,17 +1647,18 @@ final class AppModel {
                     let ext = URL(fileURLWithPath: track.relativePath).pathExtension.lowercased()
                     return track.mediaKind == .video || movieContainerExtensions.contains(ext)
                 } ?? tracks.count
-                let audioTracks = Array(tracks[startingAt..<nextVideoIndex]).filter { track in
+                let audioRange = restoringAudioQueue ? 0..<nextVideoIndex : startingAt..<nextVideoIndex
+                let audioTracks = Array(tracks[audioRange]).filter { track in
                     track.id == selectedTrack.id || track.mediaKind != .video
                 }
                 guard !audioTracks.isEmpty else { throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath) }
-                guard let audioIndex = audioTracks.firstIndex(of: selectedTrack) else {
+                guard let audioIndex = restoringAudioQueue ? startingAt : audioTracks.firstIndex(of: selectedTrack) else {
                     throw MediaScanError.unsupportedFile(path: selectedTrack.relativePath)
                 }
-                let remainingAudioTracks = Array(audioTracks.dropFirst())
-                let cachedURLs = await cacheStore?.cachedURLs(trackIDs: remainingAudioTracks.map(\.id)) ?? [:]
+                let tracksToResolve = restoringAudioQueue ? audioTracks : Array(audioTracks.dropFirst(audioIndex + 1))
+                let cachedURLs = await cacheStore?.cachedURLs(trackIDs: tracksToResolve.map(\.id)) ?? [:]
                 guard requestGeneration == playbackPreparationGeneration else { return }
-                for track in remainingAudioTracks {
+                for track in tracksToResolve {
                     if let cachedURL = cachedURLs[track.id] {
                         resolvedURLs[track.id] = cachedURL
                         cachedTrackIDs.insert(track.id)
@@ -1358,8 +1682,10 @@ final class AppModel {
                     if !playback.isShuffleEnabled { playback.toggleShuffle() }
                     mixedMediaShuffleEnabled = false
                 }
-                try await playback.load(PlaybackQueue(tracks: audioTracks, currentIndex: audioIndex), resolvedURLs: resolvedURLs)
+                try await playback.load(PlaybackQueue(tracks: audioTracks, currentIndex: audioIndex),
+                                        resolvedURLs: resolvedURLs, restoredBaseQueue: restoredBaseQueue)
                 guard requestGeneration == playbackPreparationGeneration else { return }
+                restoredQueueNeedsPreparation = false
                 let keepsLibraryMixedRoute = preserveLibraryPlaybackContinuation
                     && libraryPlaybackContinuation != nil
                     && routeContainsVideo(tracks)
@@ -1965,71 +2291,252 @@ final class AppModel {
     }
 
     func addToPlaybackQueue(_ tracks: [Track], context: ModelContext) {
+        enqueuePlaybackTracks(tracks, playNext: false, context: context)
+    }
+
+    /// 插入目前曲目之後，保留既有 future queue 的相對順序。
+    func playNext(_ tracks: [Track], context: ModelContext) {
+        enqueuePlaybackTracks(tracks, playNext: true, context: context)
+    }
+
+    private func enqueuePlaybackTracks(_ tracks: [Track], playNext: Bool, context: ModelContext) {
         guard !tracks.isEmpty else { return }
-        let currentDisplayQueue = displayQueue
+        let currentDisplayQueue = queuePanelDisplayQueue
         guard currentTrackID != nil, !currentDisplayQueue.tracks.isEmpty else {
-            play(tracks: tracks, context: context)
+            // An empty queue is a paused queue seed, not a play request.  In
+            // particular, Add to Up Next from an idle multi-selection must not
+            // resolve source bookmarks or start the first selected track.  Put
+            // the compact route in the engine so the existing Play/Next paths
+            // can prepare it lazily when the user explicitly starts playback.
+            queueMutationGeneration &+= 1
+            playbackPreparationGeneration &+= 1
+            stagedPlaybackQueue = nil
+            smartPrefetchTask?.cancel()
+            smartPrefetchTask = nil
+            cancelLibraryPlaybackContinuation()
+            playback.pause()
+
+            let seededQueue = PlaybackQueue(tracks: tracks, currentIndex: 0)
+            let hasVideo = routeContainsVideo(tracks)
+            mixedQueue = hasVideo ? tracks : nil
+            mixedQueueCurrentIndex = hasVideo ? 0 : nil
+            mixedQueueSegmentStart = nil
+            mixedQueueBaseOrder = hasVideo ? tracks : nil
+            restoredQueueNeedsPreparation = true
+            queueRestored = true
+            activePlaybackContext = context
+            playback.setQueue(seededQueue, baseQueue: seededQueue)
+            markQueueChanged()
             return
         }
-        let currentDisplayIndex = currentDisplayQueue.currentIndex
+        let currentIndex = currentDisplayQueue.currentIndex
         var updated = currentDisplayQueue.tracks
-        var queuedIDs = Set(updated.map(\.id))
-        let additions = tracks.filter { queuedIDs.insert($0.id).inserted }
-        guard !additions.isEmpty else { return }
-        updated.append(contentsOf: additions)
-        mixedQueue = updated
-        if mixedQueueCurrentIndex == nil,
-           updated.indices.contains(currentDisplayIndex) {
-            mixedQueueCurrentIndex = currentDisplayIndex
-            mixedQueueSegmentStart = videoURL == nil ? 0 : nil
+        let insertion = playNext
+            ? min(updated.count, currentIndex + 1)
+            : updated.count
+        updated.insert(contentsOf: tracks, at: insertion)
+        queueMutationGeneration &+= 1
+        let mutation = queueMutationGeneration
+        let hasVideo = routeContainsVideo(updated)
+        if hasVideo {
+            stagedPlaybackQueue = nil
+            if mixedMediaShuffleEnabled {
+                let base = mixedQueueBaseOrder ?? currentDisplayQueue.tracks
+                mixedQueueBaseOrder = mixedBaseOrder(
+                    old: currentDisplayQueue,
+                    updated: PlaybackQueue(tracks: updated, currentIndex: currentIndex),
+                    base: base,
+                    playNext: playNext
+                )
+            } else {
+                mixedQueueBaseOrder = nil
+            }
+            mixedQueue = updated
+            mixedQueueCurrentIndex = currentIndex + (insertion <= currentIndex ? tracks.count : 0)
+            mixedQueueSegmentStart = videoURL == nil ? (mixedQueueSegmentStart ?? 0) : nil
+        } else {
+            stagedPlaybackQueue = PlaybackQueue(tracks: updated, currentIndex: currentIndex)
+            mixedQueue = nil
+            mixedQueueCurrentIndex = nil
+            mixedQueueSegmentStart = nil
+            mixedQueueBaseOrder = nil
         }
-        markQueueChanged()
         activePlaybackContext = context
+        if !hasVideo { markQueueChanged() }
         if videoURL != nil {
-            let currentIndex = mixedRouteIndex(in: updated) ?? 0
-            playback.setQueue(PlaybackQueue(tracks: updated, currentIndex: currentIndex))
-        } else if updated.allSatisfy({ $0.mediaKind == .audio }) {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    let pendingTracks = Array(updated.dropFirst(playback.queue.tracks.count))
-                    guard !pendingTracks.isEmpty else { return }
-                    let sourceRecords = try context.fetch(FetchDescriptor<MediaSourceRecord>())
-                    let sourcesByID = Dictionary(uniqueKeysWithValues: sourceRecords.map { ($0.id, $0) })
-                    let cached = await cacheStore?.cachedURLs(trackIDs: pendingTracks.map(\.id)) ?? [:]
-                    var urls = cached
-                    var roots: [UUID: URL] = [:]
-                    var leases: [SecurityScopedResourceLease] = []
-                    for track in pendingTracks where urls[track.id] == nil {
-                        guard let source = sourcesByID[track.sourceID] else { throw MediaSourceAccessError.accessDenied }
-                        let root: URL
-                        if let cachedRoot = roots[track.sourceID] { root = cachedRoot }
-                        else {
-                            root = try await resolve(source: source, context: context)
-                            roots[track.sourceID] = root
-                            leases.append(try await sourceAccess.lease(for: root))
-                        }
-                        urls[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
+            stagedPlaybackQueue = nil
+            let index = min(updated.count - 1, currentIndex + (insertion <= currentIndex ? tracks.count : 0))
+            playback.setQueue(PlaybackQueue(tracks: updated, currentIndex: index))
+            markQueueChanged()
+            return
+        }
+        let anchor = playbackOccurrenceSignature()
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                var current = queuePanelDisplayQueue
+                guard queueMutationGeneration == mutation,
+                      current.tracks.map(\.id) == updated.map(\.id) else { return }
+                let routeIndex = current.currentIndex
+                var firstVideo = updated.indices.dropFirst(routeIndex + 1).first { index in
+                    let track = updated[index]
+                    return track.mediaKind == .video || ["mp4", "mov", "m4v"].contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+                } ?? updated.count
+                var audioFuture = Array(updated[(routeIndex + 1)..<firstVideo]).filter { $0.mediaKind == .audio }
+                let sourceRecords = try context.fetch(FetchDescriptor<MediaSourceRecord>())
+                let sourcesByID = Dictionary(uniqueKeysWithValues: sourceRecords.map { ($0.id, $0) })
+                let cached = await cacheStore?.cachedURLs(trackIDs: audioFuture.map(\.id)) ?? [:]
+                var urls = cached
+                var roots: [UUID: URL] = [:]
+                var leases: [SecurityScopedResourceLease] = []
+                for track in audioFuture where urls[track.id] == nil {
+                    guard let source = sourcesByID[track.sourceID] else { throw MediaSourceAccessError.accessDenied }
+                    let root: URL
+                    if let cachedRoot = roots[track.sourceID] { root = cachedRoot }
+                    else {
+                        root = try await resolve(source: source, context: context)
+                        roots[track.sourceID] = root
+                        leases.append(try await sourceAccess.lease(for: root))
                     }
-                    guard activePlaybackContext === context,
-                          updated.map(\.id) == displayQueue.tracks.map(\.id) else { return }
-                    let remaining = Array(updated.dropFirst(playback.queue.tracks.count))
-                    guard !remaining.isEmpty else { return }
-                    playbackAccessLeases.append(contentsOf: leases)
-                    playback.appendToQueue(remaining, resolvedURLs: urls)
-                    mixedQueue = nil
-                    mixedQueueCurrentIndex = nil
-                    mixedQueueSegmentStart = nil
-                    markQueueChanged()
-                } catch {
-                    if updated.map(\.id) == displayQueue.tracks.map(\.id) {
-                        mixedQueue = nil
-                        mixedQueueCurrentIndex = nil
-                        mixedQueueSegmentStart = nil
-                        markQueueChanged()
-                    }
-                    errorMessage = cmvLocalized("無法加入接下來播放：%@", arguments: error.localizedDescription)
+                    urls[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
                 }
+                guard queueMutationGeneration == mutation,
+                      activePlaybackContext === context,
+                      videoURL == nil else { return }
+                if let anchor,
+                   let latestAnchor = playbackOccurrenceSignature(),
+                   anchor.trackID != latestAnchor.trackID || anchor.ordinal != latestAnchor.ordinal {
+                    guard let rebased = rebaseQueueToCurrent(current, after: routeIndex) else { return }
+                    current = rebased
+                    stagedPlaybackQueue = rebased
+                    markQueueChanged()
+                    let committedIndex = rebased.currentIndex
+                    firstVideo = rebased.tracks.indices.dropFirst(committedIndex + 1).first { index in
+                        let track = rebased.tracks[index]
+                        return track.mediaKind == .video || ["mp4", "mov", "m4v"].contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+                    } ?? rebased.tracks.count
+                    audioFuture = Array(rebased.tracks[(committedIndex + 1)..<firstVideo]).filter { $0.mediaKind == .audio }
+                }
+                playbackAccessLeases.append(contentsOf: leases)
+                playback.replaceFutureQueue(audioFuture, resolvedURLs: urls, playNext: playNext)
+                guard queueMutationGeneration == mutation else { return }
+                stagedPlaybackQueue = nil
+                markQueueChanged()
+            } catch {
+                guard queueMutationGeneration == mutation else { return }
+                stagedPlaybackQueue = nil
+                errorMessage = cmvLocalized("無法更新接下來播放：%@", arguments: error.localizedDescription)
+            }
+        }
+    }
+
+    func movePlaybackQueueItem(from source: Int, to destination: Int, context: ModelContext) {
+        let queue = queuePanelDisplayQueue
+        guard queue.tracks.indices.contains(source), source > queue.currentIndex else { return }
+        let boundary = min(max(queue.currentIndex + 1, destination), queue.tracks.count)
+        let target = boundary > source ? boundary - 1 : boundary
+        guard target != source else { return }
+        mutateFutureQueue(context: context) { queue in
+            var result = queue
+            let boundary = min(max(queue.currentIndex + 1, destination), queue.tracks.count)
+            let target = boundary > source ? boundary - 1 : boundary
+            let item = result.tracks.remove(at: source)
+            result.tracks.insert(item, at: target)
+            return result
+        }
+    }
+
+    func removePlaybackQueueItem(at index: Int, context: ModelContext) {
+        let queue = queuePanelDisplayQueue
+        guard queue.tracks.indices.contains(index), index > queue.currentIndex else { return }
+        mutateFutureQueue(context: context) { queue in
+            var result = queue
+            result.tracks.remove(at: index)
+            return result
+        }
+    }
+
+    private func mutateFutureQueue(context: ModelContext, _ transform: @escaping (PlaybackQueue) -> PlaybackQueue) {
+        let old = queuePanelDisplayQueue
+        let updated = transform(old)
+        queueMutationGeneration &+= 1
+        let mutation = queueMutationGeneration
+        if routeContainsVideo(updated.tracks) {
+            stagedPlaybackQueue = nil
+            if mixedMediaShuffleEnabled {
+                let base = mixedQueueBaseOrder ?? old.tracks
+                mixedQueueBaseOrder = mixedBaseOrder(old: old, updated: updated, base: base, playNext: false)
+            } else {
+                mixedQueueBaseOrder = nil
+            }
+            mixedQueue = updated.tracks
+            mixedQueueCurrentIndex = updated.currentIndex
+        } else {
+            stagedPlaybackQueue = updated
+            mixedQueue = nil
+            mixedQueueCurrentIndex = nil
+            mixedQueueSegmentStart = nil
+        }
+        activePlaybackContext = context
+        if !routeContainsVideo(updated.tracks) { markQueueChanged() }
+        guard videoURL == nil else {
+            playback.setQueue(updated)
+            markQueueChanged()
+            return
+        }
+        let anchor = playbackOccurrenceSignature()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                guard queueMutationGeneration == mutation else { return }
+                var route = queuePanelDisplayQueue
+                var firstVideo = route.tracks.indices.dropFirst(route.currentIndex + 1).first { index in
+                    let track = route.tracks[index]
+                    return track.mediaKind == .video || ["mp4", "mov", "m4v"].contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+                } ?? route.tracks.count
+                var audioFuture = Array(route.tracks[(route.currentIndex + 1)..<firstVideo]).filter { $0.mediaKind == .audio }
+                let sourceRecords = try context.fetch(FetchDescriptor<MediaSourceRecord>())
+                let sourcesByID = Dictionary(uniqueKeysWithValues: sourceRecords.map { ($0.id, $0) })
+                let cached = await cacheStore?.cachedURLs(trackIDs: audioFuture.map(\.id)) ?? [:]
+                var urls = cached
+                var roots: [UUID: URL] = [:]
+                var leases: [SecurityScopedResourceLease] = []
+                for track in audioFuture where urls[track.id] == nil {
+                    guard let source = sourcesByID[track.sourceID] else { throw MediaSourceAccessError.accessDenied }
+                    let root: URL
+                    if let cachedRoot = roots[track.sourceID] {
+                        root = cachedRoot
+                    } else {
+                        root = try await resolve(source: source, context: context)
+                        roots[track.sourceID] = root
+                        leases.append(try await sourceAccess.lease(for: root))
+                    }
+                    urls[track.id] = try Self.safeTrackURL(root: root, relativePath: track.relativePath)
+                }
+                guard queueMutationGeneration == mutation, videoURL == nil else { return }
+                if let anchor,
+                   let latestAnchor = playbackOccurrenceSignature(),
+                   anchor.trackID != latestAnchor.trackID || anchor.ordinal != latestAnchor.ordinal {
+                    guard let rebased = rebaseQueueToCurrent(route, after: route.currentIndex) else { return }
+                    route = rebased
+                    stagedPlaybackQueue = rebased
+                    markQueueChanged()
+                    firstVideo = rebased.tracks.indices.dropFirst(rebased.currentIndex + 1).first { index in
+                        let track = rebased.tracks[index]
+                        return track.mediaKind == .video || ["mp4", "mov", "m4v"].contains(URL(fileURLWithPath: track.relativePath).pathExtension.lowercased())
+                    } ?? rebased.tracks.count
+                    audioFuture = Array(rebased.tracks[(rebased.currentIndex + 1)..<firstVideo]).filter { $0.mediaKind == .audio }
+                }
+                playbackAccessLeases.append(contentsOf: leases)
+                playback.replaceFutureQueue(audioFuture, resolvedURLs: urls)
+                guard queueMutationGeneration == mutation else { return }
+                stagedPlaybackQueue = nil
+                markQueueChanged()
+            } catch {
+                guard queueMutationGeneration == mutation else { return }
+                stagedPlaybackQueue = nil
+                errorMessage = cmvLocalized("無法整理接下來播放：%@", arguments: error.localizedDescription)
             }
         }
     }
@@ -2089,17 +2596,21 @@ final class AppModel {
         // Invalidate preparation before clearing: a pending bookmark/file open
         // must not resurrect the queue after the user has emptied it.
         playbackPreparationGeneration &+= 1
+        queueMutationGeneration &+= 1
+        stagedPlaybackQueue = nil
+        restoredQueueNeedsPreparation = false
         smartPrefetchTask?.cancel()
         smartPrefetchTask = nil
         cancelLibraryPlaybackContinuation()
         mixedQueue = nil
         mixedQueueCurrentIndex = nil
         mixedQueueSegmentStart = nil
-        markQueueChanged()
         mixedMediaShuffleEnabled = false
+        mixedQueueBaseOrder = nil
         activePlaybackContext = nil
         if videoURL != nil { stopVideoPlayback() }
         else { playback.clearQueue(); playbackAccessLeases.removeAll() }
+        markQueueChanged()
     }
 
     func setFavorite(_ track: Track, context: ModelContext) {
@@ -2336,18 +2847,41 @@ final class AppModel {
 
     func updateMetadata(ids: [UUID], patch: TrackMetadataPatch, context: ModelContext) async -> Bool {
         guard !ids.isEmpty, patch.hasChanges else { return false }
+        guard !metadataOperationInFlight else { return false }
         guard requirePro(.advancedLibrary) else { return false }
+        metadataOperationInFlight = true
         let activityID = beginBackgroundActivity(kind: .library,
                                                  title: cmvLocalized("正在更新歌曲資訊"),
                                                  detail: "\(ids.count)")
-        defer { endBackgroundActivity(activityID) }
+        defer {
+            metadataOperationInFlight = false
+            endBackgroundActivity(activityID)
+        }
         do {
-            try await repository(for: context).updateMetadata(for: ids, with: patch)
+            let receipt = try await repository(for: context).updateMetadataWithUndo(for: ids, with: patch)
+            lastMetadataUndo = receipt.entries.isEmpty ? nil : receipt
             libraryRevision &+= 1
             return true
         } catch {
             errorMessage = cmvLocalized("無法更新歌曲資訊：%@", arguments: error.localizedDescription)
             return false
+        }
+    }
+
+    /// One-step undo retains heterogeneous original fields and never overwrites a later edit.
+    func undoLastMetadata(context: ModelContext) async {
+        guard !metadataOperationInFlight, let receipt = lastMetadataUndo else { return }
+        metadataOperationInFlight = true
+        defer { metadataOperationInFlight = false }
+        do {
+            let result = try await repository(for: context).undoMetadata(receipt)
+            lastMetadataUndo = nil
+            if !result.restoredIDs.isEmpty { libraryRevision &+= 1 }
+            if !result.conflictIDs.isEmpty {
+                errorMessage = cmvLocalized("部分歌曲資訊已再次變更，未覆蓋後續修改。")
+            }
+        } catch {
+            errorMessage = cmvLocalized("無法復原歌曲資訊：%@", arguments: error.localizedDescription)
         }
     }
 
@@ -2429,6 +2963,16 @@ final class AppModel {
     func deletePlaylist(_ playlist: Playlist, context: ModelContext) async {
         do { try await repository(for: context).deletePlaylist(id: playlist.id); playlistRevision &+= 1 }
         catch { errorMessage = cmvLocalized("無法刪除歌單：%@", arguments: error.localizedDescription) }
+    }
+    func reorderPlaylist(id: UUID, trackIDs: [UUID], context: ModelContext) async -> Bool {
+        do {
+            try await repository(for: context).reorderPlaylist(id: id, trackIDs: trackIDs)
+            playlistRevision &+= 1
+            return true
+        } catch {
+            errorMessage = cmvLocalized("無法重新排序歌單：%@", arguments: AppLanguage.localizedError(error))
+            return false
+        }
     }
     func addTrack(_ track: Track, to playlist: Playlist, context: ModelContext) async -> Bool {
         do {

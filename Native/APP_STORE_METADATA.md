@@ -2,69 +2,80 @@
 
 更新：2026-10-03
 
-這份文件是送審前的 metadata 與授權資料單一清單。它不把本機建置或
-模擬器測試當成 Apple 審核資料，也不在工作區保存 Apple ID、憑證或 NAS 帳密。
+這份文件是商店 metadata 的總覽與送審前核對表。三種語言的 canonical 欄位位於：
 
-## 已可由專案固定的內容
+- [en-US canonical metadata](AppStoreMetadata/en-US.md)
+- [zh-Hant canonical metadata](AppStoreMetadata/zh-Hant.md)
+- [ja-JP canonical metadata](AppStoreMetadata/ja-JP.md)
+
+欄位檔描述目前原生產品可由程式碼／既有文件支持的範圍。X14 的 Smart Playlist、歌詞與背景來源變更 watcher 是延後評估，不得寫入本版商店功能宣稱。
+
+## 已核對的固定資料
 
 - App 名稱：`星穹私藏音樂庫 Celestial Music Vault`
-- 版本：`2.0`（build `1`）
+- 版本：`2.0`；目前版本號／build 以正式上傳前的 archive 與 App Store Connect 回讀為準
 - Bundle ID：`com.windsheep.cmv`
 - 類別：Music
 - 支援平台：macOS 15+、iPadOS 18+
-- 產品定位：夢幻星空風格的本機／NAS 私人音樂庫播放器；不含帳號、雲端 AI、
-  廣告或第三方追蹤。
-- App icon：`Assets.xcassets/AppIcon.appiconset`，1024px 與 512px、RGB、無 Alpha；
-  由 `Native/scripts/qualify-app-store.sh` 與兩平台 Release build 驗證。
-- 開源依賴：Apple 第一方框架；Rust 核心只使用標準函式庫。送審前仍須由發布者
-  重新確認產物中的第三方 notices。
+- 產品定位：本機／已掛載 NAS 的私人影音曲庫播放器；不含 CMV 帳號、雲端同步、廣告或第三方追蹤
+- 公開 Privacy Policy URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/PRIVACY.md`
+- 公開 Support URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/SUPPORT.md`
+- URL 狀態：本輪工具匿名回讀結果為 HTTP 200；送審前再確認 URL 仍可讀
+- 公開支援信箱：`coderb0418@gmail.com`
+- 方案：免費下載＋一次性 CMV Pro non-consumable
+- Pro 商品 ID：`com.windsheep.cmv.pro.v1`
+- 台灣 storefront 價格：NT$150；商店文案不把這個單一地區價格寫成所有 storefront 的固定價格
+- App icon：`Native/CMV/CMV/Assets.xcassets/AppIcon.appiconset/`；實際 archive 仍須重跑資格檢查
 
-## 必須由發布者補入 App Store Connect 的資料
+## 三語欄位驗證
 
-以下資料涉及帳號、網址或法律責任，不能由本機程式碼推定；在填妥並核准前保持
-`AERO-V3`／`AERO-R3` 未完成：
+三份 canonical 檔案均包含 Name、Subtitle、Keywords、Promotional text、Description、What’s New、Privacy URL、Support URL、支援信箱、版權欄位與 App Review notes。Name／Subtitle／Keywords／Promotional text 已以 Apple 常用上限 30／30／100／170 字元檢查；description 與 What’s New 均遠低於 4,000 字元上限。
 
-1. Privacy Policy URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/PRIVACY.md`。
-2. Support URL：`https://github.com/Gale0418/Celestial-Music-Vault/blob/main/SUPPORT.md`；公開客服 `coderb0418@gmail.com`，沿用使用者指定的 G.A.I／MediBuddy 公開支援資料。這兩個 URL 必須在 repository 公開後以未登入連線回讀 HTTP 200，才能填入商店。
-3. 繁中／英文／日文 App subtitle、description、keywords、promotional text 與 screenshots。
-4. 年齡分級、版權聲明、出口合規與 App Review notes。
-5. 內建或測試節目級音訊、字體、插圖與產生式圖示的授權／來源紀錄，以及完整
-   `LICENSE`／`NOTICE` 清單。
+本機欄位檢查結果：
 
-## 本次發行語言與素材規則
+- `en-US.md`：Name 21、Subtitle 26、Keywords 77、Promotional text 145 字元。
+- `zh-Hant.md`：名稱 7、副標題 13、關鍵字 36、宣傳文字 53 字元。
+- `ja-JP.md`：名前 21、サブタイトル 10、キーワード 47、プロモーションテキスト 66 字元。
 
-- 收費方向為免費下載＋一次性 Pro；方案與待審文案統一見
-  [MONETIZATION_DRAFT.md](MONETIZATION_DRAFT.md)，由 AERO-MON29／AERO-MON30 追蹤。
-- 文案以既定功能全部完成為上市情境，並非目前 build 的功能證據。正式上傳時
-  須逐項對照凍結 RC、實際 Pro 商品與權益；不因草案使用現在式就跳過 AERO-SD4
-  等驗收，亦不把只有「評估」任務的功能視為確定上市內容。
-- 價格、跨平台購買權益、家庭共享與未來版本涵蓋範圍未定案前，不寫入確定承諾；
-  素材不得將本機播放器描述成包含音樂內容的串流訂閱服務。
+上述是檔案內容與字數檢查，不是 App Store Connect 寫入或審核結果。
 
-- App 介面已有 `en`／`zh-Hant`／`ja` 三語；裝置偏好為簡中時顯示繁中，其他未支援
-  語言回退英文。三語 string catalog、Mac／iPad Simulator Debug 建置與模擬器主畫面
-  已驗，但設定頁點選、實機與完整語言 QA 仍待驗。不得把 App 內翻譯完成當成商店
-  頁已建立或送審通過；各語商店文案、截圖、權利素材與 Review Notes 由 AERO-MD4
-  分別補齊並核對凍結 RC。
-- Mac 與 iPad 截圖必須來自同一個已凍結 RC，不得混用歷史 `com.aeromusic.native`
-  build、`/tmp` 臨時截圖或不同主題狀態。
-- 截圖／預覽影片只能使用自有或明確授權的音訊、影片與封面；不得出現商業專輯
-  封面、YouTube／串流服務畫面或權利不明的 VTuber 影片。
-- Review Notes、無剪輯實機影片與測試矩陣集中在
-  `Native/APP_STORE_REVIEW_KIT.md`；權利證據集中在
-  `Native/ASSET_RIGHTS_LEDGER.md`。
+## 發布者仍須補入或確認的資料
+
+這些欄位涉及法律責任、商店帳號或實際展示素材，不能由 repository 推定：
+
+1. 版權欄位已沿用使用者授權的已上架 MediBuddy 公開權利人 `2026 Gale0418`，並寫入兩平台版本。
+2. App Review contact 已沿用使用者授權的已上架 MediBuddy 審核資料，寫入兩平台且不要求登入；私人聯絡資料只留在 Apple 後台與本機私有 runtime 檔，三語公開文件保留 marker。
+3. 年齡分級、版權聲明、出口合規與 App Store Connect privacy questionnaire。
+4. 同一個已凍結 RC 產出的 Mac／iPad screenshots、preview video 與實機測試日期／平台。
+5. `Native/ASSET_RIGHTS_LEDGER.md` 中仍為 Blocked 的 Review audio／video／cover 與商店截圖權利證據；icon 與主題素材已由使用者確認為本專案 Codex 創作，相關紀錄見 ASSET_PROVENANCE.md；素材必須能證明商業散布與修改範圍。
+6. 正式 Distribution archive、embedded entitlements、Privacy Manifest 與 dSYM／binary 對應；canonical metadata 檔不取代該驗收。
+
+## 文案邊界
+
+可描述的目前功能包括：本機與已掛載 NAS 曲庫、搜尋、metadata 瀏覽、最愛、評分、一般歌單、基本佇列、音訊與相容影片播放、iPad 背景音訊／子母畫面、Mac 影片獨立視窗，以及 CMV Pro 的離線釘選、智慧預取、額外主題、本機聲學分析與 Smart DJ。正式上傳前仍須以同一 RC 的實機與 Pro Sandbox 證據確認。
+
+不可描述為本版已提供的功能：獨立最近播放 preset、可保存規則 Smart Playlist、歌詞服務、背景檔案 watcher、即時自動重掃、雲端同步或串流音樂內容。X14 評估可結案不等於這些延後功能已實作。
+
+截圖與 preview 只能使用自有或明確授權的音訊、影片、封面、字體與插圖；不得使用商業專輯封面、串流服務畫面、YouTube／VTuber 影片或權利不明的私人媒體。Mac 與 iPad 素材必須來自同一已凍結 CMV RC，不混用舊 bundle、臨時 `/tmp` 截圖或不同主題狀態。
+
+App 介面已有 `en`／`zh-Hant`／`ja` 字串資源，但商店頁的三語輸入、截圖、權利資料與 Review notes 仍須在 App Store Connect 逐欄建立並由發布者核對。canonical 檔案是可審閱來源，不是遠端商店已寫入的證據。
 
 ## App Privacy 對照
 
-程式會在裝置本機保存使用者授權資料夾的 security-scoped bookmark、相對路徑／
-檔案識別、媒體 metadata／封面、歌單、最愛、評分、播放／跳歌紀錄、BPM／調性／
-響度分析、主題偏好與離線快取。這些資料不傳給開發者或第三方，因此 App Store
-問卷可選「不收集」，但公開隱私政策仍須清楚說明本機處理、刪除方式與 NAS 連線
-模型。CMV 不做 SMB 登入、LAN 掃描、雲端同步、廣告、追蹤或第三方分析。
+程式會在裝置本機保存使用者授權資料夾的 security-scoped bookmark、相對路徑／檔案識別、媒體 metadata／封面、歌單、最愛、評分、播放／跳歌紀錄、BPM／調性／響度分析、主題偏好與離線快取。這些資料不傳給開發者或第三方，因此可依實際 build 與 Privacy Manifest 填寫「不收集」；公開隱私政策仍須清楚說明本機處理、刪除方式與 NAS 連線模型。CMV 不做 SMB 登入、LAN 掃描、雲端同步、廣告、追蹤或第三方分析。
 
-## 驗收方式
+## Review／提交核對順序
 
-- 由發布者在 App Store Connect 填入資料後，將實際 URL、問卷截圖或匯出紀錄存入
-  受控的發布檔案庫；本工作區只記錄 gate 結果，不保存敏感憑證。
-- 用正式 Apple Distribution archive 執行 upload validation，再以 TestFlight
-  測試同一版 metadata 與隱私問卷；完成後才可關閉 `AERO-V3` 並啟動 `AERO-R3`。
+1. 發布者確認法律權利人、Review contact、年齡分級、出口合規與素材授權。
+2. 由同一凍結 RC 產出雙平台 archive、screenshots、preview 與 Review media，核對功能文案不含 X14 延後項目。
+3. 在 App Store Connect 建立三語 metadata、Privacy questionnaire 與一次性 Pro 商品資料；價格以各 storefront 顯示為準。
+4. 以正式 archive 做 upload validation，再用 TestFlight／Sandbox 核對購買、恢復、離線與核心播放路徑。
+5. 保存遠端回讀、處理狀態與 Review notes 證據；Waiting for Review／In Review 不等於已上架。
+
+本文件與三語 canonical 檔案不保存 Apple ID、API key、憑證、NAS 帳密或私人媒體。
+
+## 2026-10-03 App Store Connect 草稿寫入與回讀
+
+本輪已將三語 app-info 與兩平台 2.0 version metadata 寫入 App Store Connect。每組三個 locales 全數成功，逐欄回讀共 33 欄與 canonical 一致，0 mismatches。首次上架版本不接受 What’s New，CLI 明確回報後省略該欄；檔案保留內容供日後版本使用，不把它當成本次已寫入。公開 Support／Privacy URL 已填入。審核聯絡與版權欄位依使用者明確授權沿用已上架 MediBuddy 資料；私人姓名、電話與帳號不進 repository。
+
+年齡問卷按現存功能與原創 App 素材填寫 NONE／false；CMV 無內建網頁瀏覽、內容廣泛分享、社群、聊天或廣告。本機使用者選取媒體不等於 App 的內容廣泛散布，採 Apple [age ratings 定義](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/) 的 User-Generated Content 範圍判讀。尚未宣稱問卷的最終審核結果、Build 上傳或正式送審完成。

@@ -3,6 +3,18 @@ import Foundation
 /// Parses explicit text tags that AVFoundation exposes as generic metadata
 /// comments. Arbitrary comments are never treated as playback gain.
 public enum AudioMetadataParser {
+    public static func releaseDate(from value: String) -> Date? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        for format in ["yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd", "yyyy"] {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = format
+            if let date = formatter.date(from: trimmed) { return date }
+        }
+        return nil
+    }
+
     public static func replayGainDB(from values: [String]) -> Double? {
         for value in values {
             let uppercased = value.uppercased()

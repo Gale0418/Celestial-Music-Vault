@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "completion-passport",
+  "taskId": "AERO-AC4",
+  "taskDigest": "03fbaa3c748f0dbf3ec514ac61e6813cb18c59608fba34007f8c997d0a894fac",
+  "status": "current",
+  "verification": {
+    "result": "pass",
+    "evidenceRefs": [
+      "Native/APP_STORE_ACCOUNT_READINESS.md",
+      "output/mission-center-critique/AERO-AC4-20261003-account-readiness.json"
+    ]
+  },
+  "findings": []
+}

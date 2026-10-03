@@ -1,0 +1,12 @@
+{
+  "taskId": "AERO-AC4",
+  "route": "skip",
+  "reason": "低風險、非感知的發行帳號 readiness inventory；只整理已核對的 Ready／Blocked／Manual 證據，不執行帳號操作、上傳、簽章或送審。",
+  "artifact": {
+    "path": "Native/APP_STORE_ACCOUNT_READINESS.md",
+    "sha256": "a6088ab442fd123c24fa2592ee9c092fa4c6d6aedb9342e808d1f2608476f34e"
+  },
+  "verification": "文件已記錄 App Record、雙平台草稿、免費／付費協議、銀行／稅務、DSA 與隱私聲明狀態；RC、Distribution、實機與 Sandbox 仍明確標記 Blocked。",
+  "scope": "採納 owner 同意的隱私發佈狀態與 API／商務頁唯讀回讀；不把帳號 readiness 推論成產品、感知或 Apple 審核完成。",
+  "outcome": "passed"
+}

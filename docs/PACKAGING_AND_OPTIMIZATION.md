@@ -39,10 +39,10 @@ CMV/
 
 ### 🚨 核心問題：專案放在 NAS/SMB 網路磁碟上！
 
-這個專案位於 `<VOLUME_PATH>`，是掛載的 NAS 網路磁碟。
+這個專案位於 `<WORKSPACE_ROOT>`，是掛載的 NAS 網路磁碟。
 直接在上面跑 `electron-builder` 會因為 SMB 的**檔案鎖定機制** (`.smbdelete*`) 導致打包失敗。
 
-若 `<VOLUME_PATH>` 掉線，優先在 Finder 連線：`<NAS_URL>`。
+若 `<WORKSPACE_ROOT>` 掉線，優先在 Finder 連線：`<NAS_SHARE_URL>`。
 
 ### ✅ 正確打包指令
 
@@ -328,7 +328,7 @@ tests/
 ## 五、打包快捷指令
 
 ```bash
-cd <VOLUME_PATH>
+cd <WORKSPACE_ROOT>
 CMV_OUTPUT_DIR="$HOME/Desktop/CMV" ./scripts/build-macos.sh
 ```
 

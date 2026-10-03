@@ -9,12 +9,16 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
     public var artist: String
     public var album: String
     public var albumArtist: String
+    public var genre: String?
+    public var releaseDate: Date?
     public var artworkData: Data?
     public var trackNumber: Int?
     public var discNumber: Int?
     public var duration: TimeInterval
     public var fileSize: Int64
     public var modifiedAt: Date
+    /// The first time this record entered the library. Rescans never change it.
+    public var addedAt: Date
     public var replayGainDB: Double?
     public var isFavorite: Bool
     public var rating: Int
@@ -25,9 +29,10 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
     public init(
         id: UUID = UUID(), sourceID: UUID, relativePath: String,
         fileIdentifier: String, title: String, artist: String = "未知歌手",
-        album: String = "未知專輯", albumArtist: String = "", artworkData: Data? = nil,
+        album: String = "未知專輯", albumArtist: String = "", genre: String? = nil,
+        releaseDate: Date? = nil, artworkData: Data? = nil,
         trackNumber: Int? = nil, discNumber: Int? = nil,
-        duration: TimeInterval = 0, fileSize: Int64, modifiedAt: Date,
+        duration: TimeInterval = 0, fileSize: Int64, modifiedAt: Date, addedAt: Date? = nil,
         replayGainDB: Double? = nil, isFavorite: Bool = false,
         rating: Int = 0, analysis: AnalysisProfile? = nil,
         availability: MediaAvailability = .available,
@@ -41,12 +46,15 @@ public struct Track: Identifiable, Hashable, Codable, Sendable {
         self.artist = artist
         self.album = album
         self.albumArtist = albumArtist
+        self.genre = genre
+        self.releaseDate = releaseDate
         self.artworkData = artworkData
         self.trackNumber = trackNumber
         self.discNumber = discNumber
         self.duration = duration
         self.fileSize = fileSize
         self.modifiedAt = modifiedAt
+        self.addedAt = addedAt ?? modifiedAt
         self.replayGainDB = replayGainDB
         self.isFavorite = isFavorite
         self.rating = min(5, max(0, rating))
@@ -79,6 +87,8 @@ public struct TrackMetadataPatch: Equatable, Sendable {
     public var artist: TrackMetadataField<String>
     public var album: TrackMetadataField<String>
     public var albumArtist: TrackMetadataField<String>
+    public var genre: TrackMetadataField<String>
+    public var releaseDate: TrackMetadataField<Date>
     public var artworkData: TrackMetadataField<Data>
     public var trackNumber: TrackMetadataField<Int>
     public var discNumber: TrackMetadataField<Int>
@@ -88,6 +98,8 @@ public struct TrackMetadataPatch: Equatable, Sendable {
         artist: TrackMetadataField<String> = .unchanged,
         album: TrackMetadataField<String> = .unchanged,
         albumArtist: TrackMetadataField<String> = .unchanged,
+        genre: TrackMetadataField<String> = .unchanged,
+        releaseDate: TrackMetadataField<Date> = .unchanged,
         artworkData: TrackMetadataField<Data> = .unchanged,
         trackNumber: TrackMetadataField<Int> = .unchanged,
         discNumber: TrackMetadataField<Int> = .unchanged
@@ -96,6 +108,8 @@ public struct TrackMetadataPatch: Equatable, Sendable {
         self.artist = artist
         self.album = album
         self.albumArtist = albumArtist
+        self.genre = genre
+        self.releaseDate = releaseDate
         self.artworkData = artworkData
         self.trackNumber = trackNumber
         self.discNumber = discNumber
@@ -104,7 +118,70 @@ public struct TrackMetadataPatch: Equatable, Sendable {
     public var hasChanges: Bool {
         title != .unchanged || artist != .unchanged || album != .unchanged ||
             albumArtist != .unchanged || artworkData != .unchanged ||
-            trackNumber != .unchanged || discNumber != .unchanged
+            trackNumber != .unchanged || discNumber != .unchanged ||
+            genre != .unchanged || releaseDate != .unchanged
+    }
+}
+
+/// Complete metadata value used by the one-step undo operation. The override
+/// mask is part of the snapshot so undo cannot accidentally turn a source tag
+/// into a user override (or clear an override that existed before the edit).
+public struct TrackMetadataSnapshot: Equatable, Sendable {
+    public var title: String
+    public var artist: String
+    public var album: String
+    public var albumArtist: String
+    public var genre: String?
+    public var releaseDate: Date?
+    public var artworkData: Data?
+    public var trackNumber: Int?
+    public var discNumber: Int?
+    public var metadataOverrideMask: Int
+
+    public init(title: String, artist: String, album: String, albumArtist: String,
+                genre: String? = nil, releaseDate: Date? = nil, artworkData: Data? = nil,
+                trackNumber: Int? = nil, discNumber: Int? = nil,
+                metadataOverrideMask: Int = 0) {
+        self.title = title; self.artist = artist; self.album = album; self.albumArtist = albumArtist
+        self.genre = genre; self.releaseDate = releaseDate; self.artworkData = artworkData
+        self.trackNumber = trackNumber; self.discNumber = discNumber
+        self.metadataOverrideMask = metadataOverrideMask
+    }
+}
+
+public struct MetadataUndoEntry: Equatable, Sendable {
+    public let trackID: UUID
+    public let before: TrackMetadataSnapshot
+    public let after: TrackMetadataSnapshot
+
+    public init(trackID: UUID, before: TrackMetadataSnapshot, after: TrackMetadataSnapshot) {
+        self.trackID = trackID; self.before = before; self.after = after
+    }
+}
+
+public struct MetadataUndoReceipt: Equatable, Sendable {
+    public let entries: [MetadataUndoEntry]
+    public let capturesArtwork: Bool
+    public init(entries: [MetadataUndoEntry], capturesArtwork: Bool = true) {
+        self.entries = entries
+        self.capturesArtwork = capturesArtwork
+    }
+}
+
+public struct MetadataUndoResult: Equatable, Sendable {
+    public let restoredIDs: [UUID]
+    public let conflictIDs: [UUID]
+    public init(restoredIDs: [UUID] = [], conflictIDs: [UUID] = []) {
+        self.restoredIDs = restoredIDs; self.conflictIDs = conflictIDs
+    }
+}
+
+public struct MetadataPreview: Equatable, Sendable, Identifiable {
+    public let id: UUID
+    public let before: TrackMetadataSnapshot
+    public let after: TrackMetadataSnapshot
+    public init(id: UUID, before: TrackMetadataSnapshot, after: TrackMetadataSnapshot) {
+        self.id = id; self.before = before; self.after = after
     }
 }
 
@@ -218,6 +295,14 @@ public enum LibraryTrackSort: String, CaseIterable, Codable, Hashable, Sendable 
     case title
     case artist
     case album
+    case albumArtist
+    case genre
+    case trackNumber
+    case discNumber
+    case duration
+    case rating
+    case addedAt
+    case releaseDate
     case modifiedAt
 }
 

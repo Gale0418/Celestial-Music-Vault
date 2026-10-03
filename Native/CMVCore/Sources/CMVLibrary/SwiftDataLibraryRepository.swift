@@ -5,9 +5,11 @@ import CMVDomain
 public enum LibraryRepositoryError: Error, Equatable, Sendable {
     case invalidReconciliation
     case invalidMetadata
+    case metadataUndoConflict([UUID])
     case trackNotFound(UUID)
     case playlistNotFound(UUID)
     case invalidPlaylistName
+    case invalidPlaylistPermutation
 }
 
 public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
@@ -212,6 +214,18 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         try await worker.updateMetadata(for: trackIDs, with: patch)
     }
 
+    public func previewMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws -> [MetadataPreview] {
+        try await worker.previewMetadata(for: trackIDs, with: patch)
+    }
+
+    public func updateMetadataWithUndo(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws -> MetadataUndoReceipt {
+        try await worker.updateMetadataWithUndo(for: trackIDs, with: patch)
+    }
+
+    public func undoMetadata(_ receipt: MetadataUndoReceipt) async throws -> MetadataUndoResult {
+        try await worker.undoMetadata(receipt)
+    }
+
     public func recordPlayback(trackID: UUID, skipped: Bool) async throws {
         try await worker.recordPlayback(trackID: trackID, skipped: skipped)
     }
@@ -252,6 +266,10 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
         try await worker.removeTracks(trackIDs: trackIDs, fromPlaylist: id)
     }
 
+    public func reorderPlaylist(id: UUID, trackIDs: [UUID]) async throws {
+        try await worker.reorderPlaylist(id: id, trackIDs: trackIDs)
+    }
+
     @discardableResult
     public func removeUnavailableTracks(fromPlaylist id: UUID, playableMissingIDs: Set<UUID> = []) async throws -> Int {
         try await worker.removeUnavailableTracks(fromPlaylist: id, playableMissingIDs: playableMissingIDs)
@@ -269,8 +287,12 @@ public actor LibraryDataActor {
         let displayAlbum: String
         let sortTitle: String
         let albumArtist: String
+        let genre: String
         let discNumber: Int
         let trackNumber: Int
+        let duration: TimeInterval
+        let releaseDate: Date?
+        let addedAt: Date
         let modifiedAt: Date
         let isFavorite: Bool
         let rating: Int
@@ -694,12 +716,15 @@ public actor LibraryDataActor {
             if overrideMask & TrackRecord.artistMetadataOverride == 0 { keeper.artist = liveRecord.artist }
             if overrideMask & TrackRecord.albumMetadataOverride == 0 { keeper.album = liveRecord.album }
             if overrideMask & TrackRecord.albumArtistMetadataOverride == 0 { keeper.albumArtist = liveRecord.albumArtist }
+            if overrideMask & TrackRecord.genreMetadataOverride == 0 { keeper.genre = liveRecord.genre }
+            if overrideMask & TrackRecord.releaseDateMetadataOverride == 0 { keeper.releaseDate = liveRecord.releaseDate }
             if overrideMask & TrackRecord.artworkMetadataOverride == 0 { keeper.artworkData = liveRecord.artworkData }
             if overrideMask & TrackRecord.trackNumberMetadataOverride == 0 { keeper.trackNumber = liveRecord.trackNumber }
             if overrideMask & TrackRecord.discNumberMetadataOverride == 0 { keeper.discNumber = liveRecord.discNumber }
             keeper.duration = liveRecord.duration
             keeper.fileSize = liveRecord.fileSize
             keeper.modifiedAt = liveRecord.modifiedAt
+            keeper.addedAt = min(keeper.addedAt, liveRecord.addedAt)
             keeper.replayGainDB = liveRecord.replayGainDB
             keeper.mediaKindRaw = liveRecord.mediaKindRaw
             keeper.availabilityRaw = liveRecord.availabilityRaw
@@ -709,6 +734,8 @@ public actor LibraryDataActor {
         if let owner = overrideOwner(TrackRecord.artistMetadataOverride) { keeper.artist = owner.artist }
         if let owner = overrideOwner(TrackRecord.albumMetadataOverride) { keeper.album = owner.album }
         if let owner = overrideOwner(TrackRecord.albumArtistMetadataOverride) { keeper.albumArtist = owner.albumArtist }
+        if let owner = overrideOwner(TrackRecord.genreMetadataOverride) { keeper.genre = owner.genre }
+        if let owner = overrideOwner(TrackRecord.releaseDateMetadataOverride) { keeper.releaseDate = owner.releaseDate }
         if let owner = overrideOwner(TrackRecord.artworkMetadataOverride) { keeper.artworkData = owner.artworkData }
         if let owner = overrideOwner(TrackRecord.trackNumberMetadataOverride) { keeper.trackNumber = owner.trackNumber }
         if let owner = overrideOwner(TrackRecord.discNumberMetadataOverride) { keeper.discNumber = owner.discNumber }
@@ -867,6 +894,12 @@ public actor LibraryDataActor {
             if !record.hasMetadataOverride(TrackRecord.albumArtistMetadataOverride) {
                 record.albumArtist = file.albumArtist
             }
+            if !record.hasMetadataOverride(TrackRecord.genreMetadataOverride) {
+                record.genre = file.genre
+            }
+            if !record.hasMetadataOverride(TrackRecord.releaseDateMetadataOverride) {
+                record.releaseDate = file.releaseDate
+            }
             if !record.hasMetadataOverride(TrackRecord.artworkMetadataOverride) {
                 record.artworkData = file.artworkData
             }
@@ -930,40 +963,65 @@ public actor LibraryDataActor {
     /// leave only part of a batch updated. SwiftData rollback in `saveChanges`
     /// also restores all records if the single save fails.
     public func updateMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) throws {
-        guard patch.hasChanges else { return }
+        _ = try updateMetadataWithUndo(for: trackIDs, with: patch)
+    }
 
-        if case let .set(trackNumber) = patch.trackNumber, trackNumber < 0 {
-            throw LibraryRepositoryError.invalidMetadata
+    public func previewMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) throws -> [MetadataPreview] {
+        guard patch.hasChanges else { return [] }
+        try validate(patch)
+        let records = try records(for: trackIDs)
+        return records.map {
+            let before = snapshot(of: $0, includeArtwork: patch.artworkData != .unchanged)
+            return MetadataPreview(id: $0.id, before: before, after: Self.patchedSnapshot(before, with: patch))
         }
-        if case let .set(discNumber) = patch.discNumber, discNumber < 0 {
-            throw LibraryRepositoryError.invalidMetadata
-        }
+    }
 
-        var seen = Set<UUID>()
-        let requested = trackIDs.filter { seen.insert($0).inserted }
-        guard !requested.isEmpty else { return }
-
-        var recordsByID: [UUID: TrackRecord] = [:]
-        recordsByID.reserveCapacity(requested.count)
-        for start in stride(from: 0, to: requested.count, by: 400) {
-            let batch = Array(requested[start..<min(start + 400, requested.count)])
-            let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
-                batch.contains(record.id)
-            })
-            for record in try modelContext.fetch(descriptor) {
-                recordsByID[record.id] = record
-            }
+    public func updateMetadataWithUndo(for trackIDs: [UUID], with patch: TrackMetadataPatch) throws -> MetadataUndoReceipt {
+        guard patch.hasChanges else { return MetadataUndoReceipt(entries: []) }
+        try validate(patch)
+        let records = try records(for: trackIDs)
+        let capturesArtwork = patch.artworkData != .unchanged
+        let entries = records.map { record -> MetadataUndoEntry in
+            let before = snapshot(of: record, includeArtwork: capturesArtwork)
+            apply(patch, to: record)
+            return MetadataUndoEntry(trackID: record.id, before: before,
+                                     after: snapshot(of: record, includeArtwork: capturesArtwork))
         }
-        guard let missingID = requested.first(where: { recordsByID[$0] == nil }) else {
-            let records = requested.compactMap { recordsByID[$0] }
-            for record in records {
-                apply(patch, to: record)
-            }
+        do {
             try saveChanges()
             if searchIndexLoaded { records.forEach(index) }
-            return
+            return MetadataUndoReceipt(entries: entries, capturesArtwork: capturesArtwork)
+        } catch {
+            modelContext.rollback()
+            throw error
         }
-        throw LibraryRepositoryError.trackNotFound(missingID)
+    }
+
+    public func undoMetadata(_ receipt: MetadataUndoReceipt) throws -> MetadataUndoResult {
+        guard !receipt.entries.isEmpty else { return MetadataUndoResult() }
+        let ids = receipt.entries.map(\.trackID)
+        let recordsByID = Dictionary(uniqueKeysWithValues: try records(for: ids, requireAll: false).map { ($0.id, $0) })
+        var conflicts: [UUID] = []
+        var restorable: [(TrackRecord, TrackMetadataSnapshot)] = []
+        for entry in receipt.entries {
+            guard let record = recordsByID[entry.trackID] else {
+                conflicts.append(entry.trackID)
+                continue
+            }
+            guard snapshot(of: record, includeArtwork: receipt.capturesArtwork) == entry.after else {
+                conflicts.append(entry.trackID)
+                continue
+            }
+            restorable.append((record, entry.before))
+        }
+        for (record, before) in restorable {
+            restore(before, to: record, includeArtwork: receipt.capturesArtwork)
+        }
+        if !restorable.isEmpty {
+            try saveChanges()
+            if searchIndexLoaded { restorable.forEach { index($0.0) } }
+        }
+        return MetadataUndoResult(restoredIDs: restorable.map { $0.0.id }, conflictIDs: conflicts)
     }
 
     public func recordPlayback(trackID: UUID, skipped: Bool) throws {
@@ -1066,6 +1124,23 @@ public actor LibraryDataActor {
         try saveChanges()
     }
 
+    public func reorderPlaylist(id: UUID, trackIDs: [UUID]) throws {
+        let record = try playlistRecord(id: id)
+        let original = record.trackIDs
+        // A reorder is deliberately stricter than add/remove: the caller must
+        // provide every existing occurrence exactly once, so media can never
+        // disappear because of a stale drag-and-drop snapshot.
+        guard trackIDs.count == original.count,
+              Set(trackIDs).count == trackIDs.count,
+              Set(trackIDs) == Set(original) else {
+            throw LibraryRepositoryError.invalidPlaylistPermutation
+        }
+        guard trackIDs != original else { return }
+        record.trackIDs = trackIDs
+        record.modifiedAt = .now
+        try saveChanges()
+    }
+
     @discardableResult
     public func removeUnavailableTracks(fromPlaylist id: UUID, playableMissingIDs: Set<UUID> = []) throws -> Int {
         let playlist = try playlistRecord(id: id)
@@ -1102,8 +1177,8 @@ public actor LibraryDataActor {
 
     private static var trackPropertiesWithoutArtwork: [PartialKeyPath<TrackRecord>] { [
         \.id, \.sourceID, \.relativePath, \.fileIdentifier, \.title, \.artist,
-        \.album, \.albumArtist, \.trackNumber, \.discNumber, \.duration,
-        \.fileSize, \.modifiedAt, \.replayGainDB, \.mediaKindRaw,
+        \.album, \.albumArtist, \.genre, \.releaseDate, \.trackNumber, \.discNumber, \.duration,
+        \.fileSize, \.modifiedAt, \.addedAt, \.replayGainDB, \.mediaKindRaw,
         \.isFavorite, \.rating, \.analysisVersion, \.bpm, \.musicalKey,
         \.integratedLoudnessLUFS, \.energy, \.brightness, \.availabilityRaw,
         \.isExcluded
@@ -1123,6 +1198,89 @@ public actor LibraryDataActor {
             throw LibraryRepositoryError.playlistNotFound(id)
         }
         return record
+    }
+
+    private func records(for ids: [UUID], requireAll: Bool = true) throws -> [TrackRecord] {
+        var seen = Set<UUID>()
+        let requested = ids.filter { seen.insert($0).inserted }
+        guard !requested.isEmpty else { return [] }
+        var recordsByID: [UUID: TrackRecord] = [:]
+        recordsByID.reserveCapacity(requested.count)
+        for start in stride(from: 0, to: requested.count, by: 400) {
+            let batch = Array(requested[start..<min(start + 400, requested.count)])
+            let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { batch.contains($0.id) })
+            for record in try modelContext.fetch(descriptor) { recordsByID[record.id] = record }
+        }
+        guard requireAll, let missingID = requested.first(where: { recordsByID[$0] == nil }) else {
+            return requested.compactMap { recordsByID[$0] }
+        }
+        throw LibraryRepositoryError.trackNotFound(missingID)
+    }
+
+    private func validate(_ patch: TrackMetadataPatch) throws {
+        if case let .set(value) = patch.trackNumber, value < 0 { throw LibraryRepositoryError.invalidMetadata }
+        if case let .set(value) = patch.discNumber, value < 0 { throw LibraryRepositoryError.invalidMetadata }
+    }
+
+    private func snapshot(of record: TrackRecord, includeArtwork: Bool = true) -> TrackMetadataSnapshot {
+        TrackMetadataSnapshot(title: record.title, artist: record.artist, album: record.album,
+                              albumArtist: record.albumArtist, genre: record.genre,
+                              releaseDate: record.releaseDate,
+                              artworkData: includeArtwork ? record.artworkData : nil,
+                              trackNumber: record.trackNumber, discNumber: record.discNumber,
+                              metadataOverrideMask: includeArtwork ? record.metadataOverrideMask
+                                  : record.metadataOverrideMask & ~TrackRecord.artworkMetadataOverride)
+    }
+
+    private func restore(_ snapshot: TrackMetadataSnapshot, to record: TrackRecord, includeArtwork: Bool) {
+        record.title = snapshot.title; record.artist = snapshot.artist; record.album = snapshot.album
+        record.albumArtist = snapshot.albumArtist; record.genre = snapshot.genre
+        record.releaseDate = snapshot.releaseDate
+        if includeArtwork { record.artworkData = snapshot.artworkData }
+        record.trackNumber = snapshot.trackNumber; record.discNumber = snapshot.discNumber
+        record.metadataOverrideMask = includeArtwork ? snapshot.metadataOverrideMask
+            : snapshot.metadataOverrideMask | (record.metadataOverrideMask & TrackRecord.artworkMetadataOverride)
+    }
+
+    private static func patchedSnapshot(_ before: TrackMetadataSnapshot, with patch: TrackMetadataPatch) -> TrackMetadataSnapshot {
+        var result = before
+        func text(_ field: TrackMetadataField<String>, _ value: inout String, _ bit: Int) {
+            switch field {
+            case .unchanged: break
+            case .set(let newValue): value = newValue; result.metadataOverrideMask |= bit
+            case .clear: value = ""; result.metadataOverrideMask |= bit
+            }
+        }
+        text(patch.title, &result.title, TrackRecord.titleMetadataOverride)
+        text(patch.artist, &result.artist, TrackRecord.artistMetadataOverride)
+        text(patch.album, &result.album, TrackRecord.albumMetadataOverride)
+        text(patch.albumArtist, &result.albumArtist, TrackRecord.albumArtistMetadataOverride)
+        switch patch.genre {
+        case .unchanged: break
+        case .set(let value): result.genre = value; result.metadataOverrideMask |= TrackRecord.genreMetadataOverride
+        case .clear: result.genre = nil; result.metadataOverrideMask |= TrackRecord.genreMetadataOverride
+        }
+        switch patch.releaseDate {
+        case .unchanged: break
+        case .set(let value): result.releaseDate = value; result.metadataOverrideMask |= TrackRecord.releaseDateMetadataOverride
+        case .clear: result.releaseDate = nil; result.metadataOverrideMask |= TrackRecord.releaseDateMetadataOverride
+        }
+        switch patch.artworkData {
+        case .unchanged: break
+        case .set(let value): result.artworkData = value; result.metadataOverrideMask |= TrackRecord.artworkMetadataOverride
+        case .clear: result.artworkData = nil; result.metadataOverrideMask |= TrackRecord.artworkMetadataOverride
+        }
+        switch patch.trackNumber {
+        case .unchanged: break
+        case .set(let value): result.trackNumber = value; result.metadataOverrideMask |= TrackRecord.trackNumberMetadataOverride
+        case .clear: result.trackNumber = nil; result.metadataOverrideMask |= TrackRecord.trackNumberMetadataOverride
+        }
+        switch patch.discNumber {
+        case .unchanged: break
+        case .set(let value): result.discNumber = value; result.metadataOverrideMask |= TrackRecord.discNumberMetadataOverride
+        case .clear: result.discNumber = nil; result.metadataOverrideMask |= TrackRecord.discNumberMetadataOverride
+        }
+        return result
     }
 
     private func apply(_ patch: TrackMetadataPatch, to record: TrackRecord) {
@@ -1161,6 +1319,24 @@ public actor LibraryDataActor {
         case .clear:
             record.albumArtist = ""
             record.addMetadataOverride(TrackRecord.albumArtistMetadataOverride)
+        }
+        switch patch.genre {
+        case .unchanged: break
+        case let .set(value):
+            record.genre = value
+            record.addMetadataOverride(TrackRecord.genreMetadataOverride)
+        case .clear:
+            record.genre = nil
+            record.addMetadataOverride(TrackRecord.genreMetadataOverride)
+        }
+        switch patch.releaseDate {
+        case .unchanged: break
+        case let .set(value):
+            record.releaseDate = value
+            record.addMetadataOverride(TrackRecord.releaseDateMetadataOverride)
+        case .clear:
+            record.releaseDate = nil
+            record.addMetadataOverride(TrackRecord.releaseDateMetadataOverride)
         }
         switch patch.artworkData {
         case .unchanged: break
@@ -1209,8 +1385,9 @@ public actor LibraryDataActor {
         descriptor.propertiesToFetch = [
             \TrackRecord.id, \TrackRecord.isExcluded, \TrackRecord.title,
             \TrackRecord.artist, \TrackRecord.album, \TrackRecord.albumArtist,
-            \TrackRecord.discNumber, \TrackRecord.trackNumber,
-            \TrackRecord.modifiedAt, \TrackRecord.isFavorite, \TrackRecord.rating
+            \TrackRecord.genre, \TrackRecord.releaseDate, \TrackRecord.discNumber, \TrackRecord.trackNumber,
+            \TrackRecord.duration, \TrackRecord.addedAt, \TrackRecord.modifiedAt,
+            \TrackRecord.isFavorite, \TrackRecord.rating
         ]
         searchIndex.removeAll(keepingCapacity: true)
         searchMatchCache = nil
@@ -1233,8 +1410,12 @@ public actor LibraryDataActor {
             displayAlbum: record.album,
             sortTitle: record.title,
             albumArtist: Self.searchValue(record.albumArtist),
+            genre: Self.searchValue(record.genre ?? ""),
             discNumber: record.discNumber ?? 0,
             trackNumber: record.trackNumber ?? 0,
+            duration: record.duration,
+            releaseDate: record.releaseDate,
+            addedAt: record.addedAt,
             modifiedAt: record.modifiedAt,
             isFavorite: record.isFavorite,
             rating: record.rating
@@ -1283,7 +1464,8 @@ public actor LibraryDataActor {
 
     private static func matches(_ entry: SearchEntry, queryTokens: Set<String>) -> Bool {
         queryTokens.allSatisfy { token in
-            entry.title.contains(token) || entry.artist.contains(token) || entry.album.contains(token)
+            entry.title.contains(token) || entry.artist.contains(token) || entry.album.contains(token) ||
+            entry.albumArtist.contains(token) || entry.genre.contains(token)
         }
     }
 
@@ -1317,6 +1499,57 @@ public actor LibraryDataActor {
                 SortDescriptor(\.title, order: order),
                 SortDescriptor(\.id, order: order)
             ]
+        case .albumArtist:
+            return [
+                SortDescriptor(\.albumArtist, order: order),
+                SortDescriptor(\.album, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .genre:
+            return [
+                SortDescriptor(\.genre, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .trackNumber:
+            return [
+                SortDescriptor(\.trackNumber, order: order),
+                SortDescriptor(\.discNumber, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .discNumber:
+            return [
+                SortDescriptor(\.discNumber, order: order),
+                SortDescriptor(\.trackNumber, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .duration:
+            return [
+                SortDescriptor(\.duration, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .rating:
+            return [
+                SortDescriptor(\.rating, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .addedAt:
+            return [
+                SortDescriptor(\.addedAt, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
+        case .releaseDate:
+            return [
+                SortDescriptor(\.releaseDate, order: order),
+                SortDescriptor(\.title, order: order),
+                SortDescriptor(\.id, order: order)
+            ]
         case .modifiedAt:
             return [
                 SortDescriptor(\.modifiedAt, order: order),
@@ -1346,6 +1579,29 @@ public actor LibraryDataActor {
                     [lhs.album, lhs.albumArtist, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
                     [rhs.album, rhs.albumArtist, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
                 )
+            case .albumArtist:
+                comparison = Self.compare([lhs.albumArtist, lhs.album, lhs.sortTitle], [rhs.albumArtist, rhs.album, rhs.sortTitle])
+            case .genre:
+                comparison = Self.compare([lhs.genre, lhs.sortTitle], [rhs.genre, rhs.sortTitle])
+            case .trackNumber:
+                comparison = Self.compare([String(lhs.trackNumber), String(lhs.discNumber), lhs.sortTitle],
+                                          [String(rhs.trackNumber), String(rhs.discNumber), rhs.sortTitle])
+            case .discNumber:
+                comparison = Self.compare([String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                                          [String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle])
+            case .duration:
+                comparison = lhs.duration == rhs.duration ? .orderedSame : (lhs.duration < rhs.duration ? .orderedAscending : .orderedDescending)
+            case .rating:
+                comparison = lhs.rating == rhs.rating ? .orderedSame : (lhs.rating < rhs.rating ? .orderedAscending : .orderedDescending)
+            case .addedAt:
+                comparison = lhs.addedAt == rhs.addedAt ? .orderedSame : (lhs.addedAt < rhs.addedAt ? .orderedAscending : .orderedDescending)
+            case .releaseDate:
+                switch (lhs.releaseDate, rhs.releaseDate) {
+                case (nil, nil): comparison = .orderedSame
+                case (nil, _): comparison = .orderedAscending
+                case (_, nil): comparison = .orderedDescending
+                case let (left?, right?): comparison = left == right ? .orderedSame : (left < right ? .orderedAscending : .orderedDescending)
+                }
             case .modifiedAt:
                 if lhs.modifiedAt == rhs.modifiedAt {
                     comparison = .orderedSame

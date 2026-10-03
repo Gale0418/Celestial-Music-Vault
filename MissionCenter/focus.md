@@ -1,23 +1,22 @@
 <!-- Generated materialized view. Do not edit directly; rebuild from canonical MissionCenter files. -->
 <!-- Deprecated compatibility view: focus.md is generated from tasks.md only and must never be edited or treated as a second lifecycle source. -->
-<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=3260f4dd6ed458be515eda3e731265557014e8e6b4a0639c389412fa0538c01d -->
+<!-- mission-center-derived schema=1.0 fingerprint-format=sha256-v2-lf source-fingerprint=376173d897fdfa3a6e50f82bc9beff7b53dc58ed4b8942ec527f394045f0e1c0 -->
 # P0 焦點
 
 - 唯一真實來源: `tasks.md`
-- 未完成 P0: 18
+- 未完成 P0: 17
 
 | ID | 標題 | 狀態 | 下一步 | 依賴 | 驗證方式 |
 | --- | --- | --- | --- | --- | --- |
 | AERO-MON30 | 完成一次性 Pro 商品、功能解鎖與購買驗收 | In Progress | StoreKit 2／升級頁／action gates 切片完成；2026-09-26 台灣價格改為 NT$150 並由 Apple API 回讀，App 免費，真實 iPad 升級頁審核截圖已上傳且商品 READY_TO_SUBMIT；批次離線、CMV 資料庫批次編輯、Smart DJ 操作及土星環軌站主題已實作；接續 StoreKit／Sandbox 矩陣、iPad 實機購買與素材 gate | AERO-MON29 | 免費日常播放無退步；成功、取消、待處理、失敗、退款／撤銷、恢復與已購離線啟動皆有證據；兩平台商品、文案與 RC 一致 |
-| AERO-E3 | AeroMusic 2.0 SwiftUI＋Rust 原生重建 | In Progress | 🦀 critic_full PASS；本機 universal Development archive 已驗證；完成實機／沙盒／授權素材與 Distribution archive qualification 後進入 AERO-R3 TestFlight | AERO-E2 | macOS 15+ 與 iPadOS 18+ 通過完整驗收並可送審 |
-| AERO-V3 | 效能、故障、實機、隱私與 App Store 驗證 | In Progress | 🦀 目前工作樹的本機與 Simulator 回歸全綠；依 `Native/APP_STORE_GATE.md` 補授權節目 reference material、實機／沙盒／隱私驗證、送審 metadata 與 Distribution archive，完成後進入 AERO-R3 TestFlight | AERO-A3, AERO-C3, AERO-U3 | 自動測試、實機矩陣、隱私與沙盒檢查通過；最終 critic findings 全數 disposition |
+| AERO-E3 | AeroMusic 2.0 SwiftUI＋Rust 原生重建 | In Progress | 歷史 critic_full／Development archive 證據不涵蓋本輪變更；最新雙平台 build 已完成，接續同版實機／Sandbox／正式 Distribution 與 completion critique 後進入 AERO-R3 TestFlight | AERO-E2 | macOS 15+ 與 iPadOS 18+ 通過完整驗收並可送審 |
+| AERO-V3 | 效能、故障、實機、隱私與 App Store 驗證 | In Progress | 🦀 本輪核心回歸通過，StoreKit pending 與完整實機矩陣仍未完成；依 `Native/APP_STORE_GATE.md` 補授權節目 reference material、實機／沙盒／隱私驗證、送審 metadata 與 Distribution archive，完成後進入 AERO-R3 TestFlight | AERO-A3, AERO-C3, AERO-U3 | 自動測試、實機矩陣、隱私與沙盒檢查通過；最終 critic findings 全數 disposition |
 | AERO-R3 | TestFlight、App Store 送審與 Electron 安全退場 | In Progress | 先執行 AERO-AC4 唯讀盤點；同步等候 AERO-RC4 的程式品質依賴完成 | AERO-V3 | iPadOS／macOS 分平台完成簽章、實機、Metadata、TestFlight、strict submission health 與送審；原生版核准穩定且退場清單再獲核准 |
-| AERO-AC4 | Apple 帳號、合約與 App Record 唯讀盤點 | In Progress | 2026-09-24 Apple API 已回讀 CMV App Record、iOS／macOS 2.0 lane 與帳號持有人單人角色；Chrome 商務頁顯示免費／付費協議有效、銀行與稅表已完成；待核對來源紀錄後轉 Review |  | 產出 Ready／Blocked／Manual 盤點；所有來源可追溯且 Git／Mission Center 無 Apple ID、P8、密碼或憑證內容 |
 | AERO-RC4 | 鎖定 CMV 2.0 Release Candidate 基準 | Blocked | 完成所有 Review／In Progress 發行阻擋任務及 Pro 購買驗收，重跑 Swift、Rust、FFI、Mac、iPad 與本機 App Store gates | AERO-M6, AERO-U24, AERO-F25, AERO-F26, AERO-F27, AERO-SD4, AERO-Q12, AERO-I13, AERO-X14, AERO-MON30 | 無未知 P0／P1；工作樹、提交、測試、雙平台建置與 qualification 證據能唯一對應 |
 | AERO-SD4 | 補齊 Smart DJ 與聲學分析可操作入口 | In Progress | 已新增歌單／設定 Smart DJ 入口、候選限制、推薦理由、播放／入列；現在收聽可對音訊啟動／取消本機分析。接續使用者現有曲庫播放、Airplane Mode、VoiceOver 與日常操作體感驗收；50k 留作壓力回歸 | AERO-F25, AERO-F26, AERO-F27 | Mac／iPad 可在飛航／離線狀態實際建立並播放 Smart DJ queue；未分析曲目不阻塞播放；VoiceOver、Reduce Motion 與現有曲庫回歸通過；50k 壓測不取代日常體感 |
 | AERO-SG4 | 雙平台簽章、Capabilities 與沙盒資格 | Backlog | 以 asc／Xcode 盤點並建立最小必要 Distribution 資產，核對 macOS Sandbox、bookmark、background audio 與 iPad capabilities | AERO-AC4, AERO-RC4 | iPadOS／macOS archive 使用正確 Team、Distribution identity、profiles 與 entitlements；strict codesign 通過 |
 | AERO-DV4 | Mac／iPad 實機、NAS 與故障矩陣驗收 | Backlog | 執行 macOS 與 iPadOS 實機測試：來源授權、重啟恢復、stale／撤銷、NAS 睡眠、背景播放、PiP、Split View、記憶體壓力 | AERO-SG4 | `Native/APP_STORE_GATE.md` 實機項目具日期、裝置、OS、觀察與 Pass／Fail；失敗不清庫、不凍結 UI |
-| AERO-MD4 | 商店 Metadata、隱私、截圖、Review Kit 與審核素材 | Backlog | 建立 canonical metadata，補齊 zh-Hant／en-US／ja-JP 商店文案及雙平台對應截圖、Support／Privacy URL、年齡分級、權利聲明、實機無剪輯示範影片與 Review Notes | AERO-AC4, AERO-RC4 | App Store Connect 所有必填欄位可由版本化資料重現；Privacy manifest／問卷一致；展示音樂、封面與影片授權可追溯 |
+| AERO-MD4 | 商店 Metadata、隱私、截圖、Review Kit 與審核素材 | In Progress | 建立 canonical metadata，補齊 zh-Hant／en-US／ja-JP 商店文案及雙平台對應截圖、Support／Privacy URL、年齡分級、權利聲明、實機無剪輯示範影片與 Review Notes | AERO-AC4, AERO-RC4 | App Store Connect 所有必填欄位可由版本化資料重現；Privacy manifest／問卷一致；展示音樂、封面與影片授權可追溯 |
 | AERO-BD4 | 產生並上傳 iPadOS／macOS Release Build | Backlog | 先解析遠端安全 build number，分平台 archive／export／qualification；上傳前保存 dry-run 與 artifact 身分 | AERO-SG4, AERO-DV4, AERO-MD4 | IPA／PKG 與提交 SHA、版本、build number、架構、簽章、dSYM 唯一對應；App Store Connect 處理狀態為 VALID |
 | AERO-TF4 | iPadOS＋macOS TestFlight 封閉測試 | Backlog | 建立／確認封閉測試群組、What to Test、分平台分發與回饋矩陣 | AERO-BD4 | 兩平台指定 build 均完成封閉測試；核心 NAS／播放／影片／離線路徑無 P0／P1 |
 | AERO-SH4 | 雙平台 Submission Health 與送審預演 | Backlog | 對 IOS／MAC_OS 執行 strict validate、review doctor、build／version／privacy／availability 核對並修復可證實阻擋項 | AERO-TF4 | 兩平台無 blocking issue；warnings、Manual／Web-session 項目與剩餘風險完整 disposition |

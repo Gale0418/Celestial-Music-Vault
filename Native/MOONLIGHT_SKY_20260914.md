@@ -25,7 +25,7 @@
 - 初次整合 Mac／iPad Simulator Release 均 BUILD SUCCEEDED；Mac 桌面啟動與 1,967 首曲庫可見，strict codesign、executable cmp 通過。
 - 畫面檢查發現全窗星圖被內容／佇列遮蔽，iPad TabView 的不透明底層遮住星空；修正為收聽內容內的背景及頂部留白星圖，第二次 Mac／iPad Release 均 BUILD SUCCEEDED，兩端實際截圖可見月光柱、三角與北斗。截圖：`/tmp/cmv-starlight-mac-confirm.png`、`/tmp/cmv-starlight-ipad-confirm.png`。
 - 使用者回報歌曲頁頂部錯位，另從 iPad 截圖發現星圖橫向偏移；對 `CelestialBackground` 加入 GeometryReader 及明確 frame／clipped，防止 scaledToFill 圖片影響裝飾層尺寸。追加修正 Mac Debug、Mac／iPad Release 均 BUILD SUCCEEDED（`/tmp/cmv-sky-bounds-*.log`）；獨立 QA 收聽頁截圖沒有全窗 gap。AX 切歌曲頁未成功，不把該截圖冒稱歌曲頁驗收；最後尺寸修正後的 iPad 畫面／實機 FPS 仍待驗。
-- 最終 Release 已替換 `<HOME_PATH>`，strict codesign／executable cmp 通過；最後一次替換未停止既有桌面程序，需使用者重新開啟生效。舊版皆移入明確命名的垃圾桶備份，可復原。獨立 QA 程序與本輪啟動的 iPad Simulator 已停止。
+- 最終 Release 已替換 `/Users/<LOCAL_USER>/Desktop/CMV.app`，strict codesign／executable cmp 通過；最後一次替換未停止既有桌面程序，需使用者重新開啟生效。舊版皆移入明確命名的垃圾桶備份，可復原。獨立 QA 程序與本輪啟動的 iPad Simulator 已停止。
 - 桌面更新時重啟了使用者的 App。原曲庫與收藏資料保留，但記憶體中的播放佇列沒有自動恢復；未將佇列持久化列為本輪已修功能。
 - 10:54 左右唯讀 SQLite 核對實際桌面程序開啟的 store：1,967 曲目、112 來源；但曲目均 `ZISEXCLUDED=1`，因此 UI 顯示 0。已詢問使用者是否主動移出，尚未取得回答；未直接改寫／清除資料庫或取消排除標記。
 - 本輪不重跑未改動的 Rust／Swift 核心全套測試，不把歷史測試當成此次視覺效能證據。
@@ -40,6 +40,6 @@
 
 ## 任務中心與審查界線
 
-正式 Rust Mission Center 0.5.2 sync 可執行。這次 SMB 重連位址為 `<NAS_URL>`，實際掛載 `<VOLUME_PATH>`；未建立第二份原始碼或強制卸載其他磁碟。
+正式 Rust Mission Center 0.5.2 sync 可執行。這次 SMB 重連位址為 `<NAS_SHARE_URL>`，實際掛載 `<LOCAL_VOLUME_PATH>`；未建立第二份原始碼或強制卸載其他磁碟。
 
 本輪為局部視覺變更，未新增 CodeRabbit 外部審查。依 Mission Center 完成評論規範，視覺切片屬 critic_lite；缺少該閘門要求的總量／席位／工具／時間預算授權，未派正式評論席，不能冒稱已通過。AERO-F26 維持 Review，實作子代理與主代理檢查不充當正式 council。

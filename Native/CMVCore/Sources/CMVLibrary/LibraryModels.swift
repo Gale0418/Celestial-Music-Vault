@@ -36,12 +36,17 @@ public final class TrackRecord {
     public var artist: String
     public var album: String
     public var albumArtist: String
+    public var genre: String? = nil
+    public var releaseDate: Date? = nil
     @Attribute(.externalStorage) public var artworkData: Data?
     public var trackNumber: Int?
     public var discNumber: Int?
     public var duration: Double
     public var fileSize: Int64
     public var modifiedAt: Date
+    /// A conservative migration default for records created before AERO-I13.
+    /// New records replace it with the insertion time in the designated init.
+    public var addedAt: Date = Date(timeIntervalSince1970: 0)
     public var replayGainDB: Double?
     /// Raw storage keeps SwiftData migration lightweight; missing legacy
     /// values are interpreted as audio by `domain`.
@@ -74,6 +79,8 @@ public final class TrackRecord {
     static let artworkMetadataOverride = 1 << 4
     static let trackNumberMetadataOverride = 1 << 5
     static let discNumberMetadataOverride = 1 << 6
+    static let genreMetadataOverride = 1 << 7
+    static let releaseDateMetadataOverride = 1 << 8
 
     func hasMetadataOverride(_ bit: Int) -> Bool {
         metadataOverrideMask & bit != 0
@@ -86,9 +93,11 @@ public final class TrackRecord {
     public init(id: UUID = UUID(), sourceID: UUID, file: ScannedMediaFile) {
         self.id = id; self.sourceID = sourceID; self.relativePath = file.relativePath
         self.fileIdentifier = file.fileIdentifier; self.title = file.title
-        self.artist = file.artist; self.album = file.album; self.albumArtist = file.albumArtist; self.artworkData = file.artworkData
+        self.artist = file.artist; self.album = file.album; self.albumArtist = file.albumArtist
+        self.genre = file.genre; self.releaseDate = file.releaseDate; self.artworkData = file.artworkData
         self.trackNumber = file.trackNumber; self.discNumber = file.discNumber
         self.duration = file.duration; self.fileSize = file.fileSize; self.modifiedAt = file.modifiedAt
+        self.addedAt = .now
         self.replayGainDB = file.replayGainDB
         self.mediaKindRaw = file.mediaKind.rawValue
         self.isFavorite = false; self.rating = 0; self.playCount = 0; self.skipCount = 0
@@ -103,9 +112,10 @@ public final class TrackRecord {
         Track(id: id, sourceID: sourceID, relativePath: relativePath,
               fileIdentifier: fileIdentifier, title: title, artist: artist,
               album: album, albumArtist: albumArtist,
+              genre: genre, releaseDate: releaseDate,
               artworkData: includeArtwork ? artworkData : nil,
               trackNumber: trackNumber, discNumber: discNumber, duration: duration,
-              fileSize: fileSize, modifiedAt: modifiedAt, replayGainDB: replayGainDB,
+              fileSize: fileSize, modifiedAt: modifiedAt, addedAt: addedAt, replayGainDB: replayGainDB,
               isFavorite: isFavorite, rating: rating,
               analysis: analysisVersion.map { AnalysisProfile(version: $0, bpm: bpm, musicalKey: musicalKey,
                                                                integratedLoudnessLUFS: integratedLoudnessLUFS,

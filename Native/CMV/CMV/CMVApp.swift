@@ -1,7 +1,19 @@
 import SwiftUI
+#if !DEBUG || !CMV_STOREKIT_TEST_HOST
 import SwiftData
 import CMVLibrary
+#endif
 
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+@main
+struct CMVApp: App {
+    var body: some Scene {
+        WindowGroup {
+            Color.clear
+        }
+    }
+}
+#else
 @main
 struct CMVApp: App {
     @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
@@ -96,3 +108,4 @@ struct CMVApp: App {
     }
 
 }
+#endif

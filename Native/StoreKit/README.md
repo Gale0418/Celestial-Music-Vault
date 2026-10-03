@@ -31,3 +31,18 @@ runner 會在 `/private/tmp` 建立一次性 app host，直接編譯正式 `CMVD
 2026-09-24 驗證：`CMV-StoreKit-Local` 的 iPad Simulator Debug 建置通過；Xcode Run 選項可找到設定檔，啟動後程序含本機測試 ID，Xcode 的交易管理器列出 `CMV Pro Local Test Only`。模擬器 App 已進入設定頁，但尚未取得升級頁價格／購買完成的畫面證據。上述 shell runner 再跑仍回 `SKInternalErrorDomain Code=3` 與空商品集合，因此不能記為交易矩陣通過。
 
 同日再次 Xcode Run 的建置／安裝完成，但 App 停留白色啟動畫面超過 60 秒；已停止該次執行。Xcode 交易管理器先前建立的一筆本機合成交易保留在模擬器供後續測試，不能把它視為 App 內購買成功或 Sandbox 驗收。另一專案 G.A.I 的本機 StoreKit 商品與 CMV 商品不同，其測試紀錄也不能充作 CMV 的購買證據。
+
+## Xcode hosted XCTest
+
+`CMV-StoreKit-Local` Scheme 現在包含 `CMVProTests`，測試直接載入正式 App 的 `ProStore`，用同一份 fixture 驗證購買、重新建立 store、恢復、退款、pending 核准／拒絕以及取消／失敗。測試必須序列執行；StoreKit 服務不可用時會失敗，不會跳過後宣稱通過。
+
+使用隔離的 QA bundle ID，避免讀寫正式 App 的資料：
+
+```sh
+xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV-StoreKit-Local \
+  -configuration Debug -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/cmv-storekit-qa \
+  CMV_APP_BUNDLE_IDENTIFIER=com.windsheep.cmv.storekitqa test
+```
+
+這個 XCTest target 的建置與執行結果需分別保存；新增 target 不代表交易已通過，也不取代兩平台正式 Sandbox／已購離線冷啟動驗收。

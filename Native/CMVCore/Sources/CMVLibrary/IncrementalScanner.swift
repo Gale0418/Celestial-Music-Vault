@@ -15,6 +15,8 @@ private struct ExtractedMetadata: Sendable {
     var artist: String
     var album: String
     var albumArtist: String
+    var genre: String?
+    var releaseDate: Date?
     var artworkData: Data?
     var trackNumber: Int?
     var discNumber: Int?
@@ -142,6 +144,7 @@ public actor IncrementalScanner {
                                           modifiedAt: values.contentModificationDate ?? .distantPast,
                                           title: metadata.title, artist: metadata.artist,
                                           album: metadata.album, albumArtist: metadata.albumArtist,
+                                          genre: metadata.genre, releaseDate: metadata.releaseDate,
                                           artworkData: metadata.artworkData,
                                           trackNumber: metadata.trackNumber, discNumber: metadata.discNumber,
                                           duration: metadata.duration, replayGainDB: metadata.replayGainDB,
@@ -205,7 +208,8 @@ public actor IncrementalScanner {
         }
         var result = ExtractedMetadata(mediaKind: hasVideo ? .video : .audio,
                                        title: fallbackTitle, artist: "未知歌手", album: "未知專輯",
-                                       albumArtist: "", artworkData: nil, trackNumber: nil,
+                                       albumArtist: "", genre: nil, releaseDate: nil,
+                                       artworkData: nil, trackNumber: nil,
                                        discNumber: nil, duration: 0, replayGainDB: nil)
         let commonMetadata = (try? await asset.load(.commonMetadata)) ?? []
         let formatMetadata = (try? await asset.load(.metadata)) ?? []
@@ -223,7 +227,14 @@ public actor IncrementalScanner {
             default: break
             }
             let identifier = item.identifier?.rawValue ?? ""
-            if identifier.lowercased().contains("track") {
+            let normalizedIdentifier = identifier.lowercased()
+            if normalizedIdentifier.contains("genre") {
+                result.genre = value
+            } else if normalizedIdentifier.contains("releasedate") || normalizedIdentifier.contains("release_date") ||
+                        normalizedIdentifier.contains("creationdate") || normalizedIdentifier.contains("creation_date") {
+                result.releaseDate = AudioMetadataParser.releaseDate(from: value) ?? result.releaseDate
+            }
+            if normalizedIdentifier.contains("track") {
                 result.trackNumber = AudioMetadataParser.integerTag(from: identifier, value: value) ?? result.trackNumber
             } else if identifier.lowercased().contains("disc") {
                 result.discNumber = AudioMetadataParser.integerTag(from: identifier, value: value) ?? result.discNumber
@@ -242,4 +253,5 @@ public actor IncrementalScanner {
         }
         return result
     }
+
 }

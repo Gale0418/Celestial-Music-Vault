@@ -137,19 +137,16 @@ run_step "repository whitespace checks"
 git diff --check
 
 run_step "MissionCenter sync／Doctor"
-mc_scripts="${CMV_MISSION_CENTER_SCRIPTS:-}"
-if [[ -z "$mc_scripts" && -d "$workspace/MissionCenter/scripts" ]]; then
-  mc_scripts="$workspace/MissionCenter/scripts"
+mc_binary="${CMV_MISSION_CENTER_BIN:-}"
+if [[ -z "$mc_binary" ]] && command -v mission-center >/dev/null; then
+  mc_binary="${commands[mission-center]}"
 fi
-if [[ -z "$mc_scripts" ]] && command -v mission_maintenance.py >/dev/null; then
-  mc_scripts="${commands[mission_maintenance.py]:h}"
-fi
-[[ -n "$mc_scripts" && -f "$mc_scripts/mission_maintenance.py" && -f "$mc_scripts/doctor_mission_center.py" ]] || {
-  print -u2 -- "error: 找不到 MissionCenter scripts；請設定 CMV_MISSION_CENTER_SCRIPTS"
+[[ -n "$mc_binary" && -x "$mc_binary" ]] || {
+  print -u2 -- "error: 找不到 MissionCenter Rust CLI；請設定 CMV_MISSION_CENTER_BIN"
   exit 1
 }
-python3 "$mc_scripts/mission_maintenance.py" "$workspace" sync
-python3 "$mc_scripts/doctor_mission_center.py" "$workspace"
+"$mc_binary" sync --root "$workspace"
+"$mc_binary" doctor --root "$workspace"
 
 run_step "external gate inventory (informational; never auto-closes tasks)"
 if command -v xcrun >/dev/null; then

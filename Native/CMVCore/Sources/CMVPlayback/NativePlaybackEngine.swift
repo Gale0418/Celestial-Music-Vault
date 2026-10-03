@@ -134,6 +134,10 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     private let planner: PlaybackPairPlanner
     private let fileOpener: AudioFileOpener
     private var resolvedURLs: [UUID: URL] = [:]
+    /// The user-visible base order is retained separately from the transient
+    /// shuffled route so turning shuffle off can restore the original order.
+    private var baseQueue = PlaybackQueue()
+    public var baseQueueSnapshot: PlaybackQueue { baseQueue }
     private var scheduledFiles: [Int: AVAudioFile] = [:]
     private var scheduledEngineStartFrames: [Int: UInt64] = [:]
     private var activeNodeIsFirst = true
@@ -200,9 +204,16 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     }
 
     public func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL]) async throws {
+        try await load(queue, resolvedURLs: resolvedURLs, restoredBaseQueue: nil)
+    }
+
+    public func load(_ queue: PlaybackQueue, resolvedURLs: [UUID: URL],
+                     restoredBaseQueue: PlaybackQueue?) async throws {
         loadGeneration &+= 1
         let requestedLoadGeneration = loadGeneration
-        let candidateQueue = shuffledQueue(queue)
+        // A restored route is already shuffled. Keep both its occurrence order
+        // and the original base order until the user changes shuffle mode.
+        let candidateQueue = restoredBaseQueue == nil ? shuffledQueue(queue) : queue
         let preparedFiles = try await openInitialFiles(for: candidateQueue, resolvedURLs: resolvedURLs)
         try Task.checkCancellation()
         guard requestedLoadGeneration == loadGeneration else { throw CancellationError() }
@@ -234,6 +245,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         }
 
         self.queue = candidateQueue
+        self.baseQueue = restoredBaseQueue ?? queue
         self.resolvedURLs = resolvedURLs
         publishElapsed(0)
         publishPlaybackState(false)
@@ -242,8 +254,9 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         updateNowPlaying()
     }
 
-    public func setQueue(_ queue: PlaybackQueue) {
+    public func setQueue(_ queue: PlaybackQueue, baseQueue: PlaybackQueue? = nil) {
         self.queue = queue
+        self.baseQueue = baseQueue ?? queue
         onCurrentTrackChanged?(self.queue.current)
         updateNowPlaying()
     }
@@ -253,6 +266,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         guard !tracks.isEmpty else { return }
         let oldCount = queue.tracks.count
         queue.tracks.append(contentsOf: tracks)
+        baseQueue.tracks.append(contentsOf: tracks)
         resolvedURLs.merge(additions) { _, latest in latest }
         if queueReachedEnd {
             // The old last song has already completed. The newly appended song
@@ -267,6 +281,132 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         }
         onQueueChanged?()
         updateNowPlaying()
+    }
+
+    /// Replace only the part after the currently playing occurrence. The
+    /// active node and its current source frame remain intact; only the
+    /// standby node and any pending next-file open are replaced. This keeps
+    /// Play Next, reorder and remove operations gapless where possible.
+    public func replaceFutureQueue(_ tracks: [Track], resolvedURLs additions: [UUID: URL], playNext: Bool = false) {
+        guard let current = queue.current else {
+            guard !tracks.isEmpty else { return }
+            setQueue(PlaybackQueue(tracks: tracks))
+            return
+        }
+
+        let currentIndex = queue.currentIndex
+        let prefix = Array(queue.tracks.prefix(currentIndex + 1))
+        let currentOccurrenceOrdinal = occurrenceOrdinal(of: currentIndex, in: queue.tracks)
+        let wasAtEnd = queueReachedEnd
+        let oldFuture = Array(queue.tracks.dropFirst(currentIndex + 1))
+        standbyNode.stop()
+        nextTrackOpenGeneration = nil
+        scheduledFiles = scheduledFiles.filter { $0.key <= currentIndex }
+        scheduledEngineStartFrames = scheduledEngineStartFrames.filter { $0.key <= currentIndex }
+        queue.tracks = prefix + tracks
+        resolvedURLs.merge(additions) { _, latest in latest }
+
+        updateBaseQueueForFutureReplacement(
+            current: current,
+            currentOrdinal: currentOccurrenceOrdinal,
+            oldQueue: prefix + oldFuture,
+            oldFuture: oldFuture,
+            newFuture: tracks,
+            currentIndex: currentIndex,
+            playNext: playNext
+        )
+
+        if wasAtEnd, !tracks.isEmpty {
+            queue.currentIndex = currentIndex + 1
+            queueReachedEnd = false
+            do {
+                try prepareTimeline(sourceStartFrame: 0, for: queue,
+                                    resolvedURLs: resolvedURLs,
+                                    preparedFiles: scheduledFiles)
+                publishElapsed(0)
+                publishPlaybackState(false)
+                onCurrentTrackChanged?(queue.current)
+            } catch {
+                queue.currentIndex = currentIndex
+                queueReachedEnd = true
+                onPlaybackError?(error)
+            }
+        } else if !timelineNeedsReschedule && queue.tracks.indices.contains(currentIndex) {
+            scheduleFollowingTrack()
+        }
+        onQueueChanged?()
+        updateNowPlaying()
+    }
+
+    private func updateBaseQueueForFutureReplacement(
+        current: Track,
+        currentOrdinal: Int,
+        oldQueue: [Track],
+        oldFuture: [Track],
+        newFuture: [Track],
+        currentIndex: Int,
+        playNext: Bool
+    ) {
+        guard isShuffleEnabled,
+              let baseCurrentIndex = occurrenceIndex(of: current.id, ordinal: currentOrdinal,
+                                                     in: baseQueue.tracks) else {
+            baseQueue = PlaybackQueue(tracks: Array(oldQueue.prefix(currentIndex + 1)) + newFuture,
+                                      currentIndex: currentIndex)
+            return
+        }
+
+        let basePrefix = Array(baseQueue.tracks.prefix(baseCurrentIndex + 1))
+        let baseIndicesForOldFuture = oldFuture.indices.map { offset -> Int? in
+            let queueIndex = currentIndex + 1 + offset
+            guard oldQueue.indices.contains(queueIndex) else { return nil }
+            let ordinal = occurrenceOrdinal(of: queueIndex, in: oldQueue)
+            return occurrenceIndex(of: oldQueue[queueIndex].id, ordinal: ordinal, in: baseQueue.tracks)
+        }
+        var matchedOldFuture = Array(repeating: false, count: oldFuture.count)
+        var desiredMatches: [Int?] = []
+        for track in newFuture {
+            if let oldIndex = oldFuture.indices.first(where: {
+                !matchedOldFuture[$0] && oldFuture[$0].id == track.id
+            }) {
+                matchedOldFuture[oldIndex] = true
+                desiredMatches.append(oldIndex)
+            } else {
+                desiredMatches.append(nil)
+            }
+        }
+
+        let allExistingMatched = desiredMatches.allSatisfy { $0 != nil }
+            && matchedOldFuture.allSatisfy { $0 }
+            && baseIndicesForOldFuture.allSatisfy { $0 != nil }
+        if allExistingMatched {
+            let reorderedFuture: [Track] = desiredMatches.compactMap { match in
+                guard let match,
+                      let baseIndex = baseIndicesForOldFuture[match] else { return nil }
+                return baseQueue.tracks[baseIndex]
+            }
+            baseQueue.tracks = basePrefix + reorderedFuture
+        } else {
+            let removedBaseIndices = Set(baseIndicesForOldFuture.enumerated().compactMap { offset, baseIndex in
+                matchedOldFuture[offset] ? nil : baseIndex
+            })
+            let retainedFuture: [Track] = baseQueue.tracks.enumerated().compactMap { index, track in
+                guard index > baseCurrentIndex else { return nil }
+                return removedBaseIndices.contains(index) ? nil : track
+            }
+            let firstMatchedOffset = desiredMatches.firstIndex { $0 != nil } ?? newFuture.count
+            let leadingInsertions: [Track] = newFuture.enumerated().compactMap { offset, track in
+                offset < firstMatchedOffset && desiredMatches[offset] == nil ? track : nil
+            }
+            let trailingInsertions: [Track] = newFuture.enumerated().compactMap { offset, track in
+                offset >= firstMatchedOffset && desiredMatches[offset] == nil ? track : nil
+            }
+            if playNext {
+                baseQueue.tracks = basePrefix + leadingInsertions + retainedFuture + trailingInsertions
+            } else {
+                baseQueue.tracks = basePrefix + retainedFuture + leadingInsertions + trailingInsertions
+            }
+        }
+        baseQueue.currentIndex = baseCurrentIndex
     }
 
     public func updateExternalNowPlaying(isPlaying: Bool, elapsed: TimeInterval, duration: TimeInterval) {
@@ -363,8 +503,27 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     }
 
     public func cancelSleepTimer() { setSleepTimer(minutes: 0) }
-    public func toggleShuffle() { isShuffleEnabled.toggle() }
+    public func toggleShuffle() {
+        isShuffleEnabled.toggle()
+        guard !isShuffleEnabled,
+              let current = queue.current,
+              let baseIndex = occurrenceIndex(
+                  of: current.id,
+                  ordinal: occurrenceOrdinal(of: queue.currentIndex, in: queue.tracks),
+                  in: baseQueue.tracks
+              ) else { return }
+        let future = Array(baseQueue.tracks.dropFirst(baseIndex + 1))
+        replaceFutureQueue(future, resolvedURLs: resolvedURLs)
+    }
     public func toggleRepeat() { isRepeatEnabled.toggle() }
+
+    /// Restore persisted mode flags without reshuffling an already persisted
+    /// occurrence order. Queue restoration owns the ordering; a later user
+    /// toggle can still apply the normal shuffle transition.
+    public func restoreQueueModes(shuffleEnabled: Bool, repeatEnabled: Bool) {
+        isShuffleEnabled = shuffleEnabled
+        isRepeatEnabled = repeatEnabled
+    }
 
     public func clearQueue() {
         firstNode.stop()
@@ -372,6 +531,7 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
         scheduleGeneration &+= 1
         loadGeneration &+= 1
         queue = PlaybackQueue()
+        baseQueue = PlaybackQueue()
         onCurrentTrackChanged?(nil)
         resolvedURLs.removeAll(keepingCapacity: true)
         scheduledFiles.removeAll(keepingCapacity: true)
@@ -941,6 +1101,18 @@ public final class NativePlaybackEngine: NSObject, ObservableObject, PlaybackEng
     }
 
     private func shuffleUpcomingTrackIfNeeded() { queue = shuffledQueue(queue) }
+
+    private func occurrenceOrdinal(of index: Int, in tracks: [Track]) -> Int {
+        guard tracks.indices.contains(index) else { return 0 }
+        let id = tracks[index].id
+        return tracks[..<index].reduce(into: 0) { count, track in
+            if track.id == id { count += 1 }
+        }
+    }
+
+    private func occurrenceIndex(of id: UUID, ordinal: Int, in tracks: [Track]) -> Int? {
+        tracks.indices.filter { tracks[$0].id == id }.dropFirst(max(0, ordinal)).first
+    }
 
     private func shuffledQueue(_ input: PlaybackQueue) -> PlaybackQueue {
         var result = input

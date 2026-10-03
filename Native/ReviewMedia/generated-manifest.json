@@ -1,0 +1,79 @@
+{
+  "artifacts" : [
+    {
+      "audioChannels" : 2,
+      "audioCodecs" : [
+        "lpcm"
+      ],
+      "audioSampleRate" : 44100,
+      "durationSeconds" : 20,
+      "file" : "01-cobalt-echoes.wav",
+      "kind" : "original-generated-instrumental",
+      "sha256" : "96da3f07d7f89419a3b78c770863e25c4e262ac1e8bea030a755e353fd8ce0f0",
+      "title" : "Cobalt Echoes"
+    },
+    {
+      "audioChannels" : 2,
+      "audioCodecs" : [
+        "lpcm"
+      ],
+      "audioSampleRate" : 44100,
+      "durationSeconds" : 19,
+      "file" : "02-amber-circuit.wav",
+      "kind" : "original-generated-instrumental",
+      "sha256" : "b43fa0ebbadae98d00dd2af5016ab390f976e75d3481328bebf634ae9a17b7c7",
+      "title" : "Amber Circuit"
+    },
+    {
+      "audioChannels" : 2,
+      "audioCodecs" : [
+        "lpcm"
+      ],
+      "audioSampleRate" : 44100,
+      "durationSeconds" : 21,
+      "file" : "03-violet-tide.wav",
+      "kind" : "original-generated-instrumental",
+      "sha256" : "dc4b3b5d1cfa511bd6d30b765bfe341762bf2c4cc83158b7c95231dc0581f001",
+      "title" : "Violet Tide"
+    },
+    {
+      "audioChannels" : 2,
+      "audioCodecs" : [
+        "lpcm"
+      ],
+      "audioSampleRate" : 44100,
+      "durationSeconds" : 18,
+      "file" : "04-silver-orbit.wav",
+      "kind" : "original-generated-instrumental",
+      "sha256" : "825775d8a808510dd0e935d67c9afdd85e43c07cc208f592b858764ffabc9377",
+      "title" : "Silver Orbit"
+    },
+    {
+      "audioChannels" : 2,
+      "audioCodecs" : [
+        "aac "
+      ],
+      "audioSampleRate" : 44100,
+      "durationSeconds" : 12,
+      "file" : "eof-pip-fixture.mov",
+      "kind" : "H.264-video-plus-AAC-audio-fixture",
+      "sha256" : "284956fd8bfe7e0d0bf2555cf7ff793ea6a42bd4c26db8c5ed394b99f44389fa",
+      "videoCodecs" : [
+        "avc1"
+      ],
+      "videoFrameCount" : 288,
+      "videoFrameRate" : 24
+    },
+    {
+      "file" : "review-cover.png",
+      "height" : 1024,
+      "kind" : "self-generated-CoreGraphics-PNG",
+      "sha256" : "e253b655cf86b353718077e633d8c9feb660e57058b854feec3ef8bb27e212ae",
+      "width" : 1024
+    }
+  ],
+  "generatedBy" : "Native/ReviewMedia/generate-review-media.swift",
+  "rights" : "WindSheep project original generated fixture; no external music, text, or imagery.",
+  "schemaVersion" : "1.0",
+  "verification" : "AVAsset duration, track codecs, frame rate, audio channels/sample rate, and PNG dimensions were read back after generation; this does not claim human listening or Store review approval."
+}

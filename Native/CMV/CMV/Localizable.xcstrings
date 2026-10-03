@@ -1,6 +1,258 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "編輯順序": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit Order" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "順序を編集" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "編輯順序" } }
+      }
+    },
+    "完成排序": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Done Reordering" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "並べ替えを完了" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "完成排序" } }
+      }
+    },
+    "無法重新排序歌單：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could not reorder playlist: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストを並べ替えられません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法重新排序歌單：%@" } }
+      }
+    },
+    "先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The previous track is unavailable. Another available track is selected and will start when you press Play." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "以前の曲を利用できないため、別の曲を選択しました。再生ボタンを押すと開始します。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。" } }
+      }
+    },
+    "上移": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move Up" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "上へ移動" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "上移" } }
+      }
+    },
+    "下移": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move Down" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "下へ移動" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "下移" } }
+      }
+    },
+    "下一首播放": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Play Next" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次に再生" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "下一首播放" } }
+      }
+    },
+    "佇列曲目操作": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Queue Track Actions" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再生キューの操作" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "佇列曲目操作" } }
+      }
+    },
+    "加入曲庫": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Date Added" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "追加日" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "加入曲庫" } }
+      }
+    },
+    "加入曲庫時間": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Date Added" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "追加日" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "加入曲庫時間" } }
+      }
+    },
+    "唱片編號": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Disc Number" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ディスク番号" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "唱片編號" } }
+      }
+    },
+    "基本資訊": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Basic Information" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "基本情報" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "基本資訊" } }
+      }
+    },
+    "專輯歌手": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Album Artist" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "アルバムアーティスト" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "專輯歌手" } }
+      }
+    },
+    "復原資訊變更": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Undo Metadata Changes" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "情報の変更を元に戻す" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "復原資訊變更" } }
+      }
+    },
+    "播放時長": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Duration" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再生時間" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "播放時長" } }
+      }
+    },
+    "日期": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Date" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "日付" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "日期" } }
+      }
+    },
+    "曲目編號": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Track Number" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "トラック番号" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "曲目編號" } }
+      }
+    },
+    "未提供": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not Available" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "情報なし" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "未提供" } }
+      }
+    },
+    "檔案修改時間": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "File Modification Date" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ファイルの更新日" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "檔案修改時間" } }
+      }
+    },
+    "檔案與曲目": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "File and Track" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ファイルとトラック" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "檔案與曲目" } }
+      }
+    },
+    "歌曲資訊": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Track Info" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "歌曲資訊" } }
+      }
+    },
+    "沒有差異": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No Changes" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "変更なし" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "沒有差異" } }
+      }
+    },
+    "發行日期": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Release Date" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リリース日" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "發行日期" } }
+      }
+    },
+    "相對路徑": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Relative Path" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "相対パス" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "相對路徑" } }
+      }
+    },
+    "確認套用": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Confirm Changes" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "変更を適用" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "確認套用" } }
+      }
+    },
+    "確認批次變更？": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply Batch Changes?" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "一括変更を適用しますか？" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "確認批次變更？" } }
+      }
+    },
+    "移到最前": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move to Play Next" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次に再生する位置へ移動" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移到最前" } }
+      }
+    },
+    "移除": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "削除" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移除" } }
+      }
+    },
+    "類型": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Genre" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ジャンル" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "類型" } }
+      }
+    },
+    "無法整理接下來播放：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to organize the upcoming queue: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次の再生キューを整理できません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法整理接下來播放：%@" } }
+      }
+    },
+    "無法更新接下來播放：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to update the upcoming queue: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次の再生キューを更新できません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法更新接下來播放：%@" } }
+      }
+    },
+    "無法還原播放佇列：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to restore the playback queue: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再生キューを復元できません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法還原播放佇列：%@" } }
+      }
+    },
+    "無法預覽歌曲資訊：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to preview track information: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報をプレビューできません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法預覽歌曲資訊：%@" } }
+      }
+    },
+    "無法復原歌曲資訊：%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to undo track information changes: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報の変更を元に戻せません：%@" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法復原歌曲資訊：%@" } }
+      }
+    },
+    "部分歌曲資訊已再次變更，未覆蓋後續修改。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Some tracks have changed again. Later edits were preserved." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "一部の曲は再び変更されています。後の変更は保持されました。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "部分歌曲資訊已再次變更，未覆蓋後續修改。" } }
+      }
+    },
+    "預覽 %lld 首歌曲（顯示前 %lld 首）；確認後才會寫入曲庫。原始檔案不會變動。": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Preview %lld tracks (showing the first %lld). Changes are saved only after confirmation. Original files are unchanged." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%lld曲をプレビュー（最初の%lld曲を表示）。確認後にライブラリへ保存します。元のファイルは変更されません。" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "預覽 %lld 首歌曲（顯示前 %lld 首）；確認後才會寫入曲庫。原始檔案不會變動。" } }
+      }
+    },
     "搜尋歌手": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Search Artists" } },

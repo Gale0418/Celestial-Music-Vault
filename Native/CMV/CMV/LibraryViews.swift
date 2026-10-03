@@ -626,7 +626,8 @@ private struct StarRatingControl: View {
 }
 
 private enum TrackListSortMode: String, CaseIterable, Identifiable {
-    case relevance, title, artist, album, modifiedAt, random
+    case relevance, title, artist, album, albumArtist, genre, trackNumber, discNumber
+    case duration, rating, addedAt, releaseDate, modifiedAt, random
     var id: Self { self }
     var title: String {
         switch self {
@@ -634,6 +635,14 @@ private enum TrackListSortMode: String, CaseIterable, Identifiable {
         case .title: AppLanguage.localized("歌名")
         case .artist: AppLanguage.localized("藝術家")
         case .album: AppLanguage.localized("專輯")
+        case .albumArtist: AppLanguage.localized("專輯歌手")
+        case .genre: AppLanguage.localized("類型")
+        case .trackNumber: AppLanguage.localized("曲目編號")
+        case .discNumber: AppLanguage.localized("唱片編號")
+        case .duration: AppLanguage.localized("播放時長")
+        case .rating: AppLanguage.localized("評分")
+        case .addedAt: AppLanguage.localized("加入曲庫時間")
+        case .releaseDate: AppLanguage.localized("發行日期")
         case .modifiedAt: AppLanguage.localized("修改時間")
         case .random: AppLanguage.localized("隨機排列")
         }
@@ -644,6 +653,14 @@ private enum TrackListSortMode: String, CaseIterable, Identifiable {
         case .title: "textformat"
         case .artist: "person"
         case .album: "square.stack"
+        case .albumArtist: "person.2"
+        case .genre: "music.quarternote.3"
+        case .trackNumber: "number"
+        case .discNumber: "circle.grid.3x3"
+        case .duration: "timer"
+        case .rating: "star"
+        case .addedAt: "calendar.badge.plus"
+        case .releaseDate: "calendar"
         case .modifiedAt: "clock"
         case .random: "shuffle"
         }
@@ -654,6 +671,14 @@ private enum TrackListSortMode: String, CaseIterable, Identifiable {
         case .title: .title
         case .artist: .artist
         case .album: .album
+        case .albumArtist: .albumArtist
+        case .genre: .genre
+        case .trackNumber: .trackNumber
+        case .discNumber: .discNumber
+        case .duration: .duration
+        case .rating: .rating
+        case .addedAt: .addedAt
+        case .releaseDate: .releaseDate
         case .modifiedAt: .modifiedAt
         }
     }
@@ -734,6 +759,7 @@ struct TrackListView: View {
     @State private var isPerformingBatchAction = false
     @State private var showingRemoveConfirmation = false
     @State private var showingBatchMetadataEditor = false
+    @State private var infoTrack: Track?
     @State private var batchPinTask: Task<Void, Never>?
     @State private var batchPinSummary: String?
     @State private var sortMode: TrackListSortMode = .relevance
@@ -789,6 +815,12 @@ struct TrackListView: View {
                             .accessibilityLabel(isSelectingAll
                                                 ? AppLanguage.localized("正在全選曲目")
                                                 : AppLanguage.localized("正在處理所選曲目"))
+                    }
+                    if appModel.hasMetadataUndo {
+                        Button("復原資訊變更", systemImage: "arrow.uturn.backward") {
+                            Task { @MainActor in await appModel.undoLastMetadata(context: context) }
+                        }
+                        .disabled(isSelectingAll || isPerformingBatchAction || displayedGeneration != searchGeneration)
                     }
                     Text(localizedFormat("已載入 %@ 首", AppLanguage.formattedCount(tracks.count)))
                         .font(.caption.monospacedDigit())
@@ -1018,9 +1050,12 @@ struct TrackListView: View {
             if appModel.libraryRevision > 0 { await fetchPage() }
         }
         .sheet(isPresented: $showingBatchMetadataEditor) {
-            BatchMetadataEditor(selectionCount: selectedTrackIDs.count) { patch in
+            BatchMetadataEditor(selectionIDs: Array(selectedTrackIDs), selectionCount: selectedTrackIDs.count) { patch in
                 updateSelectedMetadata(patch)
             }
+        }
+        .sheet(item: $infoTrack) { track in
+            TrackInfoView(track: track)
         }
         .alert(localizedFormat("從 CMV 移出 %lld 首曲目？", Int64(selectedTrackIDs.count)),
                isPresented: $showingRemoveConfirmation) {
@@ -1270,9 +1305,13 @@ struct TrackListView: View {
     }
 
     @ViewBuilder private func trackActions(for track: Track, at index: Int, in queue: [Track]) -> some View {
+        Button("歌曲資訊", systemImage: "info.circle") { infoTrack = track }
         Button("立即播放", systemImage: "play.fill") {
             appModel.play(tracks: queue, startingAt: index, context: context,
                           libraryQuery: playbackQuery(for: queue))
+        }
+        Button("下一首播放", systemImage: "text.line.first.and.arrowtriangle.forward") {
+            appModel.playNext([track], context: context)
         }
         Button("加入接下來播放", systemImage: "text.badge.plus") { appModel.addToPlaybackQueue([track], context: context) }
         Button(appModel.isFavorite(for: track)
@@ -1943,6 +1982,7 @@ private struct PlaylistDetailView: View {
     @State private var selectedPlaylistIDs = Set<UUID>()
     @State private var showingBatchRemoveConfirmation = false
     @State private var isRemovingSelection = false
+    @State private var isReordering = false
 
     private var unavailableCount: Int {
         guard playlist != nil, !entriesFailed else { return 0 }
@@ -2003,6 +2043,12 @@ private struct PlaylistDetailView: View {
                             }
                             .labelStyle(.iconOnly)
                             .frame(width: 44, height: 44)
+                            if isReordering, let position = playlist.trackIDs.firstIndex(of: entry.id) {
+                                Button("上移", systemImage: "chevron.up") { movePlaylistTrack(from: position, by: -1) }
+                                    .labelStyle(.iconOnly).disabled(position == 0)
+                                Button("下移", systemImage: "chevron.down") { movePlaylistTrack(from: position, by: 1) }
+                                    .labelStyle(.iconOnly).disabled(position == playlist.trackIDs.count - 1)
+                            }
                         }
                         .frame(minHeight: 52)
                         } else {
@@ -2027,6 +2073,12 @@ private struct PlaylistDetailView: View {
                                 }
                                 .labelStyle(.iconOnly)
                                 .frame(width: 44, height: 44)
+                                if isReordering, let position = playlist.trackIDs.firstIndex(of: trackID) {
+                                    Button("上移", systemImage: "chevron.up") { movePlaylistTrack(from: position, by: -1) }
+                                        .labelStyle(.iconOnly).disabled(position == 0)
+                                    Button("下移", systemImage: "chevron.down") { movePlaylistTrack(from: position, by: 1) }
+                                        .labelStyle(.iconOnly).disabled(position == playlist.trackIDs.count - 1)
+                                }
                             }
                             .frame(minHeight: 52)
                         }
@@ -2056,6 +2108,10 @@ private struct PlaylistDetailView: View {
         .celestialPageBackground()
         .toolbar {
             if let playlist, !playlist.trackIDs.isEmpty {
+                Button(isReordering ? "完成排序" : "編輯順序", systemImage: isReordering ? "checkmark" : "arrow.up.arrow.down") {
+                    if appModel.requirePro(.advancedLibrary) { isReordering.toggle() }
+                }
+                .disabled(isRemovingSelection)
                 Button("全選已載入", systemImage: "checklist") {
                     selectedPlaylistIDs.formUnion(playlist.trackIDs.prefix(loadedCount))
                 }
@@ -2160,6 +2216,18 @@ private struct PlaylistDetailView: View {
         for entry in loaded { entryByID[entry.id] = entry }
         loadedCount += ids.count
         loadingPage = false
+    }
+
+    @MainActor private func movePlaylistTrack(from position: Int, by offset: Int) {
+        guard var current = playlist?.trackIDs else { return }
+        let destination = position + offset
+        guard current.indices.contains(position), current.indices.contains(destination) else { return }
+        current.swapAt(position, destination)
+        Task { @MainActor in
+            if await appModel.reorderPlaylist(id: playlistID, trackIDs: current, context: context) {
+                await reload()
+            }
+        }
     }
 }
 

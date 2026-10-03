@@ -2,6 +2,12 @@ import Foundation
 import StoreKit
 import StoreKitTest
 
+/// Standalone host keeps source-language messages deterministic; the app target
+/// continues using its real AppLanguage implementation and string catalogue.
+enum AppLanguage {
+    @MainActor static func localized(_ key: String) -> String { key }
+}
+
 @main
 @MainActor
 struct CMVProStoreKitRunner {

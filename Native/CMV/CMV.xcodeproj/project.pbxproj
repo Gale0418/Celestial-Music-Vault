@@ -13,11 +13,13 @@
 		A10000000000000000000004 /* CMVAnalysis in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000004 /* CMVAnalysis */; };
 		A10000000000000000000005 /* CMVCache in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000005 /* CMVCache */; };
 		A10000000000000000000006 /* CMVThemes in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000006 /* CMVThemes */; };
+		A10000000000000000000007 /* CMVProLocal.storekit in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		C10000000000000000000001 /* CMV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CMV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000000000000000000002 /* ../StoreKit/CMVProLocal.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = ../StoreKit/CMVProLocal.storekit; sourceTree = "<group>"; };
+		C10000000000000000000003 /* CMVProTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CMVProTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -39,6 +41,7 @@
 			path = CMV;
 			sourceTree = "<group>";
 		};
+		D10000000000000000000002 /* CMVProTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = CMVProTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +58,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E10000000000000000000002 /* Test Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -62,6 +66,7 @@
 			isa = PBXGroup;
 			children = (
 				D10000000000000000000001 /* CMV */,
+				D10000000000000000000002 /* CMVProTests */,
 				C10000000000000000000002 /* ../StoreKit/CMVProLocal.storekit */,
 				F10000000000000000000002 /* Products */,
 			);
@@ -71,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				C10000000000000000000001 /* CMV.app */,
+				C10000000000000000000003 /* CMVProTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -107,8 +113,27 @@
 			productReference = C10000000000000000000001 /* CMV.app */;
 			productType = "com.apple.product-type.application";
 		};
+		110000000000000000000002 /* CMVProTests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = 210000000000000000000003;
+            buildPhases = (310000000000000000000004, E10000000000000000000002, 310000000000000000000005);
+            buildRules = ();
+            dependencies = (610000000000000000000001);
+            fileSystemSynchronizedGroups = (D10000000000000000000002);
+            name = CMVProTests;
+            packageProductDependencies = ();
+            productName = CMVProTests;
+            productReference = C10000000000000000000003;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
 /* End PBXNativeTarget section */
 
+/* Begin PBXContainerItemProxy section */
+        610000000000000000000002 = {isa = PBXContainerItemProxy; containerPortal = 120000000000000000000001; proxyType = 1; remoteGlobalIDString = 110000000000000000000001; remoteInfo = CMV; };
+/* End PBXContainerItemProxy section */
+/* Begin PBXTargetDependency section */
+        610000000000000000000001 = {isa = PBXTargetDependency; target = 110000000000000000000001; targetProxy = 610000000000000000000002; };
+/* End PBXTargetDependency section */
 /* Begin PBXProject section */
 		120000000000000000000001 /* Project object */ = {
 			isa = PBXProject;
@@ -117,6 +142,7 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+                    110000000000000000000002 = {CreatedOnToolsVersion = 26.0; TestTargetID = 110000000000000000000001; };
 					110000000000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -142,6 +168,7 @@
 			projectRoot = "";
 			targets = (
 				110000000000000000000001 /* CMV */,
+				110000000000000000000002 /* CMVProTests */,
 			);
 		};
 /* End PBXProject section */
@@ -154,6 +181,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		310000000000000000000005 /* Test Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000007); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -183,6 +211,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		310000000000000000000004 /* Test Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -249,7 +278,8 @@
 					"$(inherited)",
 					"-lcmv_core_ffi",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.windsheep.cmv;
+				CMV_APP_BUNDLE_IDENTIFIER = com.windsheep.cmv;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(CMV_APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -290,7 +320,8 @@
 					"$(inherited)",
 					"-lcmv_core_ffi",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.windsheep.cmv;
+				CMV_APP_BUNDLE_IDENTIFIER = com.windsheep.cmv;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(CMV_APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -301,6 +332,48 @@
 			};
 			name = Release;
 		};
+        510000000000000000000005 /* Debug */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                BUNDLE_LOADER = "$(TEST_HOST)";
+                HEADER_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../CMVCoreRS/ffi/include");
+                CODE_SIGN_STYLE = Automatic;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+                MACOSX_DEPLOYMENT_TARGET = 15.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.windsheep.cmv.protests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+                SUPPORTS_MACCATALYST = NO;
+                SWIFT_VERSION = 6.0;
+                SWIFT_STRICT_CONCURRENCY = complete;
+                TARGETED_DEVICE_FAMILY = 2;
+                "TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/CMV.app/Contents/MacOS/CMV";
+                "TEST_HOST[sdk=iphone*]" = "$(BUILT_PRODUCTS_DIR)/CMV.app/CMV";
+            };
+            name = Debug;
+        };
+        510000000000000000000006 /* Release */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                BUNDLE_LOADER = "$(TEST_HOST)";
+                HEADER_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../CMVCoreRS/ffi/include");
+                CODE_SIGN_STYLE = Automatic;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+                MACOSX_DEPLOYMENT_TARGET = 15.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.windsheep.cmv.protests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+                SUPPORTS_MACCATALYST = NO;
+                SWIFT_VERSION = 6.0;
+                SWIFT_STRICT_CONCURRENCY = complete;
+                TARGETED_DEVICE_FAMILY = 2;
+                "TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/CMV.app/Contents/MacOS/CMV";
+                "TEST_HOST[sdk=iphone*]" = "$(BUILT_PRODUCTS_DIR)/CMV.app/CMV";
+            };
+            name = Release;
+        };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -322,6 +395,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		210000000000000000000003 = {isa = XCConfigurationList; buildConfigurations = (510000000000000000000005, 510000000000000000000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

@@ -38,6 +38,9 @@ public protocol LibraryRepository: Sendable {
     /// Applies the same partial metadata patch to every requested track.
     /// The operation validates all IDs before mutating records and saves once.
     func updateMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws
+    func previewMetadata(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws -> [MetadataPreview]
+    func updateMetadataWithUndo(for trackIDs: [UUID], with patch: TrackMetadataPatch) async throws -> MetadataUndoReceipt
+    func undoMetadata(_ receipt: MetadataUndoReceipt) async throws -> MetadataUndoResult
     func recordPlayback(trackID: UUID, skipped: Bool) async throws
     func setAnalysis(trackID: UUID, profile: AnalysisProfile) async throws
     func playlists() async throws -> [Playlist]
@@ -49,6 +52,9 @@ public protocol LibraryRepository: Sendable {
     func removeTrack(trackID: UUID, fromPlaylist id: UUID) async throws
     /// Removes all matching IDs in one save while preserving the remaining order.
     func removeTracks(trackIDs: [UUID], fromPlaylist id: UUID) async throws
+    /// Replaces a playlist order only when `trackIDs` is a complete permutation
+    /// of its current IDs. It can never add or delete media references.
+    func reorderPlaylist(id: UUID, trackIDs: [UUID]) async throws
 }
 
 @MainActor
@@ -145,6 +151,8 @@ public struct ScannedMediaFile: Hashable, Sendable {
     public var artist: String
     public var album: String
     public var albumArtist: String
+    public var genre: String?
+    public var releaseDate: Date?
     public var artworkData: Data?
     public var trackNumber: Int?
     public var discNumber: Int?
@@ -152,12 +160,14 @@ public struct ScannedMediaFile: Hashable, Sendable {
     public var replayGainDB: Double?
     public var mediaKind: MediaKind
     public init(relativePath: String, fileIdentifier: String, fileSize: Int64, modifiedAt: Date, title: String,
-                artist: String = "未知歌手", album: String = "未知專輯", albumArtist: String = "", artworkData: Data? = nil,
+                artist: String = "未知歌手", album: String = "未知專輯", albumArtist: String = "",
+                genre: String? = nil, releaseDate: Date? = nil, artworkData: Data? = nil,
                 trackNumber: Int? = nil, discNumber: Int? = nil, duration: TimeInterval = 0,
                 replayGainDB: Double? = nil, mediaKind: MediaKind = .audio) {
         self.relativePath = relativePath; self.fileIdentifier = fileIdentifier
         self.fileSize = fileSize; self.modifiedAt = modifiedAt; self.title = title
-        self.artist = artist; self.album = album; self.albumArtist = albumArtist; self.artworkData = artworkData
+        self.artist = artist; self.album = album; self.albumArtist = albumArtist
+        self.genre = genre; self.releaseDate = releaseDate; self.artworkData = artworkData
         self.trackNumber = trackNumber; self.discNumber = discNumber
         self.duration = duration; self.replayGainDB = replayGainDB; self.mediaKind = mediaKind
     }

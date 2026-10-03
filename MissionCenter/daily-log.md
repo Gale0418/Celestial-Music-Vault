@@ -2,7 +2,7 @@
 
 - 2026-09-27｜AERO-MON30／SC31／F25／F26：Pro 批次編輯、歌單多選移除、批次離線與 Smart DJ 已實作；台灣買斷價格為已由 Apple API 回讀的 NT$150。土星採主代理親繪無縫雲圖與 Metal 球面七緯度差速旋轉，保留固定星環、輪廓與光照；依原圖九個輪廓點修正圓心／半徑，移除假雲帶刮痕與球緣重影。美術、工程、無障礙與 shader 分身複查後，本次範圍 P0／P1／P2 均無待修項；Mac 短間隔及約 40 秒截圖確認雲紋動、球／環固定。CodeRabbit 共六輪，遵守每小時三次及每次不超過 150 檔，有效問題均修正；兩次字串 catalog 重複報告以 JSON 與單一 version 證據判為誤報。Swift 64／0（含 50k）、安全測試、474 組語系、雙平台 Release 與 strict codesign 通過。桌面已覆蓋啟動，1,964 首曲目保留，舊 App 留垃圾桶；實體 iPad 已安裝、啟動並確認程序存活。依使用者授權移除八個一般模擬器，保留 CMV iPad Air 與 MediBuddy 專用裝置，可用空間由約 1.4 GiB 回升約 12 GiB。iPad 傾斜視差、GPU 耗能、真實 NAS 與 Sandbox 交易仍待完整實測，未宣稱 App Store 發佈完成。
 
-- 2026-09-24｜AERO-SC31 桌面測試交付：CodeRabbit 三輪共 11 issues，核對後修補 macOS 導覽、重掃重匯入意圖、shuffle 預備檔對位、零影格分析讀取、分頁時序與 Reduce Motion 能量刷新；拒絕與使用者「歌單」命名衝突的建議、未上線 Smart DJ 宣稱、以及削弱釘選媒體完整性驗證的建議。Swift 非 50k 全套 56／0，Mac／iPad Simulator Debug build pass；50k 獨立測試前一輪 400.204 秒通過。桌面首版在曲庫切頁發現雙 SwiftUI 搜尋工具列 AppKit exception，已改歌單頁內搜尋，增量雙平台重建通過。最終 Desktop App ad-hoc sandbox entitlements 與 strict codesign、binary cmp 通過，從桌面路徑重啟可見既有 1,967 首並切進曲庫；暫存同二進位驗清單／詳細／縮圖、搜尋及歌單切換。舊 App 和資料庫快照保留在 `<HOME_PATH> Support/CMV-Backup-20260923-Vvqnr4`，資料庫 integrity `ok`，未變動曲目數或自訂歌單數。Release 因主機爭用中止，不宣稱發行版；實體 iPad 簽署及真實 NAS 負載仍待驗。
+- 2026-09-24｜AERO-SC31 桌面測試交付：CodeRabbit 三輪共 11 issues，核對後修補 macOS 導覽、重掃重匯入意圖、shuffle 預備檔對位、零影格分析讀取、分頁時序與 Reduce Motion 能量刷新；拒絕與使用者「歌單」命名衝突的建議、未上線 Smart DJ 宣稱、以及削弱釘選媒體完整性驗證的建議。Swift 非 50k 全套 56／0，Mac／iPad Simulator Debug build pass；50k 獨立測試前一輪 400.204 秒通過。桌面首版在曲庫切頁發現雙 SwiftUI 搜尋工具列 AppKit exception，已改歌單頁內搜尋，增量雙平台重建通過。最終 Desktop App ad-hoc sandbox entitlements 與 strict codesign、binary cmp 通過，從桌面路徑重啟可見既有 1,967 首並切進曲庫；暫存同二進位驗清單／詳細／縮圖、搜尋及歌單切換。舊 App 和資料庫快照保留在 `<USER_HOME>/Library/Application Support/CMV-Backup-20260923-Vvqnr4`，資料庫 integrity `ok`，未變動曲目數或自訂歌單數。Release 因主機爭用中止，不宣稱發行版；實體 iPad 簽署及真實 NAS 負載仍待驗。
 
 - 2026-09-15｜AERO-L3／M6 大曲庫回歸：歌曲頁改以獨立 lazy 頁尾哨兵觸發 200 首分頁，不再把載入綁在可能被取消的最後一列；工具列顯示已載入數，序號欄改為 54pt 單行等寬數字。確認 NAS 重新掛載會改變 filesystem resource identifier，造成 1,964 組同來源／相對路徑重複；掃描現以相對路徑作後備身份，一次性修復合併時保留原 ID、評分、最愛、播放統計、分析與歌單引用。實際 sandbox store 已先備份並通過 integrity check，再由 3,931 筆收斂為 1,967 首、重複 0、available 1,964／missing 3、9 首評分保留。50,000 首完整跨頁與 NAS 合併 targeted tests 2／0，Mac／iPad Release、Impeccable detector、strict sandbox entitlements、binary cmp、桌面啟動與實際 UI 200 首首頁均通過。中途曾因 ad-hoc 漏 entitlement 讀到非 sandbox store，已辨識、可復原移至垃圾桶並以 `CMV.entitlements` 重簽；未修改該錯誤 store。
 
@@ -12,7 +12,7 @@
 
 - 2026-09-08 21:23 +08:00｜變更：AERO-MON30 接入 StoreKit 2、升級頁、設定入口、新 Pro 操作檢查、免費資料保護與交易順序防護；正式 Mission Center 修正版安裝並在原 SMB sync／resume 通過｜原因：使用者批准免費＋一次性 Pro 施工；Gemini 架構挑戰與 Luna 複查確認離線及退款交錯盲點｜影響：Swift full48／0 failures，原交易競態 review resolved；最後版本 Mac／iPad Simulator Debug build 均 exit 0；最終 Mac 隔離升級頁及 Escape 返回設定通過。StoreKit standalone host Code=3、XCTest host未抵達交易，iPad UI及Sandbox仍待驗；未建正式商品或冒稱可上架。
 
-- 最後整理： 2026-10-02
+- 最後整理： 2026-10-03
 
 ## 2026-09-08
 
@@ -137,8 +137,8 @@
 - AERO-U23 豪華 Now Playing 封頂：詳情材質真正延展到底部、播放操作收進玻璃控制艙、右側佇列加寬並可點播／直接五星評分，背景加入低頻流星雨且遵守 Reduce Motion。Impeccable detector 無 finding；以臨時 Bundle ID 避開桌面遊戲同識別衝突後完成精準視窗截圖驗收。
 - AERO-F26 月環／側欄卡頓修復第一切片（2026-09-07）：新增 `queueRevision` 與 `queuePanelDisplayQueue`，讓 QueuePanel 不再訂閱 `playbackRevision` 的 elapsed-time 廣播；混合 queue、影片切換、shuffle、append 與 clear 路徑補齊低頻 revision。Antigravity 唯讀審查 request `a249f24e-3224-4050-b0cf-cb61a3860917` 完成且未修改工作區；macOS Debug build 通過。Swift package 其餘 31/32 測試通過，既有 smart-cache same-size mutation 測試因殘留快取失敗，未宣稱全綠；AERO-F26 維持 Review，等待實機感知驗收。
 - AERO-F26 月環幀率補強（2026-09-07）：`AudioEnergyRing` 改用 60fps animation schedule 與同幀距離插值，仍受 scene phase／Reduce Motion 暫停；第二次 macOS Debug build 通過。未宣稱實機 60fps 或掉幀率，需主人在桌面版實播確認。
-- AERO-F26 桌面版交付（螃蟹版）：將最新 QueuePanel／月環修正版複製至 `<HOME_PATH>` 取代舊版；舊 App 可復原移至 `<HOME_PATH>`。重新註冊 LaunchServices、本機 ad-hoc strict codesign 通過，桌面 App 以 PID 40141 成功啟動；Bundle ID `com.windsheep.cmv`、版本 `2.0 (1)`。Swift 全套仍有 31/32（1 項既有 smart-cache 殘留快取測試失敗），未宣稱全綠。
-- AERO-F26 音樂匯入／背景掃描修補（螃蟹版）：單檔拖放不再靜默忽略，會顯示「目前只能加入資料夾」；Mac drop 入口改把完整 URL 集合交給 `addSources`。新增非阻塞頂部載入浮標，底部全域狀態列保留；既有曲目快照識別字典與掃描完成 missing-ID 比對移至 utility detached task，scanner actor 持續在背景執行檔案枚舉／metadata。macOS Debug build 通過。桌面 App 重新以 `CMV.entitlements` ad-hoc 簽章並 strict verify，LaunchServices 重註冊後以 PID 52833 啟動；SwiftData 讀回 `available:112`、可播放曲目 `1967`，表示既有來源權限已恢復；舊版可復原於 `<HOME_PATH>`。
+- AERO-F26 桌面版交付（螃蟹版）：將最新 QueuePanel／月環修正版複製至 `<USER_HOME>/Desktop/CMV.app` 取代舊版；舊 App 可復原移至 `<USER_HOME>/.Trash/CMV.app.before-queue-fix-20260907`。重新註冊 LaunchServices、本機 ad-hoc strict codesign 通過，桌面 App 以 PID 40141 成功啟動；Bundle ID `com.windsheep.cmv`、版本 `2.0 (1)`。Swift 全套仍有 31/32（1 項既有 smart-cache 殘留快取測試失敗），未宣稱全綠。
+- AERO-F26 音樂匯入／背景掃描修補（螃蟹版）：單檔拖放不再靜默忽略，會顯示「目前只能加入資料夾」；Mac drop 入口改把完整 URL 集合交給 `addSources`。新增非阻塞頂部載入浮標，底部全域狀態列保留；既有曲目快照識別字典與掃描完成 missing-ID 比對移至 utility detached task，scanner actor 持續在背景執行檔案枚舉／metadata。macOS Debug build 通過。桌面 App 重新以 `CMV.entitlements` ad-hoc 簽章並 strict verify，LaunchServices 重註冊後以 PID 52833 啟動；SwiftData 讀回 `available:112`、可播放曲目 `1967`，表示既有來源權限已恢復；舊版可復原於 `<USER_HOME>/.Trash/CMV.app.before-music-fix-20260907-2`。
 
 ## 2026-08-26
 - 啟動 AeroMusic 2.0 SwiftUI 原生重建；建立 AERO-E3 任務樹並記錄雙平台、NAS、離線、隱私與 Electron 退場護欄。
