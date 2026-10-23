@@ -326,3 +326,10 @@ REV23-T2 維持 Review，待 build3 實機驗證。REV23-T5 已進入 In Progres
 
 - REV23-T2 Review：Mac／iPad build 3 均顯示「已購買 CMV Pro」與「已購買・永久使用」，購買／恢復按鈕不可見；Mac 158 首、iPad 19 首可見，未清除曲庫或權益，未測 fresh purchase。
 - REV23-T5 InProgress：兩平台 build 3 成品資格通過；Mac upload 進行中。iPad 13 吋 required screenshot 仍阻擋 iOS 送審。
+
+### 2026-10-23 build 3 發布回條
+
+- REV23-T2 Review：已購買狀態修正通過 Mac／實體 iPad scoped 驗收；未宣稱 fresh purchase 測試。
+- REV23-T5 InProgress：build 3 來源已 push main `6fe775b`，Mac／iOS 均 VALID、attached；Mac 原 submission 重新提交成功，WAITING_FOR_REVIEW，MANUAL release 不變。iOS 尚未 submit。
+- REV23-T3 InProgress：13 吋模擬器依使用者批准短暫重開，因 GUI 控制失效未拍成橫向示範影片展示圖；raw 空曲庫 PNG 保存但不當成可交付商店圖。已 shutdown 並退出 Simulator，未編譯 WDA；required 截圖仍是阻礙。
+- 本輪確認的產品修改已完成，保留 iOS 截圖／送審未完成事項，沒有將整個 REV23 標成 Done。

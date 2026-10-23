@@ -2,7 +2,7 @@
 
 Celestial Music Vault（CMV）是一個以 **macOS 15+／iPadOS 18+** 為目標的私有音樂資料庫與播放器。CMV 2.0 的現行主線採 **Swift 6、SwiftUI、SwiftData、AVFoundation／AVKit**，並以 **Rust 1.98.1** 實作可跨平台驗證的純邏輯核心；音樂、影片、NAS 路徑與分析資料都留在使用者自己的裝置與儲存來源。
 
-> **目前狀態（2026-10-23）：** Native 2.0 是唯一現行主線。2.0（2）已推送 GitHub main，Mac／iPad 成品已上傳 Apple、處理為 `VALID` 並附至版本，尚未重新送審。依使用者回饋，2.0（3）將已解鎖 Pro 頁改為「已購買・永久使用」，不再顯示購買／恢復按鈕；Mac build 3 已通過 archive、export、簽章資格與實機畫面確認，iPad build 3 archive、export、qualification、resource guard 與實機已購買畫面驗證均已通過。Mac 三語 6 張與 iPad 11 吋三語 6 張實機商店圖已回讀為 `COMPLETE`；iPad 13 吋 required slot 的舊 AI 圖仍待替換，模擬器依使用者要求保持關閉。兩平台送審保留關卡，未宣稱 Apple 核准。舊 Electron／React／Node 已依 AERO-RT4 退場。詳見 [審查修復紀錄](Native/REVIEW_FIXES_20261023.md)。
+> **目前狀態（2026-10-23）：** Native 2.0 是唯一現行主線。2.0（3）已推送 GitHub main，兩平台成品均上傳 Apple、處理為 `VALID` 並附至版本。Mac 已重新提交，狀態為 `WAITING_FOR_REVIEW`；iPad 尚未重新送審，仍待替換 13 吋 required 截圖。已購買 Pro 頁明示永久使用並收起購買／恢復按鈕，Mac／實體 iPad 均已驗證。Mac 三語 6 張與 iPad 11 吋三語 6 張實機商店圖已回讀為 `COMPLETE`；13 吋模擬器拍攝因視窗控制失效未完成展示圖，已關閉。未宣稱 Apple 核准。舊 Electron／React／Node 已依 AERO-RT4 退場。詳見 [審查修復紀錄](Native/REVIEW_FIXES_20261023.md)。
 
 ## CMV 2.0 能做什麼
 
@@ -77,6 +77,6 @@ CMV 2.0 的三張核准構圖已移出工具工作目錄，永久版本化於：
 
 ## 發行原則
 
-Native 2.0 build 2 的兩平台 archive、Distribution export、qualification、實體已解鎖畫面驗證與 Apple upload／attach 已完成。build 3 補上更明確的已購買狀態；13 吋 required screenshot、重新送審、TestFlight 與 App Store 核准仍待完成。已完成的簽章與成品資格不等於 Apple 核准或公開上架。
+Native 2.0 build 2 的兩平台 archive、Distribution export、qualification、實體已解鎖畫面驗證與 Apple upload／attach 已完成。build 3 補上更明確的已購買狀態；iPad 13 吋 required screenshot 與 iPad 重新送審仍待完成；Mac 已等待審查，TestFlight 分發與 App Store 核准另行確認。已完成的簽章與成品資格不等於 Apple 核准或公開上架。
 
 本輪舊版退場的 Git 復原基準是 `7e033ae3b776f116695b3f2df0f0293bd76322f9`。需要取回歷史檔案時，可使用 `git show 7e033ae3b776f116695b3f2df0f0293bd76322f9:path` 查閱，或使用 `git restore --source 7e033ae3b776f116695b3f2df0f0293bd76322f9 -- paths` 復原指定路徑。

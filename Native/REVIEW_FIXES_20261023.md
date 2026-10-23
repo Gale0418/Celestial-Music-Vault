@@ -46,3 +46,11 @@
 ## Build 3 實機驗收收據
 
 Mac 與實體 iPad 均以同一 Release archive 的 Development 簽章副本驗證：2.0（3）已購買標題與永久使用狀態可見，購買／恢復按鈕不可見；Mac 曲庫 158 首、iPad 19 首。未執行新購買，不把既有權益驗證當成 fresh transaction 驗證。兩平台既有資料保留，未卸載 App。
+
+## Build 3 發布結果（最新收據）
+
+- Mac 與 iOS build 3 均為 Apple `VALID`，已附至各自 2.0 版本。Mac build ID `117558c0-6299-4cbc-8b83-59d35d3ea184`；iOS build ID `d4f27eb4-2961-4939-bae7-60b189e3766d`。
+- Mac 沿用原 submission，將已修復項目標為 resolved，再重新提交成功，Apple 回傳 `WAITING_FOR_REVIEW`。保留 MANUAL release，核准後不自動公開發行。
+- Mac validator blocking 0、errors 0；3 個初次平台版本 What's New 空值警告（Apple 不接受該欄位）、1 個 legacy IAP READY_TO_SUBMIT 警告仍明列。version-scoped IAP 為 READY_FOR_REVIEW；Privacy 已在 browser 確認發布。
+- iOS 尚未 submit。13 吋模擬器短暫重開後，CMV 能顯示，但 GUI tree 變空且 click 失敗，未完成示範影片匯入。raw PNG 保存成功，但尺寸 2064×2752、內容為空曲庫，不當成要求的橫向播放展示圖。裝置已 Shutdown、Simulator 程式已關閉，沒有再編譯 WDA。
+- 2.0（3）來源 commit 為 `6fe775b121a05b3e378b4cdcd3e7a4312eeaf0e9`。本節是其後補上的發布回條；先前歷史段落的 pending 狀態以本節為準。
