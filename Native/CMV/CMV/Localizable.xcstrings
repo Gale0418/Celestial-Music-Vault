@@ -13794,6 +13794,75 @@
           }
         }
       }
+    },
+    "已購買 CMV Pro": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已購買 CMV Pro"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV Pro Purchased"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV Pro は購入済みです"
+          }
+        }
+      }
+    },
+    "已購買・永久使用": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已購買・永久使用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purchased · Lifetime Access"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購入済み・無期限で利用可能"
+          }
+        }
+      }
+    },
+    "永久使用，無需重複購買，不自動續訂。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久使用，無需重複購買，不自動續訂。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lifetime access. No repeat purchase or automatic renewal."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無期限で利用できます。再購入や自動更新はありません。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

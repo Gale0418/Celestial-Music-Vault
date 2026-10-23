@@ -301,7 +301,7 @@ CMV-DEMO-I1：尚未開始最終截圖，WAIT_USER_HANDOFF。使用者正在玩i
 | REV23-T2 | 修復已確認程式與三語問題 | Task | REV23-E1 | P0 | Review | Codex／Gemini | REV23-T1 | 依已證實原因實作 | 受影響測試、雙平台建置及實機驗證 |
 | REV23-T3 | 補實機截圖及 iPad／MacBook 宣傳圖 | Task | REV23-E1 | P1 | In Progress | Codex | REV23-T2 | 真實畫面保留，image 裝置圖不得冒充原始截圖 | 螢幕對應來源、商店尺寸與文字核對 |
 | REV23-T4 | CodeRabbit、跨領域驗收與 README／任務中心 | Task | REV23-E1 | P0 | In Progress | Codex | REV23-T2,REV23-T3 | 限額分批並驗證真問題 | 審查紀錄、問題處置及相應驗證 |
-| REV23-T5 | 提交 Git、推送 main、上傳新版並重新送審 | Task | REV23-E1 | P0 | Backlog | Codex | REV23-T4 | 核對 release gate 後執行 | 遠端 SHA、build processing、提交回條及最終狀態 |
+| REV23-T5 | 提交 Git、推送 main、上傳新版並重新送審 | Task | REV23-E1 | P0 | In Progress | Codex | REV23-T4 | 核對 release gate 後執行 | 遠端 SHA、build processing、提交回條及最終狀態 |
 
 本機既有多項 dirty 變更與 Electron 刪除先保存盤點，不任意回復或全數混入提交。Mission Center resume 回傳 command_error，暫讀 canonical 記錄，後續診斷工具，不假稱 resume 通過。
 ### 2026-10-23 final archive／screenshot gate checkpoint（REV23 scope，未結案）
@@ -311,3 +311,18 @@ CMV-DEMO-I1：尚未開始最終截圖，WAIT_USER_HANDOFF。使用者正在玩i
 - Mac 三語 6 張 2880×1800、iPad 11 吋三語 6 張 2360×1640 實機圖已完成並回讀 `COMPLETE`；13 吋素材仍 HOLD。iOS Development 同 Release install／launch exit 0 但 WDA 中止，UI 未驗收；Mac Development 副本未 install。
 - CodeRabbit #5 duplicate focused 與 #7 VideoMeter hosted 已 PASS；#4 fixture 只有 source／skip behavior、未 full hosted；#9 StoreKit LaunchAction 語義 UNKNOWN。Core 115／4 skip／0 fail、Rust 34／0 fail、Python 10／2 skip／0 fail、三語 627 鍵 0 issues。
 - fresh arbiter 正在更新 `PASS_SCOPED` final gates；正式新版 upload／attach／送審與 Apple 回條仍是後續 action-time gate。
+
+
+### 2026-10-23｜build 3 已購買文案追補
+
+REV23-T2 維持 Review，待 build3 實機驗證。REV23-T5 已進入 In Progress：build2 commit f69d8a7 已推 origin/main、雙平台上傳 VALID並attach，但未送審；依使用者最新需求改採build3。CodeRabbit針對已購買介面補審1檔0issues，三語630keys0問題。13吋素材仍待，模擬器保持關閉。
+
+### 2026-10-23 build 3 成品檢查點
+
+- REV23-T2 Review：Mac/iOS archive exit 0；218 source files 建置前後一致；兩平台 export、qualification、resource guard PASS。Mac owned-state 實機 PASS；iPad install exit 0，launch 因鎖屏被拒，等解鎖確認。
+- REV23-T5 InProgress：準備 build 3 upload／attach，build 2 尚未重新送審；13 吋 required screenshot 未完成，不提交 iOS。
+
+### 2026-10-23 build 3 實體驗收完成
+
+- REV23-T2 Review：Mac／iPad build 3 均顯示「已購買 CMV Pro」與「已購買・永久使用」，購買／恢復按鈕不可見；Mac 158 首、iPad 19 首可見，未清除曲庫或權益，未測 fresh purchase。
+- REV23-T5 InProgress：兩平台 build 3 成品資格通過；Mac upload 進行中。iPad 13 吋 required screenshot 仍阻擋 iOS 送審。

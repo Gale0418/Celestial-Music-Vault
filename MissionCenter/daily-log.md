@@ -605,3 +605,29 @@ xctrace裝置識別先用錯CoreDevice UUID，初次attach失敗退出12且空tr
 ## 2026-10-23T20:38:09+08:00｜使用者優先：關閉 13 吋模擬器
 
 使用者回報整台 Mac 嚴重卡頓，要求盡快拍照並關閉模擬器。本次 sim WDA 尚未啟動，停止其專用建置與子程序；關閉前 simctl screenshot exit1，未新增照片。task-owned Simulator shutdown exit0，fresh booted inventory 確認不在啟動清單。不再重啟模擬器；既有 Mac／實體 11 吋 iPad 四張橫向實拍保留，13 吋 required 商店圖仍待解決，不以舊 AI 圖或縮放 11 吋素材冒稱完成。
+
+
+## 2026-10-23T21:00:25+08:00｜REV23 Git 與雙平台 build 2 已上傳
+
+128 個已審查檔案提交 f69d8a79fbd60418ab562cfbe57fec95ebe9fb04 並推送 origin/main，fresh remote SHA 一致。兩平台正式成品已 upload，fresh ASC processingState 均 VALID；Mac build 2 已附版本，iPad附版本進行中。Mac 英文 review notes 更新成功。最終 Development 重簽 Release 實機：Mac 158／iPad 19 首曲目可見，兩端既有 Pro 已解鎖；Mac 顯示語言恢復繁中。沒有新購買、沒有改寫曲庫。13吋截圖仍待；Mac strict 僅初版 whatsNew 與 legacy IAP warnings，正由獨立 arbiter 核對 applicability；尚未宣稱重新送審。
+
+
+## 2026-10-23T21:04:51+08:00｜使用者回報購買未完成，暫停送審
+
+使用者確認在目前 iPad Development 測試版輸入密碼後未完成購買。即時 WDA 畫面顯示 Pro 已解鎖與恢復購買按鈕，但不能以既有 entitlement smoke 推論新購買成功。Mac/iPad submission 全部 HOLD；待釐清所按按鈕、StoreKit purchase result／error 與權益來源。雙平台 build2 已 upload VALID並attach，兩平台都未submit，不取消或重建既有submission。
+
+
+## 2026-10-23T21:15:40+08:00｜REV23 已購買狀態改為 build 3
+
+使用者澄清操作是恢復購買，無新付款失敗證據；另明確要求已購買就要清楚說明、不再留誤導按鈕。最小改動僅ProUpgradeView、三組三語字串、build number 3，StoreKit交易邏輯不改。630 keys三語0缺漏／Swift parse0／Luna scopedcritic findings0；Gemini429未完成本輪新文案校對，如實保留限制。單工作兩平台archive進行中，不啟Simulator。送審維持HOLD至build3實機驗證與新成品通過；iPad另有13吋素材缺口。
+
+### 2026-10-23 build 3 已購買狀態實機追補
+
+- 使用者澄清點的是「恢復購買」，非新購買失敗；需求改為已購買時明示永久使用，收起購買／恢復按鈕。
+- Mac build 3 archive、export、distribution qualification、resource guard、Development 副本簽章與實機已購買畫面 PASS，曲庫顯示 158 首。iPad build 3 尚在編譯，未宣稱其 UI 通過。
+- CodeRabbit focused 1 檔 0 issues；630 三語鍵 0 issues。13 吋 required screenshot 缺口不變，模擬器保持關閉。
+
+### 2026-10-23 build 3 實體驗收完成
+
+- REV23-T2 Review：Mac／iPad build 3 均顯示「已購買 CMV Pro」與「已購買・永久使用」，購買／恢復按鈕不可見；Mac 158 首、iPad 19 首可見，未清除曲庫或權益，未測 fresh purchase。
+- REV23-T5 InProgress：兩平台 build 3 成品資格通過；Mac upload 進行中。iPad 13 吋 required screenshot 仍阻擋 iOS 送審。

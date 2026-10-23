@@ -1,4 +1,17 @@
-# 2026-10-23 審查修復與 2.0（2）發布紀錄
+# 2026-10-23 審查修復與 2.0 發布紀錄
+
+## Build 3 追補（目前狀態）
+
+使用者已澄清輸入密碼前點的是「恢復購買」，不是新購買。現有永久 Pro 權益仍可用；本案沒有新購買成功卻不解鎖的證據，也不把既有權益 smoke 當成 fresh purchase 驗證。
+
+- build 2 已推送 GitHub main，兩平台上傳 Apple 後均為 `VALID` 並附至版本，尚未重新 submit。
+- build 3 僅變更 Pro 已購買 UI、3 組三語字串及 build number。已解鎖顯示「已購買 CMV Pro」與非互動「已購買・永久使用」，未解鎖保留購買／恢復。StoreKit transaction／state 未改。
+- 630 項 localization 檢查 0 issues、Swift parse PASS、獨立 UI critic 0 findings、CodeRabbit focused 1 檔 0 issues。本次 Gemini 文案請求遇配額 429，沒有宣稱完成其審核。
+- Mac build 3 archive、export、qualification、resource guard 與 Development 重簽副本驗證 PASS；實際畫面已確認購買／恢復按鈕消失、已購買文字可見，曲庫仍顯示 158 首。
+- iPad build 3 archive、export、qualification、resource guard 與實機已購買畫面驗證均已通過；13 吋 required screenshot 缺口保留，模擬器仍關閉。
+
+以下為 build 2 建置時的歷史驗證紀錄；其當時「尚未上傳／WDA 中止」狀態以本節更新為準。
+
 
 2.0（2）final archive、PKG／IPA export、Distribution qualification 與 resource guard 已完成並 PASS；正式新版 upload／attach／送審尚未完成。Apple 核准不由本機測試保證。
 
@@ -29,3 +42,7 @@
 - fresh completion arbiter 的 `PASS_SCOPED` 更新仍在整理；在 final gates 未封存前，REV23 維持 In Progress／Review／Backlog，不寫 Done、clean convergence 或 Apple ready。
 
 本機原始截圖、帳號／裝置回讀、影音及收據保存在 Git 忽略目錄；公開文件只記錄可核對的結果，不提交私人曲庫、憑證或完整帳號。
+
+## Build 3 實機驗收收據
+
+Mac 與實體 iPad 均以同一 Release archive 的 Development 簽章副本驗證：2.0（3）已購買標題與永久使用狀態可見，購買／恢復按鈕不可見；Mac 曲庫 158 首、iPad 19 首。未執行新購買，不把既有權益驗證當成 fresh transaction 驗證。兩平台既有資料保留，未卸載 App。

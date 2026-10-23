@@ -24,12 +24,12 @@ struct ProUpgradeView: View {
                                 .foregroundStyle(theme.primary)
                                 .accessibilityHidden(true)
                             Text(store.hasPro
-                                 ? AppLanguage.localized("你的 Pro，已經準備好了")
+                                 ? AppLanguage.localized("已購買 CMV Pro")
                                  : AppLanguage.localized("把喜歡的收藏，留在身邊"))
                                 .font(.title.bold())
                                 .accessibilityAddTraits(.isHeader)
                             Text(store.hasPro
-                                 ? AppLanguage.localized("謝謝你支持 CMV。繼續挑一首喜歡的歌吧。")
+                                 ? AppLanguage.localized("永久使用，無需重複購買，不自動續訂。")
                                  : AppLanguage.localized("出門前準備離線收藏，回到曲庫探索下一首，也能換一片喜歡的天空。"))
                                 .foregroundStyle(.secondary)
                         }
@@ -112,7 +112,12 @@ struct ProUpgradeView: View {
 
     private var purchaseActions: some View {
         VStack(spacing: 8) {
-            if !store.hasPro {
+            if store.hasPro {
+                Label(AppLanguage.localized("已購買・永久使用"), systemImage: "checkmark.seal.fill")
+                    .font(.headline)
+                    .foregroundStyle(theme.primary)
+                    .frame(minHeight: 44)
+            } else {
                 Button {
                     Task { await store.purchase() }
                 } label: {
@@ -137,14 +142,14 @@ struct ProUpgradeView: View {
                             .disabled(isBusy)
                     }
                 }
+                Button(store.operation == .restoring
+                       ? AppLanguage.localized("正在恢復購買…")
+                       : AppLanguage.localized("恢復購買")) {
+                    Task { await store.restore() }
+                }
+                .frame(minHeight: 44)
+                .disabled(isBusy || store.isChecking)
             }
-            Button(store.operation == .restoring
-                   ? AppLanguage.localized("正在恢復購買…")
-                   : AppLanguage.localized("恢復購買")) {
-                Task { await store.restore() }
-            }
-            .frame(minHeight: 44)
-            .disabled(isBusy || store.isChecking)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 8)
