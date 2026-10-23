@@ -82,6 +82,38 @@ final class QueueOperationTests: XCTestCase {
         XCTAssertFalse(restored.shuffleEnabled)
     }
 
+    func testDuplicateRepairReplacementPreservesEveryOccurrenceAndBaseOrder() {
+        let loser = UUID()
+        let keeper = UUID()
+        let first = occurrence(loser)
+        let second = occurrence(loser)
+        let tail = occurrence(third)
+        let snapshot = PlaybackQueueSnapshot(
+            entries: [first, tail, second],
+            baseEntries: [first, second, tail],
+            currentIndex: 1,
+            history: [first.occurrenceID, second.occurrenceID],
+            continuation: PlaybackQueueContinuationSnapshot(
+                randomTrackIDs: [loser, third, loser]
+            ),
+            shuffleEnabled: true
+        )
+
+        let migrated = PlaybackQueuePlanner.replacingTrackIDs(
+            in: snapshot,
+            replacements: [loser: keeper]
+        )
+
+        XCTAssertEqual(migrated.entries.map(\.trackID), [keeper, third, keeper])
+        XCTAssertEqual(migrated.baseEntries.map(\.trackID), [keeper, keeper, third])
+        XCTAssertEqual(migrated.entries.map(\.occurrenceID), snapshot.entries.map(\.occurrenceID))
+        XCTAssertEqual(migrated.baseEntries.map(\.occurrenceID), snapshot.baseEntries.map(\.occurrenceID))
+        XCTAssertEqual(migrated.history, snapshot.history)
+        XCTAssertEqual(migrated.currentIndex, snapshot.currentIndex)
+        XCTAssertEqual(migrated.continuation?.randomTrackIDs, [keeper, third])
+        XCTAssertTrue(PlaybackQueuePlanner.isWellFormed(migrated))
+    }
+
     func testRepeatModesDefineEndOfQueueSemantics() {
         var snapshot = PlaybackQueueSnapshot(
             entries: [occurrence(first), occurrence(second)], currentIndex: 1,
@@ -132,6 +164,65 @@ final class QueueOperationTests: XCTestCase {
         let persisted = await store.load()
         XCTAssertEqual(persisted?.revision, 41)
         XCTAssertTrue(persisted?.entries.isEmpty == true)
+    }
+
+    func testSnapshotStoreCanonicalizesCapturedAndNewerLoserSnapshotsAfterRepairRegistration() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CMVQueueCanonical-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = PlaybackQueueSnapshotStore(url: url)
+        let loser = UUID()
+        let keeper = UUID()
+        let occurrence = PlaybackQueueOccurrence(trackID: loser)
+        var captured = PlaybackQueueSnapshot(entries: [occurrence], currentIndex: 0)
+        captured.revision = 1
+
+        let registered = await store.registerTrackIDReplacements([loser: keeper])
+        XCTAssertTrue(registered)
+        try await store.save(captured)
+        guard let first = await store.load() else {
+            XCTFail("canonicalized snapshot should load")
+            return
+        }
+        XCTAssertEqual(first.entries.map(\.trackID), [keeper])
+        XCTAssertEqual(first.entries.map(\.occurrenceID), [occurrence.occurrenceID])
+
+        var newer = PlaybackQueueSnapshot(entries: [PlaybackQueueOccurrence(trackID: loser)], currentIndex: 0)
+        newer.revision = 2
+        try await store.save(newer)
+        guard let second = await store.load() else {
+            XCTFail("newer canonicalized snapshot should load")
+            return
+        }
+        XCTAssertEqual(second.entries.map(\.trackID), [keeper])
+
+        // A cancelled/reversed plan cannot make the keeper point back to the
+        // loser and create a canonicalization cycle.
+        let reverseRegistered = await store.registerTrackIDReplacements([keeper: loser])
+        XCTAssertFalse(reverseRegistered)
+        var latest = PlaybackQueueSnapshot(entries: [PlaybackQueueOccurrence(trackID: loser)], currentIndex: 0)
+        latest.revision = 3
+        try await store.save(latest)
+        guard let final = await store.load() else {
+            XCTFail("reverse registration must retain canonical snapshot")
+            return
+        }
+        XCTAssertEqual(final.entries.map(\.trackID), [keeper])
+
+        let batchA = UUID()
+        let batchB = UUID()
+        let batchCycleRegistered = await store.registerTrackIDReplacements([batchA: batchB, batchB: batchA])
+        XCTAssertFalse(batchCycleRegistered)
+        var batchSnapshot = PlaybackQueueSnapshot(
+            entries: [PlaybackQueueOccurrence(trackID: batchA)], currentIndex: 0
+        )
+        batchSnapshot.revision = 4
+        try await store.save(batchSnapshot)
+        guard let afterBatchCycle = await store.load() else {
+            XCTFail("snapshot should remain readable after rejected batch")
+            return
+        }
+        XCTAssertEqual(afterBatchCycle.entries.map(\.trackID), [batchA])
     }
 
     func testCorruptSnapshotIsIgnoredWithoutTouchingOtherData() async throws {

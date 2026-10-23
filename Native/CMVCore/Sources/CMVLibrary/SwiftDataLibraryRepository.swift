@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import SwiftData
 import CMVDomain
 
@@ -10,6 +11,7 @@ public enum LibraryRepositoryError: Error, Equatable, Sendable {
     case playlistNotFound(UUID)
     case invalidPlaylistName
     case invalidPlaylistPermutation
+    case duplicateRepairPlanChanged
 }
 
 public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
@@ -19,6 +21,13 @@ public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
     public let album: String
     public let isFavorite: Bool
     public let rating: Int
+    /// Values already folded by the repository search index. Keeping these
+    /// alongside display metadata avoids repeating Unicode normalization while
+    /// constructing the Rust ranking input.
+    public let searchIdentifier: String?
+    public let searchTitle: String?
+    public let searchArtist: String?
+    public let searchAlbum: String?
 
     public init(
         id: UUID,
@@ -26,7 +35,11 @@ public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
         artist: String,
         album: String,
         isFavorite: Bool,
-        rating: Int
+        rating: Int,
+        searchIdentifier: String? = nil,
+        searchTitle: String? = nil,
+        searchArtist: String? = nil,
+        searchAlbum: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -34,6 +47,10 @@ public struct LibrarySearchCandidate: Equatable, Identifiable, Sendable {
         self.album = album
         self.isFavorite = isFavorite
         self.rating = rating
+        self.searchIdentifier = searchIdentifier
+        self.searchTitle = searchTitle
+        self.searchArtist = searchArtist
+        self.searchAlbum = searchAlbum
     }
 }
 
@@ -57,6 +74,31 @@ public struct ScanTrackSnapshot: Sendable {
     public let modifiedAt: Date
     public let title: String
     public let availability: MediaAvailability
+}
+
+/// Duplicate repair result. The replacement map is consumed by playback and
+/// queue persistence so removing a loser record does not remove its queue
+/// occurrences with it.
+public struct DuplicateTrackRepairResult: Sendable, Equatable {
+    public let repairedCount: Int
+    public let replacements: [UUID: UUID]
+
+    public init(repairedCount: Int, replacements: [UUID: UUID]) {
+        self.repairedCount = repairedCount
+        self.replacements = replacements
+    }
+}
+
+public struct DuplicateTrackRepairPlan: Sendable, Equatable {
+    public let id: UUID
+    public let sourceIDs: [UUID]
+    public let replacements: [UUID: UUID]
+
+    public init(id: UUID = UUID(), sourceIDs: [UUID], replacements: [UUID: UUID]) {
+        self.id = id
+        self.sourceIDs = sourceIDs
+        self.replacements = replacements
+    }
 }
 
 public actor SwiftDataLibraryRepository: LibraryRepository {
@@ -137,7 +179,21 @@ public actor SwiftDataLibraryRepository: LibraryRepository {
 
     @discardableResult
     public func repairDuplicateTracksByRelativePath(sourceIDs: [UUID]) async throws -> Int {
-        try await worker.repairDuplicateTracksByRelativePath(sourceIDs: sourceIDs)
+        try await repairDuplicateTracksByRelativePathWithReplacements(sourceIDs: sourceIDs).repairedCount
+    }
+
+    public func repairDuplicateTracksByRelativePathWithReplacements(
+        sourceIDs: [UUID]
+    ) async throws -> DuplicateTrackRepairResult {
+        try await worker.repairDuplicateTracksByRelativePathWithReplacements(sourceIDs: sourceIDs)
+    }
+
+    public func prepareDuplicateTrackRepair(sourceIDs: [UUID]) async throws -> DuplicateTrackRepairPlan {
+        try await worker.prepareDuplicateTrackRepair(sourceIDs: sourceIDs)
+    }
+
+    public func commitDuplicateTrackRepair(_ plan: DuplicateTrackRepairPlan) async throws -> DuplicateTrackRepairResult {
+        try await worker.commitDuplicateTrackRepair(plan)
     }
 
     /// An explicit re-import of a known folder means the user wants that
@@ -285,13 +341,18 @@ public actor LibraryDataActor {
     private struct SearchEntry: Sendable {
         let id: UUID
         let title: String
+        let titleASCIIBytes: [UInt8]?
         let artist: String
+        let artistASCIIBytes: [UInt8]?
         let album: String
+        let albumASCIIBytes: [UInt8]?
         let displayArtist: String
         let displayAlbum: String
         let sortTitle: String
         let albumArtist: String
+        let albumArtistASCIIBytes: [UInt8]?
         let genre: String
+        let genreASCIIBytes: [UInt8]?
         let discNumber: Int
         let trackNumber: Int
         let duration: TimeInterval
@@ -304,6 +365,11 @@ public actor LibraryDataActor {
 
     private struct SearchQueryKey: Hashable, Sendable {
         let tokens: [String]
+    }
+
+    private struct SearchToken: Sendable {
+        let value: String
+        let asciiBytes: [UInt8]?
     }
 
     private struct PagedSortKey: Hashable {
@@ -364,14 +430,14 @@ public actor LibraryDataActor {
             // contain the exact token "love". The normalized 50k index is
             // already reused across queries, so scan that compact value index
             // and preserve correctness deterministically.
-            let matchingIDs = Self.sorted(
+            let pageEntries = Self.sortedPage(
                 matchingEntries(queryTokens: queryTokens),
                 by: sort,
-                ascending: ascending
+                ascending: ascending,
+                offset: offset,
+                limit: limit
             )
-                .dropFirst(max(0, offset))
-                .prefix(max(1, limit))
-                .map(\.id)
+            let matchingIDs = pageEntries.map(\.id)
             var descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { record in
                 matchingIDs.contains(record.id)
             })
@@ -441,7 +507,9 @@ public actor LibraryDataActor {
     }
 
     public func searchCandidates(matching query: String) throws -> [LibrarySearchCandidate] {
+        try Task.checkCancellation()
         try ensureSearchIndex()
+        try Task.checkCancellation()
         let queryTokens = Self.queryTokens(Self.searchValue(
             query.trimmingCharacters(in: .whitespacesAndNewlines)
         ))
@@ -452,7 +520,11 @@ public actor LibraryDataActor {
                 artist: entry.displayArtist,
                 album: entry.displayAlbum,
                 isFavorite: entry.isFavorite,
-                rating: entry.rating
+                rating: entry.rating,
+                searchIdentifier: entry.id.uuidString,
+                searchTitle: entry.title,
+                searchArtist: entry.artist,
+                searchAlbum: entry.album
             )
         }
     }
@@ -637,8 +709,60 @@ public actor LibraryDataActor {
     /// Repairs records duplicated when a NAS remount changes the filesystem's
     /// resource identifier. A relative path is unique inside one authorized
     /// source, so it is the safe fallback identity boundary.
+    public func prepareDuplicateTrackRepair(sourceIDs: [UUID]) throws -> DuplicateTrackRepairPlan {
+        DuplicateTrackRepairPlan(
+            sourceIDs: sourceIDs,
+            replacements: try duplicateReplacementMap(sourceIDs: sourceIDs)
+        )
+    }
+
+    public func commitDuplicateTrackRepair(
+        _ plan: DuplicateTrackRepairPlan
+    ) throws -> DuplicateTrackRepairResult {
+        let current = try duplicateReplacementMap(sourceIDs: plan.sourceIDs)
+        guard current == plan.replacements else {
+            throw LibraryRepositoryError.duplicateRepairPlanChanged
+        }
+        return try repairDuplicateTracksByRelativePathWithReplacements(sourceIDs: plan.sourceIDs)
+    }
+
+    private func duplicateReplacementMap(sourceIDs: [UUID]) throws -> [UUID: UUID] {
+        let playlists = try modelContext.fetch(FetchDescriptor<PlaylistRecord>())
+        let referencedIDs = Set(playlists.flatMap(\.trackIDs))
+        let sourceRecordGroups: [[TrackRecord]]
+        if sourceIDs.isEmpty {
+            sourceRecordGroups = [try modelContext.fetch(FetchDescriptor<TrackRecord>())]
+        } else {
+            sourceRecordGroups = try sourceIDs.map { sourceID in
+                let descriptor = FetchDescriptor<TrackRecord>(predicate: #Predicate { $0.sourceID == sourceID })
+                return try modelContext.fetch(descriptor)
+            }
+        }
+        var replacements = [UUID: UUID]()
+        for records in sourceRecordGroups {
+            let groups = Dictionary(grouping: records) {
+                DuplicatePathKey(sourceID: $0.sourceID, relativePath: $0.relativePath)
+            }
+            for duplicates in groups.values where duplicates.count > 1 {
+                let keeper = duplicates.max {
+                    Self.duplicateKeeperComesBefore($0, $1, referencedIDs: referencedIDs)
+                }!
+                for duplicate in duplicates where duplicate.id != keeper.id {
+                    replacements[duplicate.id] = keeper.id
+                }
+            }
+        }
+        return replacements
+    }
+
     @discardableResult
     public func repairDuplicateTracksByRelativePath(sourceIDs: [UUID]) throws -> Int {
+        try repairDuplicateTracksByRelativePathWithReplacements(sourceIDs: sourceIDs).repairedCount
+    }
+
+    public func repairDuplicateTracksByRelativePathWithReplacements(
+        sourceIDs: [UUID]
+    ) throws -> DuplicateTrackRepairResult {
         do {
             let playlists = try modelContext.fetch(FetchDescriptor<PlaylistRecord>())
             let referencedIDs = Set(playlists.flatMap(\.trackIDs))
@@ -659,9 +783,8 @@ public actor LibraryDataActor {
                     DuplicatePathKey(sourceID: $0.sourceID, relativePath: $0.relativePath)
                 }
                 for duplicates in groups.values where duplicates.count > 1 {
-                    let keeper = duplicates.max { lhs, rhs in
-                        Self.duplicateKeeperScore(lhs, referencedIDs: referencedIDs)
-                            < Self.duplicateKeeperScore(rhs, referencedIDs: referencedIDs)
+                    let keeper = duplicates.max {
+                        Self.duplicateKeeperComesBefore($0, $1, referencedIDs: referencedIDs)
                     }!
                     let liveRecord = duplicates
                         .filter { $0.availabilityRaw == MediaAvailability.available.rawValue }
@@ -690,7 +813,7 @@ public actor LibraryDataActor {
                 }
             }
             if repaired > 0 { try saveChanges() }
-            return repaired
+            return DuplicateTrackRepairResult(repairedCount: repaired, replacements: replacements)
         } catch {
             modelContext.rollback()
             throw error
@@ -704,6 +827,18 @@ public actor LibraryDataActor {
             + (record.analysisVersion == nil ? 0 : 1_000)
             + min(999, record.playCount + record.skipCount)
             + (record.availabilityRaw == MediaAvailability.missing.rawValue ? 1 : 0)
+    }
+
+    private static func duplicateKeeperComesBefore(
+        _ lhs: TrackRecord,
+        _ rhs: TrackRecord,
+        referencedIDs: Set<UUID>
+    ) -> Bool {
+        let lhsScore = duplicateKeeperScore(lhs, referencedIDs: referencedIDs)
+        let rhsScore = duplicateKeeperScore(rhs, referencedIDs: referencedIDs)
+        if lhsScore != rhsScore { return lhsScore < rhsScore }
+        // `max(by:)` keeps the lexicographically smaller UUID on a score tie.
+        return lhs.id.uuidString > rhs.id.uuidString
     }
 
     private static func mergeDuplicateMetadata(
@@ -1388,6 +1523,7 @@ public actor LibraryDataActor {
     }
 
     private func ensureSearchIndex() throws {
+        try Task.checkCancellation()
         guard !searchIndexLoaded else { return }
         var descriptor = FetchDescriptor<TrackRecord>()
         // The search index only needs scalar metadata. Fetching full records
@@ -1399,10 +1535,28 @@ public actor LibraryDataActor {
             \TrackRecord.duration, \TrackRecord.addedAt, \TrackRecord.modifiedAt,
             \TrackRecord.isFavorite, \TrackRecord.rating
         ]
+        // A cancelled build must never leave a partial index looking ready.
+        searchIndexLoaded = false
         searchIndex.removeAll(keepingCapacity: true)
         searchMatchCache = nil
-        for record in try modelContext.fetch(descriptor) { index(record) }
-        searchIndexLoaded = true
+        do {
+            try Task.checkCancellation()
+            var processed = 0
+            try modelContext.enumerate(descriptor, batchSize: 500) { record in
+                if processed.isMultiple(of: 500) {
+                    try Task.checkCancellation()
+                }
+                index(record)
+                processed += 1
+            }
+            try Task.checkCancellation()
+            searchIndexLoaded = true
+        } catch {
+            searchIndexLoaded = false
+            searchIndex.removeAll(keepingCapacity: true)
+            searchMatchCache = nil
+            throw error
+        }
     }
 
     private func index(_ record: TrackRecord) {
@@ -1411,16 +1565,23 @@ public actor LibraryDataActor {
         let title = Self.searchValue(record.title)
         let artist = Self.searchValue(record.artist)
         let album = Self.searchValue(record.album)
+        let albumArtist = Self.searchValue(record.albumArtist)
+        let genre = Self.searchValue(record.genre ?? "")
         searchIndex[record.id] = SearchEntry(
             id: record.id,
             title: title,
+            titleASCIIBytes: Self.asciiBytes(title),
             artist: artist,
+            artistASCIIBytes: Self.asciiBytes(artist),
             album: album,
+            albumASCIIBytes: Self.asciiBytes(album),
             displayArtist: record.artist,
             displayAlbum: record.album,
             sortTitle: record.title,
-            albumArtist: Self.searchValue(record.albumArtist),
-            genre: Self.searchValue(record.genre ?? ""),
+            albumArtist: albumArtist,
+            albumArtistASCIIBytes: Self.asciiBytes(albumArtist),
+            genre: genre,
+            genreASCIIBytes: Self.asciiBytes(genre),
             discNumber: record.discNumber ?? 0,
             trackNumber: record.trackNumber ?? 0,
             duration: record.duration,
@@ -1439,16 +1600,13 @@ public actor LibraryDataActor {
 
     private func matchingEntries(queryTokens: Set<String>) -> [SearchEntry] {
         let key = SearchQueryKey(tokens: queryTokens.sorted())
-        let matchingIDs: [UUID]
         if let cached = searchMatchCache, cached.key == key {
-            matchingIDs = cached.matchingIDs
-        } else {
-            matchingIDs = searchIndex.values
-                .filter { Self.matches($0, queryTokens: queryTokens) }
-                .map(\.id)
-            searchMatchCache = SearchMatchCache(key: key, matchingIDs: matchingIDs)
+            return cached.matchingIDs.compactMap { searchIndex[$0] }
         }
-        return matchingIDs.compactMap { searchIndex[$0] }
+        let searchTokens = queryTokens.map { SearchToken(value: $0, asciiBytes: Self.asciiBytes($0)) }
+        let matchingEntries = searchIndex.values.filter { Self.matches($0, queryTokens: searchTokens) }
+        searchMatchCache = SearchMatchCache(key: key, matchingIDs: matchingEntries.map(\.id))
+        return matchingEntries
     }
 
     private static func searchValue(_ value: String) -> String {
@@ -1472,10 +1630,44 @@ public actor LibraryDataActor {
         Set(value.split(whereSeparator: \.isWhitespace).map(String.init))
     }
 
-    private static func matches(_ entry: SearchEntry, queryTokens: Set<String>) -> Bool {
+    private static func asciiBytes(_ value: String) -> [UInt8]? {
+        let bytes = Array(value.utf8)
+        return bytes.allSatisfy { $0 < 128 } ? bytes : nil
+    }
+
+    private static func containsASCII(_ field: [UInt8], _ token: [UInt8]) -> Bool {
+        guard !token.isEmpty, token.count <= field.count else { return token.isEmpty }
+        return field.withUnsafeBufferPointer { fieldBuffer in
+            token.withUnsafeBufferPointer { tokenBuffer in
+                guard let fieldAddress = fieldBuffer.baseAddress,
+                      let tokenAddress = tokenBuffer.baseAddress else { return false }
+                return Darwin.memmem(fieldAddress, fieldBuffer.count, tokenAddress, tokenBuffer.count) != nil
+            }
+        }
+    }
+
+    private static func matches(
+        field: String,
+        asciiBytes: [UInt8]?,
+        token: SearchToken
+    ) -> Bool {
+        guard let tokenBytes = token.asciiBytes else {
+            // Both values are already case/diacritic folded. A remaining
+            // non-ASCII token cannot occur in an entirely ASCII field.
+            guard asciiBytes == nil else { return false }
+            return field.contains(token.value)
+        }
+        guard let asciiBytes else { return field.contains(token.value) }
+        return containsASCII(asciiBytes, tokenBytes)
+    }
+
+    private static func matches(_ entry: SearchEntry, queryTokens: [SearchToken]) -> Bool {
         queryTokens.allSatisfy { token in
-            entry.title.contains(token) || entry.artist.contains(token) || entry.album.contains(token) ||
-            entry.albumArtist.contains(token) || entry.genre.contains(token)
+            matches(field: entry.title, asciiBytes: entry.titleASCIIBytes, token: token) ||
+                matches(field: entry.artist, asciiBytes: entry.artistASCIIBytes, token: token) ||
+                matches(field: entry.album, asciiBytes: entry.albumASCIIBytes, token: token) ||
+                matches(field: entry.albumArtist, asciiBytes: entry.albumArtistASCIIBytes, token: token) ||
+                matches(field: entry.genre, asciiBytes: entry.genreASCIIBytes, token: token)
         }
     }
 
@@ -1569,66 +1761,128 @@ public actor LibraryDataActor {
         }
     }
 
+    private static func orderedBefore(
+        _ lhs: SearchEntry,
+        _ rhs: SearchEntry,
+        by sort: LibraryTrackSort,
+        ascending: Bool
+    ) -> Bool {
+        let comparison: ComparisonResult
+        switch sort {
+        case .title:
+            comparison = lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
+        case .artist:
+            comparison = Self.compare(
+                [lhs.artist, lhs.album, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                [rhs.artist, rhs.album, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
+            )
+        case .album:
+            comparison = Self.compare(
+                [lhs.album, lhs.albumArtist, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                [rhs.album, rhs.albumArtist, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
+            )
+        case .albumArtist:
+            comparison = Self.compare([lhs.albumArtist, lhs.album, lhs.sortTitle], [rhs.albumArtist, rhs.album, rhs.sortTitle])
+        case .genre:
+            comparison = Self.compare([lhs.genre, lhs.sortTitle], [rhs.genre, rhs.sortTitle])
+        case .trackNumber:
+            comparison = Self.compare([String(lhs.trackNumber), String(lhs.discNumber), lhs.sortTitle],
+                                      [String(rhs.trackNumber), String(rhs.discNumber), rhs.sortTitle])
+        case .discNumber:
+            comparison = Self.compare([String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
+                                      [String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle])
+        case .duration:
+            comparison = lhs.duration == rhs.duration ? .orderedSame : (lhs.duration < rhs.duration ? .orderedAscending : .orderedDescending)
+        case .rating:
+            comparison = lhs.rating == rhs.rating ? .orderedSame : (lhs.rating < rhs.rating ? .orderedAscending : .orderedDescending)
+        case .addedAt:
+            comparison = lhs.addedAt == rhs.addedAt ? .orderedSame : (lhs.addedAt < rhs.addedAt ? .orderedAscending : .orderedDescending)
+        case .releaseDate:
+            switch (lhs.releaseDate, rhs.releaseDate) {
+            case (nil, nil): comparison = .orderedSame
+            case (nil, _): comparison = .orderedAscending
+            case (_, nil): comparison = .orderedDescending
+            case let (left?, right?): comparison = left == right ? .orderedSame : (left < right ? .orderedAscending : .orderedDescending)
+            }
+        case .modifiedAt:
+            if lhs.modifiedAt == rhs.modifiedAt {
+                comparison = .orderedSame
+            } else {
+                comparison = lhs.modifiedAt < rhs.modifiedAt ? .orderedAscending : .orderedDescending
+            }
+        }
+        let stableComparison = comparison == .orderedSame
+            ? lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
+            : comparison
+        if stableComparison == .orderedSame {
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+        return ascending
+            ? stableComparison == .orderedAscending
+            : stableComparison == .orderedDescending
+    }
+
     private static func sorted(
         _ entries: [SearchEntry],
         by sort: LibraryTrackSort,
         ascending: Bool
     ) -> [SearchEntry] {
-        entries.sorted { lhs, rhs in
-            let comparison: ComparisonResult
-            switch sort {
-            case .title:
-                comparison = lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
-            case .artist:
-                comparison = Self.compare(
-                    [lhs.artist, lhs.album, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
-                    [rhs.artist, rhs.album, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
-                )
-            case .album:
-                comparison = Self.compare(
-                    [lhs.album, lhs.albumArtist, String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
-                    [rhs.album, rhs.albumArtist, String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle]
-                )
-            case .albumArtist:
-                comparison = Self.compare([lhs.albumArtist, lhs.album, lhs.sortTitle], [rhs.albumArtist, rhs.album, rhs.sortTitle])
-            case .genre:
-                comparison = Self.compare([lhs.genre, lhs.sortTitle], [rhs.genre, rhs.sortTitle])
-            case .trackNumber:
-                comparison = Self.compare([String(lhs.trackNumber), String(lhs.discNumber), lhs.sortTitle],
-                                          [String(rhs.trackNumber), String(rhs.discNumber), rhs.sortTitle])
-            case .discNumber:
-                comparison = Self.compare([String(lhs.discNumber), String(lhs.trackNumber), lhs.sortTitle],
-                                          [String(rhs.discNumber), String(rhs.trackNumber), rhs.sortTitle])
-            case .duration:
-                comparison = lhs.duration == rhs.duration ? .orderedSame : (lhs.duration < rhs.duration ? .orderedAscending : .orderedDescending)
-            case .rating:
-                comparison = lhs.rating == rhs.rating ? .orderedSame : (lhs.rating < rhs.rating ? .orderedAscending : .orderedDescending)
-            case .addedAt:
-                comparison = lhs.addedAt == rhs.addedAt ? .orderedSame : (lhs.addedAt < rhs.addedAt ? .orderedAscending : .orderedDescending)
-            case .releaseDate:
-                switch (lhs.releaseDate, rhs.releaseDate) {
-                case (nil, nil): comparison = .orderedSame
-                case (nil, _): comparison = .orderedAscending
-                case (_, nil): comparison = .orderedDescending
-                case let (left?, right?): comparison = left == right ? .orderedSame : (left < right ? .orderedAscending : .orderedDescending)
-                }
-            case .modifiedAt:
-                if lhs.modifiedAt == rhs.modifiedAt {
-                    comparison = .orderedSame
-                } else {
-                    comparison = lhs.modifiedAt < rhs.modifiedAt ? .orderedAscending : .orderedDescending
-                }
-            }
-            let stableComparison = comparison == .orderedSame
-                ? lhs.sortTitle.localizedStandardCompare(rhs.sortTitle)
-                : comparison
-            if stableComparison == .orderedSame {
-                return lhs.id.uuidString < rhs.id.uuidString
-            }
-            return ascending
-                ? stableComparison == .orderedAscending
-                : stableComparison == .orderedDescending
+        entries.sorted { orderedBefore($0, $1, by: sort, ascending: ascending) }
+    }
+
+    private static func sortedPage(
+        _ entries: [SearchEntry],
+        by sort: LibraryTrackSort,
+        ascending: Bool,
+        offset: Int,
+        limit: Int
+    ) -> [SearchEntry] {
+        let safeOffset = max(0, offset)
+        let pageSize = max(1, limit)
+        let (requestedCount, overflowed) = safeOffset.addingReportingOverflow(pageSize)
+        let keepCount = overflowed ? entries.count : min(entries.count, requestedCount)
+        guard keepCount > 0 else { return [] }
+        var heap: [SearchEntry] = []
+        heap.reserveCapacity(keepCount)
+
+        func isWorse(_ lhs: SearchEntry, _ rhs: SearchEntry) -> Bool {
+            orderedBefore(rhs, lhs, by: sort, ascending: ascending)
         }
+        func siftUp(_ index: Int) {
+            var child = index
+            while child > 0 {
+                let parent = (child - 1) / 2
+                guard isWorse(heap[child], heap[parent]) else { break }
+                heap.swapAt(child, parent)
+                child = parent
+            }
+        }
+        func siftDown(_ index: Int) {
+            var parent = index
+            while true {
+                let left = parent * 2 + 1
+                guard left < heap.count else { break }
+                var child = left
+                let right = left + 1
+                if right < heap.count && isWorse(heap[right], heap[left]) { child = right }
+                guard isWorse(heap[child], heap[parent]) else { break }
+                heap.swapAt(parent, child)
+                parent = child
+            }
+        }
+
+        for entry in entries {
+            if heap.count < keepCount {
+                heap.append(entry)
+                siftUp(heap.count - 1)
+            } else if orderedBefore(entry, heap[0], by: sort, ascending: ascending) {
+                heap[0] = entry
+                siftDown(0)
+            }
+        }
+        heap.sort { orderedBefore($0, $1, by: sort, ascending: ascending) }
+        let start = min(safeOffset, heap.count)
+        return Array(heap.dropFirst(start).prefix(pageSize))
     }
 
     private static func compare(_ lhs: [String], _ rhs: [String]) -> ComparisonResult {

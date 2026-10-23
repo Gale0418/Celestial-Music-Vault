@@ -2,7 +2,7 @@
 
 Celestial Music Vault（CMV）是一個以 **macOS 15+／iPadOS 18+** 為目標的私有音樂資料庫與播放器。CMV 2.0 的現行主線採 **Swift 6、SwiftUI、SwiftData、AVFoundation／AVKit**，並以 **Rust 1.98.1** 實作可跨平台驗證的純邏輯核心；音樂、影片、NAS 路徑與分析資料都留在使用者自己的裝置與儲存來源。
 
-> **目前狀態：** Native 2.0 是現行開發主線，已具備大量本機與 Simulator 驗證，但仍屬 pre-Release Candidate。實機／NAS 故障矩陣、Distribution signing、App Store Connect、TestFlight 與最終送審仍是明確 gate。舊 Electron 1.3.2 在 Native 兩平台核准並完成穩定觀察前保留為安全退路。
+> **目前狀態（2026-10-23）：** Native 2.0 是唯一現行主線。iPad／Mac 的 2.0（1）已上傳且遭 Apple 拒審；2.0（2）的 final archive、PKG／IPA export、Distribution qualification 與 resource guard 均已 PASS，建置期間 218 個 source file 維持未變。Mac 三語 6 張 2880×1800 實機圖與 iPad 11 吋三語 6 張 2360×1640 實機圖已完成並回讀為 `COMPLETE`；13 吋 required slot 的舊 AI 圖仍待替換，因此目前維持 HOLD。iOS Development 同 Release 成品已安裝／啟動 exit 0，但 WDA 中止使 UI 驗收仍未完成；Mac Development 重簽副本已驗證，尚未安裝。正式新版 upload／attach／送審與 Apple 結果仍待後續 gate。舊 Electron／React／Node 已依 AERO-RT4 退場。詳見 [審查修復紀錄](Native/REVIEW_FIXES_20261023.md)。
 
 ## CMV 2.0 能做什麼
 
@@ -30,10 +30,6 @@ Native/scripts/      fast / full local / App Store qualification gates
 docs/design/         版本化的核准設計 reference
 docs/history/        歷史驗證快照，不作為現行 source gate
 MissionCenter/       任務、決策、驗證與發行 gate
-
-# Legacy safety ship — Native 驗收前仍保留
-src/ lib/ main.cjs preload.cjs tests/
-build/ scripts/build-macos.sh package.json package-lock.json
 ```
 
 Rust 的邊界刻意保持狹窄：它負責 reconciliation、搜尋排序、playback timeline／gain、聲學分析、Smart DJ 與 cache policy 等 deterministic logic；Swift 仍獨占 SwiftUI、SwiftData、security-scoped URL、AVFoundation、AVKit 與 Apple 平台 I/O。
@@ -61,25 +57,6 @@ Native/scripts/run-local-gates.sh
 
 `run-local-gates.sh` 會跑 Rust／Swift 測試、macOS／iPad Simulator Release build、bundle／AppIcon／privacy preflight、canonical macOS archive qualification、Rust 1.98.1 toolchain contract 與 MissionCenter Doctor。它需要可用的 canonical archive 與 MissionCenter Rust CLI；實機、Distribution、TestFlight 等外部 gate 不會被本機腳本假裝完成。
 
-### Legacy Electron 1.3.2
-
-Electron 保留版仍可獨立驗證：
-
-```bash
-npm ci
-npm test
-npm run lint
-npm run build
-```
-
-NAS／SMB 工作區需要重新打包時可使用：
-
-```bash
-./scripts/build-macos.sh
-```
-
-更完整的舊版打包背景與問題排查請見 [`docs/PACKAGING_AND_OPTIMIZATION.md`](docs/PACKAGING_AND_OPTIMIZATION.md)。
-
 ## 設計 reference
 
 CMV 2.0 的三張核准構圖已移出工具工作目錄，永久版本化於：
@@ -100,4 +77,6 @@ CMV 2.0 的三張核准構圖已移出工具工作目錄，永久版本化於：
 
 ## 發行原則
 
-Native 2.0 未完成 macOS／iPadOS 實機、簽章、TestFlight 與 App Store 核准前，**不要刪除 Electron 保留版**。最終退場由 `AERO-RT4` 單獨追蹤，確保舊版仍可由 Git 歷史復原。
+Native 2.0 的 final macOS／iPadOS archive、Distribution export 與 qualification 已完成；實體 UI 驗收、13 吋 required screenshot、正式新版 upload／attach／送審、TestFlight 與 App Store 核准仍是外部 gate。已完成的簽章與成品資格不等於 Apple 核准或公開上架。
+
+本輪舊版退場的 Git 復原基準是 `7e033ae3b776f116695b3f2df0f0293bd76322f9`。需要取回歷史檔案時，可使用 `git show 7e033ae3b776f116695b3f2df0f0293bd76322f9:path` 查閱，或使用 `git restore --source 7e033ae3b776f116695b3f2df0f0293bd76322f9 -- paths` 復原指定路徑。

@@ -5,41 +5,48 @@ Canonical source for App Store Connect English (U.S.) fields. The values below d
 ## Store fields
 
 - **Name:** Celestial Music Vault
-- **Subtitle:** Your local music sky ヾ(•ω•`)o
+- **Subtitle:** Private Local & NAS Player
 - **Keywords:** music,player,local library,NAS,offline,playlist,audio,video,lossless,Smart DJ
-- **Promotional text:** Bring your music and videos into a private starry sky ヾ(•ω•`)o Play and organize local or mounted-NAS files on Mac and iPad—no accounts, no cloud sync, just your media.
+- **Promotional text:** Time to listen to your most cherished voices! Bring your own local & NAS audio/video into a private starry haven. Zero ads, zero tracking, purely yours (｀・ω・´)ゞ
 - **Description:**
 
-  Bring your music and video collection into a private starry sky of its own! ヾ(•ω•`)o
+  "Time to listen to that one irreplaceable voice you love most! (Quietly)"
 
-  Celestial Music Vault (CMV) gives your Mac and iPad a quiet local media experience. Select local folders or personal NAS shares already mounted in Finder or Files.
+  Everyone has a cherished sound in their collection—a rare live concert recording, a personal CD rip, or acoustic tracks that kept you company through quiet evenings. Bring your own media files into your private starry haven and enjoy a calm, intimate listening space ヾ(•ω•`)o
 
-  【Free Everyday Playback & Organization】
-  • Search & Curate: Search by track, artist, album, and metadata. Manage favorites, ratings, playlists, and your everyday queue.
-  • Audio & Compatible Video: Play local audio and compatible video. iPad supports background audio and Picture in Picture (PiP); Mac features a separate video window with return-to-moon navigation.
-  • Source Recovery: If a drive goes offline, your library is not silently erased; reconnect it later to use the library again.
+  【Bring Your Own Media — Pure & Private】
+  CMV plays files you provide and have the rights to use; it does not come with songs or streaming catalogs. There is no account sign-up—simply add your own folders to begin.
 
-  【CMV Pro Lifetime Upgrade】
-  An optional one-time purchase with no subscription (applicable price shown on storefront):
-  • Offline Pinning & Smart Prefetch: prepare selected media for offline playback.
-  • On-Device Acoustic Analysis & Smart DJ with explainable selection reasons.
-  • Extra Starry Themes & Advanced Library Actions (｀・ω・´)ゞ.
+  【Core Features: Pure Enjoyment of Your Own Media】
+  • Local & NAS Library Access: Browse audio and compatible video from local folders on Mac and iPad, as well as NAS storage pre-mounted via macOS Finder or the iPadOS Files app. Mac and iPad each manage libraries locally on-device, with no cloud sync.
+  • Flexible Media Playback: Supports common audio formats and compatible video files. Enjoy independent floating video windows on Mac, and background audio with Picture-in-Picture on iPad
+  • Clean Organization: Search your collection, view metadata, build playlists, mark favorites, assign star ratings, and organize your play queue.
+  • Native Soundscapes: Subtle acoustic atmospheres gently enhance vocal warmth and presence. Easily compare with original audio anytime to experience the recording just as it was.
 
-  【Pure Privacy】
-  No CMV account, no cloud sync, no ads, no tracking, and no cloud AI. Your files and acoustic data stay on your devices.
+  【CMV Pro: One-Time Purchase, No Subscriptions】
+  For power users who want more flexibility across large collections, CMV Pro is available as a single one-time purchase with no subscription fees.
+  Pro unlocks:
+  1. Offline Pinning: Pin mounted NAS tracks directly to your device to listen on the go without an internet connection.
+  2. Smart Prefetch: Preloads upcoming network tracks for smoother playback transitions.
+  3. On-Device Acoustic Analysis: Computes audio features locally on your device without sending any data off-device.
+  4. Smart DJ with Reasons: Queues fitting tracks and explains the thinking behind each suggestion (*´∀`)ﾉ
+  5. Advanced Organization: Batch tag editing and library management tools to keep extensive collections in order.
+  6. Additional Themes: Personalize your starry interface with extra curated color themes.
 
-  【Note】
-  CMV does not include music or video catalogs; it plays files you supply and have the right to use. Background art is original. Enjoy your private sky!
+  【Privacy & Practical Notes】
+  • Complete Privacy: No user accounts, no advertisements, no tracking, no cloud sync, and no cloud AI. Your data stays on your device.
+  • Network & NAS Storage: Please mount your NAS storage in macOS Finder or the iPadOS Files app before browsing. Unpinned NAS content requires an active network connection to play; files stored locally on your device do not require internet access.
+
+  Ready to step into your private sanctuary? Plug in your headphones and enjoy your favorite voices under the stars (｀・ω・´)ゞ
 - **What’s New:**
 
-  CMV 2.0 supports Mac and iPad natively.
+  Welcome to your private starry listening sanctuary (｀・ω・´)ゞ
 
-  • Local and mounted-NAS library indexing with source recovery
-  • Search, metadata browsing, favorites, ratings, playlists, and queue controls
-  • Audio and compatible video playback, background audio, and iPad Picture in Picture
-  • On-device acoustic analysis and explainable Smart DJ recommendations with CMV Pro
-  • Offline pinning, smart prefetch, additional themes, and batch library tools with CMV Pro
-  • Local-only processing with no account, cloud sync, advertising, or tracking
+  【What's New】
+  • Mac & iPad Experience: Browse and play local folders alongside system-mounted NAS storage. Enjoy independent video windows on Mac, plus background audio and Picture-in-Picture on iPad
+  • Native Soundscapes: Add gentle atmospheric acoustics to your audio and compare with original audio anytime with a tap.
+  • CMV Pro One-Time Purchase: No subscription fees! Unlocks offline pinning for NAS tracks, smart prefetch, on-device acoustic analysis, Smart DJ with recommendation reasons, advanced library tools (including batch tag editing), and additional visual themes.
+  • Pure Privacy: No accounts, no ads, no tracking, and no cloud sync. Add your folder and start listening (*´∀`)ﾉ
 - **Privacy Policy URL:** https://github.com/Gale0418/Celestial-Music-Vault/blob/main/PRIVACY.md
 - **Support URL:** https://github.com/Gale0418/Celestial-Music-Vault/blob/main/SUPPORT.md
 - **Support contact:** coderb0418@gmail.com

@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 #if !DEBUG || !CMV_STOREKIT_TEST_HOST
 import SwiftData
 import CMVLibrary
@@ -16,6 +19,9 @@ struct CMVApp: App {
 #else
 @main
 struct CMVApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(CMVApplicationDelegate.self) private var applicationDelegate
+    #endif
     @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     @Environment(\.scenePhase) private var scenePhase
     @State private var systemLanguages = Locale.preferredLanguages
@@ -88,7 +94,20 @@ struct CMVApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshSystemLanguage() }
+            #if os(iOS)
+            if phase == .background {
+                let application = UIApplication.shared
+                let backgroundTask = application.beginBackgroundTask(withName: "Save playback queue")
+                Task { @MainActor in
+                    await appModel.flushPlaybackQueueSnapshot()
+                    if backgroundTask != .invalid { application.endBackgroundTask(backgroundTask) }
+                }
+            }
+            #endif
         }
+        #if os(macOS)
+        .onAppear { applicationDelegate.appModel = appModel }
+        #endif
     }
 
     private struct StorageRecoveryView: View {
@@ -108,4 +127,35 @@ struct CMVApp: App {
     }
 
 }
+
+#if os(macOS)
+/// A normal Quit waits for the final queue write. Failed writes give the owner
+/// a chance to recover disk access before accepting an older restored queue.
+@MainActor
+final class CMVApplicationDelegate: NSObject, NSApplicationDelegate {
+    weak var appModel: AppModel?
+    private var terminationTask: Task<Void, Never>?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let appModel else { return .terminateNow }
+        guard terminationTask == nil else { return .terminateLater }
+        terminationTask = Task { @MainActor [weak self] in
+            let saved = await appModel.flushPlaybackQueueSnapshot()
+            var shouldTerminate = saved
+            if !saved {
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = AppLanguage.localized("尚未保存播放佇列")
+                alert.informativeText = AppLanguage.localized("最近的佇列變更尚未寫入磁碟。請確認可用空間與寫入權限後再試；仍然結束可能還原舊佇列。")
+                alert.addButton(withTitle: AppLanguage.localized("留在 App"))
+                alert.addButton(withTitle: AppLanguage.localized("仍然結束"))
+                shouldTerminate = alert.runModal() == .alertSecondButtonReturn
+            }
+            self?.terminationTask = nil
+            sender.reply(toApplicationShouldTerminate: shouldTerminate)
+        }
+        return .terminateLater
+    }
+}
+#endif
 #endif

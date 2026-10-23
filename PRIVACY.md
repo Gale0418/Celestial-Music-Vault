@@ -1,6 +1,6 @@
 # CMV 隱私權政策
 
-更新及生效日：2026-10-03
+本機修訂：2026-10-08（待公開同步）；現行公開政策生效日：2026-10-03
 
 星穹私藏音樂庫 Celestial Music Vault（CMV）是本機與離線優先的私人媒體庫播放器，由 WindSheep 維護。本政策說明 CMV 在裝置上處理哪些資料、你如何移除資料，以及購買和聯絡支援時涉及的外部服務。
 
@@ -20,7 +20,7 @@ Pro 商品資訊、購買、交易驗證與恢復購買由 Apple StoreKit 提供
 
 ## 保存與刪除
 
-CMV 管理的資料保存在 App 的儲存空間。你可以移除曲庫來源、刪除歌單、解除離線釘選或清除智慧快取。移除來源或曲庫項目不會刪除 NAS 或使用者資料夾中的原始媒體。
+CMV 管理的資料保存在 App 的儲存空間。你可以移除曲庫來源、刪除歌單、解除離線釘選或清除智慧快取。一般「移除來源」或「從曲庫移除」不會刪除 NAS 或使用者資料夾中的原始媒體。macOS 另提供「將實體檔案移至垃圾桶」：只有你選取此操作並確認後，CMV 才會嘗試將原始檔案移至系統垃圾桶；這與一般曲庫移除不同。
 
 移除 App 時，其資料的處理由作業系統決定；macOS 上可能仍保留 App 儲存空間，系統備份也可能保留副本。若需要完整清除協助，請透過支援信箱聯絡。重新安裝或清除本機資料後，已購買的 Pro 可由 Apple 提供的恢復購買重新確認。
 
@@ -36,12 +36,12 @@ CMV 管理的資料保存在 App 的儲存空間。你可以移除曲庫來源�
 
 ## English privacy policy
 
-Effective and updated October 3, 2026. CMV is a local and offline-first media library maintained by WindSheep. It reads only folders you authorize through the system folder picker. Connect your NAS in Finder or Files first; CMV does not implement SMB login, scan your local network, or store NAS credentials.
+Public policy effective October 3, 2026; local revision October 8, 2026, pending publication. CMV is a local and offline-first media library maintained by WindSheep. It reads only folders you authorize through the system folder picker. Connect your NAS in Finder or Files first; CMV does not implement SMB login, scan your local network, or store NAS credentials.
 
 Folder grants, media paths and metadata, artwork, playlists, ratings, favorites, the playback queue and history, preferences, audio analysis, offline copies, and cache stay on your device. CMV has no account system, ads, cross-app tracking, third-party analytics SDK, or cloud AI. It does not upload your library to the developer. Your chosen file providers, NAS, AirPlay devices, and system backups follow their own settings and policies.
 
 Apple StoreKit handles Pro product information, purchases, verification, and restoration under [Apple's Privacy Policy](https://www.apple.com/legal/privacy/). CMV checks entitlements locally. The developer does not receive your payment card details or Apple Account password.
 
-Removing a library source does not delete original media. You can remove playlists, unpin offline copies, and clear CMV's cache. App removal and backup retention follow your operating system; macOS may retain app storage. Contact support if you need help clearing local data.
+Removing a source or using the ordinary remove-from-library action does not delete original media. On macOS, the separate “Move physical file to Trash” action attempts to move the original file to the system Trash only after you choose it and confirm. You can remove playlists, unpin offline copies, and clear CMV's cache. App removal and backup retention follow your operating system; macOS may retain app storage. Contact support if you need help clearing local data.
 
 If you voluntarily email support or submit a GitHub issue, the developer receives the information you provide to answer your request. GitHub issues are public and subject to [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement). Do not submit credentials, receipts, private media, or unredacted diagnostics. Contact [coderb0418@gmail.com](mailto:coderb0418@gmail.com) for privacy questions and see [Support](SUPPORT.md) for assistance. This page will be updated if data handling changes.

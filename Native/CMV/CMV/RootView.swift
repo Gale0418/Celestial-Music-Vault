@@ -62,6 +62,8 @@ struct CMVStorybookRowStyle: ViewModifier {
 struct RootView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(VideoWindowStore.self) private var videoWindowStore
@@ -76,17 +78,24 @@ struct RootView: View {
     var body: some View {
         @Bindable var appModel = appModel
         GeometryReader { proxy in
+            let rootViewport = proxy.frame(in: .global)
             VStack(spacing: 0) {
                 ErrorStatusBanner()
                 SourceStatusBanner()
                 Group {
                     #if os(iOS)
-                    if proxy.size.width < 1_000 { CompactRootView() } else { WideRootView() }
+                    if horizontalSizeClass != .regular
+                        && (dynamicTypeSize.isAccessibilitySize || proxy.size.width < 1_000) {
+                        CompactRootView()
+                    } else {
+                        WideRootView()
+                    }
                     #else
                     WideRootView()
                     #endif
                 }
             }
+            .environment(\.cmvRootViewport, rootViewport)
             .celestialPointerSurface(enabled: appModel.selectedTheme == .titaniumEclipse)
             .modifier(CMVStorybookTextStyle())
             .environment(\.cmvTheme, .palette(appModel.selectedTheme))
@@ -106,6 +115,7 @@ struct RootView: View {
                     #endif
             }
             .task { await appModel.proStore.start() }
+            .task { await appModel.restorePlaybackQueueIfNeeded(context: modelContext) }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await appModel.proStore.refresh() } }
             }
@@ -206,6 +216,7 @@ struct RootView: View {
 }
 
 private struct WideRootView: View {
+    @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var modelContext
     @Environment(\.cmvTheme) private var theme
@@ -214,24 +225,29 @@ private struct WideRootView: View {
     @State private var showingSidebar = true
 
     var body: some View {
+        let _ = appLanguage
         @Bindable var appModel = appModel
-        GeometryReader { proxy in
-            HStack(spacing: 0) {
-                if showingSidebar {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(AppLanguage.localized("星穹私藏音樂庫"))
-                            .font(.headline)
-                            .lineLimit(2)
-                            .padding()
-                        SidebarView()
+        VStack(spacing: 0) {
+            GeometryReader { proxy in
+                HStack(spacing: 0) {
+                    if showingSidebar {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(AppLanguage.localized("星穹私藏音樂庫"))
+                                .font(.headline)
+                                .lineLimit(2)
+                                .padding()
+                            SidebarView()
+                        }
+                        .frame(width: min(275, max(210, proxy.size.width * 0.2)))
+                        .background { sidePanelBackground }
+                        .transition(reduceMotion ? .identity : .move(edge: .leading).combined(with: .opacity))
                     }
-                    .frame(width: min(275, max(210, proxy.size.width * 0.2)))
-                    .background { sidePanelBackground }
-                    .transition(reduceMotion ? .identity : .move(edge: .leading).combined(with: .opacity))
+                    detailColumn(showingQueue: $appModel.showingQueue)
                 }
-                detailColumn(showingQueue: $appModel.showingQueue)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingSidebar)
             }
-            .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: showingSidebar)
+            BackgroundActivityRail()
+            PlayerBar()
         }
         #if os(macOS)
         // Artwork follows the navigation's size; it does not propose its own
@@ -249,27 +265,23 @@ private struct WideRootView: View {
                 Button { showingSidebar.toggle() } label: {
                     Label(showingSidebar ? AppLanguage.localized("隱藏側邊欄") : AppLanguage.localized("顯示側邊欄"), systemImage: "sidebar.left")
                         .frame(width: 44, height: 44)
+                        .background(theme.surface.opacity(reduceTransparency ? 1 : 0.45), in: Circle())
                 }
                 .accessibilityValue(showingSidebar ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
-                Spacer()
+                Spacer(minLength: 12)
                 Button { appModel.showingQueue.toggle() } label: {
                     Label(appModel.showingQueue ? AppLanguage.localized("隱藏接下來播放") : AppLanguage.localized("顯示接下來播放"), systemImage: "music.note.list")
                         .frame(width: 44, height: 44)
+                        .background(theme.surface.opacity(reduceTransparency ? 1 : 0.45), in: Circle())
                 }
                 .accessibilityValue(appModel.showingQueue ? AppLanguage.localized("已顯示") : AppLanguage.localized("已隱藏"))
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
             .controlSize(.large)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 20)
             .frame(height: 44)
-            .background(theme.surface.opacity(reduceTransparency ? 1 : 0.3))
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                BackgroundActivityRail()
-                PlayerBar()
-            }
+            .frame(maxWidth: .infinity)
         }
         .tint(theme.primary)
     }
@@ -320,26 +332,20 @@ private struct CompactRootView: View {
     @State private var selectedTab: LibraryDestination = .nowPlaying
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack { NowPlayingView() }
+            tabContent { NowPlayingView() }
                 .tabItem { Label("聆聽", systemImage: "sparkles") }
                 .tag(LibraryDestination.nowPlaying)
-            NavigationStack { CompactLibraryView() }
+            tabContent { CompactLibraryView() }
                 .tabItem { Label("曲庫", systemImage: "music.note") }
                 .tag(LibraryDestination.songs)
-            NavigationStack { PlaylistHubView() }
+            tabContent { PlaylistHubView() }
                 .tabItem { Label(AppLanguage.localized("歌單"), systemImage: "music.note.list") }
                 .tag(LibraryDestination.playlists)
-            NavigationStack { SettingsView() }
+            tabContent { SettingsView() }
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(LibraryDestination.settings)
         }
         .tint(theme.primary)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                BackgroundActivityRail()
-                MiniPlayerBar { showingNowPlaying = true }
-            }
-        }
         .sheet(isPresented: $showingNowPlaying) {
             NavigationStack { NowPlayingView() }
         }
@@ -352,6 +358,17 @@ private struct CompactRootView: View {
         .onChange(of: selectedTab) { _, destination in
             if tabDestination(for: appModel.selection) != destination { appModel.selection = destination }
         }
+    }
+
+    private func tabContent<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        NavigationStack { content() }
+            // Reserve playback space inside the tab, leaving the native tab bar its own safe area.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    BackgroundActivityRail()
+                    MiniPlayerBar { showingNowPlaying = true }
+                }
+            }
     }
 
     private func tabDestination(for selection: LibraryDestination?) -> LibraryDestination {
@@ -390,7 +407,7 @@ private struct CompactLibraryView: View {
             }
             Section("曲庫") {
                 Button { appModel.showingImporter = true } label: {
-                    Label("加入音樂", systemImage: "plus.circle")
+                    Label("加入音樂來源", systemImage: "plus.circle")
                 }
             }
         }

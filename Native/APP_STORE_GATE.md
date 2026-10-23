@@ -1,5 +1,13 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜送審前 gate
 
+## 2026-10-23 審查修復關卡
+
+2.0（1）兩平台已提交且遭拒審，目前準備 2.0（2）。本輪需重新驗證 Distribution 成品、實機 Pro 入口與版面、三語用途字串及實播截圖，通過 CodeRabbit／完成評論後才重新上傳與送審。10 月 8 日及更早的 build、source manifest 與簽章證據僅代表各該候選；不得套用到目前變更。詳見 [修復與發布紀錄](REVIEW_FIXES_20261023.md)。
+
+## 2026-10-08 現行 Distribution 檢查點
+
+Mac universal PKG 與 iPad arm64 IPA 已 archive／export，四份 bundle 的 Distribution qualification、strict codesign、profiles、binary／dSYM 與95檔 production 來源讀回通過。完整成品綁定與工具失敗紀錄見 [現行 Distribution 檢查點](DISTRIBUTION_CHECKPOINT_20261008.md)。以下較早的「重建中／僅 Development／缺成品」是歷史日期下的結果；本次資格收據不補造同成品實機 runtime，不代表 RC、TestFlight 或送審完成。
+
 更新：2026-10-03
 
 這份清單是送 TestFlight 前的可重跑 gate，不把模擬器編譯誤當成實機核准。
@@ -133,3 +141,19 @@ xcodebuild -project Native/CMV/CMV.xcodeproj -scheme CMV \
 - 核對正式 non-consumable 商品與封裝後 Info.plist 的 `CMVProProductID`；空值、未展開 build variable 或 `local.cmv.pro.test` 不能作為發行候選。
 - 核定價格、平台購買權益與商品說明；恢復、退款／撤銷、pending、失敗、已購離線冷啟動須有兩平台證據。
 - [Pro 實作紀錄](PRO_IMPLEMENTATION.md) 的 48 項純邏輯／package 測試和 Debug 編譯不能取代 Apple Sandbox、實機或正式簽章驗收。
+
+## 2026-10-04 Pro 焦點補驗更新
+
+目前 Mac 與實體 iPad StoreKitTest 各 **17 PASS／0 FAIL／0 skip**，每項有實際 xcresult 計數；歷史 pending FAIL 保留為原始結果，其「production listener 故障」推論已由 test-only 傳播等待與 raw 對照修正。正式授權／監聽行為未變。Mac 真實 Apple Sandbox 既有正式 SKU：交易環境直接讀為 sandbox，權益／恢復／fresh ProStore／商品價格通過（1 PASS）；iPad 最新真Sandbox與還原均完成，見文末；歷史受阻與失敗收據保留。
+
+網路故障為注入錯誤，fresh ProStore 不等於實體斷網冷啟動；本輪未操作真實新購或退款。完整 App、Distribution 與無障礙 gates 仍各自保留。詳見 [SELLABLE_QUALITY.md](SELLABLE_QUALITY.md) 的目前結果與私有收據定位。
+
+### 最新 iPad Sandbox 補驗結果（目前）
+
+使用者在裝置本人完成 Apple 帳號驗證後，私人 v2 probe 的正式 SKU smoke **1 PASS／0 FAIL／0 skip**：direct transaction environment Sandbox、商品價格、既有 Pro、AppStore.sync 恢復成功與 fresh Store 均通過。先前1 FAIL與等待密碼的截圖保存為歷史證據，不混算最新PASS，不宣稱為ProStore程式缺陷。兩平台17例本機交易＋各1例真Sandbox，最新共 **36 PASS／0 FAIL／0 skip**。
+
+原 iPad App 同ID還原、launch通過；production 25 entries／25 base、history5、index13整份queue JSON一致。先前1-entry revision88為另一組QA中途狀態，另一任務已還原原始25首，並有device回讀receipt，不將其誤判為install資料遺失或写回覆蓋。DB與pinned檔未變，StoreKit內部cursor可正常更新；本輪自建QA App已移除。裝置已以共享工作區handoff交接其他QA，本輪Pro不再操作它。
+
+正式 critic_full 已完成：3位Luna＋獨立仲裁，converge passed／findings=[]，四份報告與來源雜湊核對、contract validator及CompletionPassport通過；AERO-PQ38／MON30已由原生transition轉Done。網路故障為注入、fresh Store不等於實體斷網冷啟動；真實新購／退款未操作。完整Distribution與整體App gates仍各自保留，不包裝成已上架。
+
+Pro 技術結案的完整範圍與結果見 [PRO_RELIABILITY_REPORT.md](PRO_RELIABILITY_REPORT.md)；整體App Store readiness依原gate追蹤。

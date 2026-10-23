@@ -28,13 +28,17 @@
 | App icon 1024 | `Native/CMV/CMV/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | `6e22bba6268a24a33817a0d92d177372042758991b94c29806e14b41f1b348ca` | User-attested | 個別原始生成紀錄未回收 |
 | App icon 512 | `Native/CMV/CMV/Assets.xcassets/AppIcon.appiconset/AppIcon-512.png` | `33432152c84e5c2b93bdaba6478fab5370db7294aafcdbf802b6a362d55acc21` | User-attested | 個別原始生成紀錄未回收 |
 | Crimson sky | `Native/CMV/CMV/Assets.xcassets/SkyCrimsonNebula.imageset/sky-crimson-nebula.heic` | `7ef3fdaba766629e9dc81afba3217013daa4b5b50d91bf317b23e5af6746ab95` | User-attested | 個別原始生成紀錄未回收 |
-| Emerald sky | `Native/CMV/CMV/Assets.xcassets/SkyEmeraldAurora.imageset/sky-emerald-aurora.heic` | `2f1cf9d7e62fbb73528c13b8a107f3ac56e91f414f7d94160910e553d5e38f2f` | User-attested | 個別原始生成紀錄未回收 |
+| Emerald sky | `Native/CMV/CMV/Assets.xcassets/SkyEmeraldAurora.imageset/sky-emerald-aurora.heic` | `2f1cf9d7e62fbb73528c13b8a107f3ac56e91f414f7d94160910e553d5e38f2f` | Reused 2026-10-08；保留 Emerald 主題原外觀 | 個別原始生成紀錄未回收 |
 | Amber sky | `Native/CMV/CMV/Assets.xcassets/SkyAmberDawn.imageset/sky-amber-dawn.heic` | `6e78834a768513a8563b39947275dec8dbd04a0a136a97b4b40198d386b970bc` | User-attested | 個別原始生成紀錄未回收 |
 | Sheep rocket | `Native/CMV/CMV/Assets.xcassets/SheepRocket.imageset/sheep-rocket.png` | `d0837aac40308d70fb21171b839c26e4f46f345e605fd0e077b5b90b8f36ae6b` | User-attested | 個別原始生成紀錄未回收 |
 | Sheep sleep | `Native/CMV/CMV/Assets.xcassets/SheepSleep.imageset/sheep-sleep.png` | `c00e176d9e1c95a4ea9cf90db6bb39e769136e03a99c6de507c534ac27c2836a` | User-attested | 個別原始生成紀錄未回收 |
 | Sheep tumble | `Native/CMV/CMV/Assets.xcassets/SheepTumble.imageset/sheep-tumble.png` | `d8a71b232a87952d47a70c17fcf68231bd04460cad1e1d5dc1d10f5c45af93fe` | User-attested + Provenance recorded | 見下節 |
 | Sheep umbrella | `Native/CMV/CMV/Assets.xcassets/SheepUmbrella.imageset/sheep-umbrella.png` | `0334a7a762ae82fe16b770644ff55fb7b52d321c6b5af6b66c20945e426190bc` | User-attested | 個別原始生成紀錄未回收 |
 | Rainbow meadow background | `Native/CMV/CMV/Assets.xcassets/SheepRainbowMeadow.imageset/sheep-rainbow-meadow.png` | `a20f10e904d53ce2e40f7bc213c2d57b20dcaff42eeca8f548f9e0a29c2e485b` | User-attested + Provenance recorded | 見下節 |
+
+## 2026-10-07 退休素材註記
+
+`SkyEmeraldAurora.imageset` 曾於 2026-10-07 退休；本檔保留原始 user-attested 來源描述與 SHA。2026-10-08 因 `.emeraldAurora` 仍是可選主題且 runtime 仍使用其原外觀，已從下列精確備份復用兩個 imageset 檔案；HEIC SHA 仍為 `2f1cf9d7e62fbb73528c13b8a107f3ac56e91f414f7d94160910e553d5e38f2f`。`SkyMilkyWayDepth` 與其他仍使用素材不受此註記影響。
 
 ## Sheep tumble
 

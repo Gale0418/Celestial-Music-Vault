@@ -1,599 +1,3436 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "下一個音色": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Sound"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の音色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一個音色"
+          }
+        }
+      }
+    },
+    "對照原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare Original"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原音と比較"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "對照原音"
+          }
+        }
+      }
+    },
+    "返回音效": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Return to Effect"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エフェクトに戻る"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回音效"
+          }
+        }
+      }
+    },
+    "用同一首歌探索不同音色，隨時對照原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore different sounds with the same song and compare with the original anytime."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じ曲でさまざまな音色を試し、いつでも原音と比較できます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用同一首歌探索不同音色，隨時對照原音。"
+          }
+        }
+      }
+    },
+    "目前對照原音。返回音效後，強度與自訂值會保留。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening to the original. Your intensity and custom settings are kept when you return to the effect."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原音で比較中です。エフェクトに戻ると、強度とカスタム設定はそのまま使えます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前對照原音。返回音效後，強度與自訂值會保留。"
+          }
+        }
+      }
+    },
+    "依序探索八種音場場景，不改動播放佇列": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cycle through eight sound scenes without changing the playback queue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生キューを変えずに、8種類の音場を順番に試します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依序探索八種音場場景，不改動播放佇列"
+          }
+        }
+      }
+    },
+    "Pro：結合收藏、評分與已儲存的本機分析，推薦下一段音樂並顯示選歌理由。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro: Get a queue with selection reasons, based on favorites, ratings, and saved on-device analysis."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro：お気に入り・評価・保存済みの端末内分析から次の曲を選び、選曲理由を表示します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro：結合收藏、評分與已儲存的本機分析，推薦下一段音樂並顯示選歌理由。"
+          }
+        }
+      }
+    },
+    "從自己的音樂開始。選一個資料夾，讓收藏在這裡亮起。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start with your own music. Choose a folder and bring your collection to life. ✨"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の音楽から始めましょう。フォルダを選んで、コレクションに光を。✨"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從自己的音樂開始。選一個資料夾，讓收藏在這裡亮起。✨"
+          }
+        }
+      }
+    },
+    "選擇存有音樂的資料夾，CMV 會建立你的曲庫。使用 NAS 時，請先在 Finder／檔案 App 連線。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a folder containing your music to build your library. For NAS folders, connect in Finder or Files first."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音楽の入ったフォルダを選ぶと、CMV がライブラリを作成します。NAS は先に Finder または「ファイル」で接続してください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇存有音樂的資料夾，CMV 會建立你的曲庫。使用 NAS 時，請先在 Finder／檔案 App 連線。"
+          }
+        }
+      }
+    },
+    "CMV 播放你自己的檔案，不內建歌曲。Mac 與 iPad 各自管理曲庫與播放狀態。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV plays your own files; no music is included. Mac and iPad manage their libraries and playback separately."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV は自分のファイルを再生するアプリです。楽曲は付属しません。Mac と iPad のライブラリと再生状態は別々に管理されます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV 播放你自己的檔案，不內建歌曲。Mac 與 iPad 各自管理曲庫與播放狀態。"
+          }
+        }
+      }
+    },
+    "把喜歡的收藏，留在身邊": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep your favorites close"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お気に入りの音楽を、いつもそばに"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把喜歡的收藏，留在身邊"
+          }
+        }
+      }
+    },
+    "出門前準備離線收藏，回到曲庫探索下一首，也能換一片喜歡的天空。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepare music for offline listening, explore your library, and choose a sky you love."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外出前にオフライン用の音楽を準備。ライブラリで次の一曲を探し、お気に入りの空に着せ替えましょう。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出門前準備離線收藏，回到曲庫探索下一首，也能換一片喜歡的天空。"
+          }
+        }
+      }
+    },
+    "將可讀取的本機或 NAS 曲目存到裝置。離線副本準備完成後，來源離線也能播放。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save accessible local or NAS tracks to your device. Once the offline copies are ready, listen even when the source is offline."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み取り可能なローカルや NAS の楽曲をデバイスに保存。オフライン用コピーの準備が完了すれば、接続がなくても再生できます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將可讀取的本機或 NAS 曲目存到裝置。離線副本準備完成後，來源離線也能播放。"
+          }
+        }
+      }
+    },
+    "一次更新多首歌曲的曲庫資訊，或從歌單移除多首歌曲；不改寫原始音樂檔。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update library details for multiple tracks, or remove several tracks from a playlist. Original music files stay unchanged."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複数の楽曲のライブラリ情報をまとめて更新したり、プレイリストからまとめて削除できます。元の音楽ファイルは変更しません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次更新多首歌曲的曲庫資訊，或從歌單移除多首歌曲；不改寫原始音樂檔。"
+          }
+        }
+      }
+    },
+    "音效": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound Effects"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サウンドエフェクト"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音效"
+          }
+        }
+      }
+    },
+    "原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原音"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原音"
+          }
+        }
+      }
+    },
+    "低音增強": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bass Boost"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音強調"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音增強"
+          }
+        }
+      }
+    },
+    "人聲": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vocal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボーカル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "人聲"
+          }
+        }
+      }
+    },
+    "電子": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Electronic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エレクトロニック"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電子"
+          }
+        }
+      }
+    },
+    "土星大氣層": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturn Atmosphere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星の大気"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星大氣層"
+          }
+        }
+      }
+    },
+    "軌道環繞": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orbit Sweep"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "軌道スイープ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "軌道環繞"
+          }
+        }
+      }
+    },
+    "下水道": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sewer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下水道"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下水道"
+          }
+        }
+      }
+    },
+    "深空電台": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deep Space Radio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深宇宙ラジオ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深空電台"
+          }
+        }
+      }
+    },
+    "老卡帶": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cassette"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カセット"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "老卡帶"
+          }
+        }
+      }
+    },
+    "水下": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Underwater"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水下"
+          }
+        }
+      }
+    },
+    "大教堂": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cathedral"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大聖堂"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大教堂"
+          }
+        }
+      }
+    },
+    "浴室演唱會": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bathroom Concert"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浴室コンサート"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浴室演唱會"
+          }
+        }
+      }
+    },
+    "自訂音效": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom Effects"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カスタムエフェクト"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自訂音效"
+          }
+        }
+      }
+    },
+    "保留歌曲原本的音色。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the original character of the song."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲本来の音色を保ちます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留歌曲原本的音色。"
+          }
+        }
+      }
+    },
+    "讓低頻更厚實。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give the bass more body."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音に厚みを加えます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讓低頻更厚實。"
+          }
+        }
+      }
+    },
+    "讓人聲更清楚。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring vocals forward."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボーカルを聴き取りやすくします。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讓人聲更清楚。"
+          }
+        }
+      }
+    },
+    "加強低頻與高頻的輪廓。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emphasize bass and treble."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音と高音の輪郭を強調します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加強低頻與高頻的輪廓。"
+          }
+        }
+      }
+    },
+    "柔和的高頻與寬闊殘響。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soft treble and spacious reverberation."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柔らかな高音と広がりのある残響。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柔和的高頻與寬闊殘響。"
+          }
+        }
+      }
+    },
+    "聲音緩慢左右移動，適合耳機聆聽；這是雙聲道效果。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound slowly sweeps left and right. Best with headphones; this is a stereo effect."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音がゆっくり左右に移動します。ヘッドフォンに適したステレオ効果です。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聲音緩慢左右移動，適合耳機聆聽；這是雙聲道效果。"
+          }
+        }
+      }
+    },
+    "短延遲與金屬空間回音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Short echoes in a metallic space."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短いディレイと金属的な空間の響き。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短延遲與金屬空間回音。"
+          }
+        }
+      }
+    },
+    "窄頻通訊音色與輕微失真。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Narrow-band radio tone with light distortion."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "狭い帯域の無線音と軽い歪み。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窄頻通訊音色與輕微失真。"
+          }
+        }
+      }
+    },
+    "溫暖音色與輕微卡帶抖動。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm tone with subtle tape wobble."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "温かい音色とわずかなテープの揺らぎ。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "溫暖音色與輕微卡帶抖動。"
+          }
+        }
+      }
+    },
+    "柔暗低通濾波，像漂浮在水中。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A soft, dark low-pass tone, like floating underwater."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水中を漂うような、柔らかく暗いローパス音色。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柔暗低通濾波，像漂浮在水中。"
+          }
+        }
+      }
+    },
+    "寬廣空間與綿長尾音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A vast space with lingering reverberation."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "広大な空間と長く続く残響。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "寬廣空間與綿長尾音。"
+          }
+        }
+      }
+    },
+    "明亮而短促的空間反射。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bright, short room reflections."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明るく短い室内反射。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明亮而短促的空間反射。"
+          }
+        }
+      }
+    },
+    "調整六項音色，再用強度混合原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shape six parameters, then blend them with the original using Strength."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6つの項目で音色を調整し、強度で原音と混ぜます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "調整六項音色，再用強度混合原音。"
+          }
+        }
+      }
+    },
+    "影片使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video uses original audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画は原音を使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片使用原音"
+          }
+        }
+      }
+    },
+    "音效只套用至音樂；切回音樂後會恢復已儲存的設定。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effects apply to music only. Your saved settings resume when you return to music."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エフェクトは音楽のみに適用されます。音楽に戻ると保存した設定が再開されます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音效只套用至音樂；切回音樂後會恢復已儲存的設定。"
+          }
+        }
+      }
+    },
+    "影片音效準備中": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing video effects"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画エフェクトを準備中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片音效準備中"
+          }
+        }
+      }
+    },
+    "影片音效可用": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video effects available"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画エフェクトを使用できます"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片音效可用"
+          }
+        }
+      }
+    },
+    "影片沒有音軌，使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video has no audio track; playing without sound"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画に音声トラックがないため、無音で再生します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片沒有音軌，將無聲播放"
+          }
+        }
+      }
+    },
+    "串流影片使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming video uses original audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ストリーミング動画は原音を使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "串流影片使用原音"
+          }
+        }
+      }
+    },
+    "影片有多條音軌，使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Multiple video audio tracks; using original"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複数の音声トラックがあるため原音を使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片有多條音軌，使用原音"
+          }
+        }
+      }
+    },
+    "影片格式不支援音效，使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video format does not support effects; using original audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画形式がエフェクトに対応していないため、原音で再生します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片格式不支援音效，使用原音"
+          }
+        }
+      }
+    },
+    "影片音效無法啟用，使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video effects unavailable; using original audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画エフェクトを有効にできないため、原音で再生します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片音效無法啟用，使用原音"
+          }
+        }
+      }
+    },
+    "影片音效處理失敗，使用原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video effects processing failed; using original audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画エフェクトの処理に失敗したため、原音で再生します"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片音效處理失敗，使用原音"
+          }
+        }
+      }
+    },
+    "正在讀取影片的實際 PCM 格式。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading the video's actual PCM format."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画の実際のPCM形式を読み込んでいます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在讀取影片的實際 PCM 格式。"
+          }
+        }
+      }
+    },
+    "同一個影片播放器時鐘已接上全部 13 種音效。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All 13 effects use the same video player clock."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "13種類すべてのエフェクトが同じ動画プレーヤーのクロックを使用します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同一個影片播放器時鐘已接上全部 13 種音效。"
+          }
+        }
+      }
+    },
+    "這部影片沒有可處理的音軌。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This video has no audio track to process."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この動画には処理できる音声トラックがありません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這部影片沒有可處理的音軌。"
+          }
+        }
+      }
+    },
+    "串流來源目前只保留播放器原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming sources currently keep the player's original audio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ストリーミングソースでは現在プレーヤーの原音を使用します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "串流來源目前只保留播放器原音。"
+          }
+        }
+      }
+    },
+    "目前只處理單一音軌，為避免選錯音軌而保留原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only one audio track is processed to avoid choosing the wrong track."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "誤ったトラックを選ばないよう、現在は単一音声トラックのみ処理します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前只處理單一音軌，為避免選錯音軌而保留原音。"
+          }
+        }
+      }
+    },
+    "只支援 44.1／48 kHz、Float32、mono／stereo PCM。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only 44.1/48 kHz Float32 mono/stereo PCM is supported."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "44.1/48 kHz、Float32、mono/stereo PCM のみ対応しています。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只支援 44.1／48 kHz、Float32、mono／stereo PCM。"
+          }
+        }
+      }
+    },
+    "音效處理 tap 建立失敗，已安全回復原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The effects tap failed to start; original audio is restored safely."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エフェクト tap の起動に失敗したため、安全に原音へ戻しました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音效處理 tap 建立失敗，已安全回復原音。"
+          }
+        }
+      }
+    },
+    "即時音效處理未成功，已安全回復原音。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Realtime effects processing did not succeed; original audio is restored safely."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リアルタイムエフェクト処理に失敗したため、安全に原音へ戻しました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即時音效處理未成功，已安全回復原音。"
+          }
+        }
+      }
+    },
+    "音效模式": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effect Mode"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エフェクトモード"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音效模式"
+          }
+        }
+      }
+    },
+    "等化器": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equalizer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "イコライザー"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等化器"
+          }
+        }
+      }
+    },
+    "音場場景": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound Scenes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サウンドシーン"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音場場景"
+          }
+        }
+      }
+    },
+    "音效強度": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effect Strength"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エフェクトの強度"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音效強度"
+          }
+        }
+      }
+    },
+    "0% 為原音。從低強度開始，依歌曲調整。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0% is the original sound. Start low and adjust for each song."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0%は原音です。低い強度から始め、曲に合わせて調整してください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0% 為原音。從低強度開始，依歌曲調整。"
+          }
+        }
+      }
+    },
+    "混響": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reverb"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リバーブ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "混響"
+          }
+        }
+      }
+    },
+    "延遲": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delay"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディレイ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "延遲"
+          }
+        }
+      }
+    },
+    "低音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bass"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低音"
+          }
+        }
+      }
+    },
+    "濾波截止": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter Cutoff"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フィルターのカットオフ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "濾波截止"
+          }
+        }
+      }
+    },
+    "音場寬度": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stereo Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステレオの広がり"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音場寬度"
+          }
+        }
+      }
+    },
+    "失真": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distortion"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディストーション"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失真"
+          }
+        }
+      }
+    },
+    "恢復原音": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Original Sound"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原音に戻す"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢復原音"
+          }
+        }
+      }
+    },
     "編輯順序": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Edit Order" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "順序を編集" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "編輯順序" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Order"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "順序を編集"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯順序"
+          }
+        }
       }
     },
     "完成排序": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Done Reordering" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "並べ替えを完了" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "完成排序" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done Reordering"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "並べ替えを完了"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成排序"
+          }
+        }
       }
     },
     "無法重新排序歌單：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Could not reorder playlist: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストを並べ替えられません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法重新排序歌單：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not reorder playlist: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレイリストを並べ替えられません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法重新排序歌單：%@"
+          }
+        }
       }
     },
     "先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The previous track is unavailable. Another available track is selected and will start when you press Play." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "以前の曲を利用できないため、別の曲を選択しました。再生ボタンを押すと開始します。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The previous track is unavailable. Another available track is selected and will start when you press Play."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以前の曲を利用できないため、別の曲を選択しました。再生ボタンを押すと開始します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先前播放的曲目已無法使用，已選擇其他可用曲目；按播放後才會開始。"
+          }
+        }
       }
     },
     "上移": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Move Up" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "上へ移動" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "上移" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Up"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上へ移動"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上移"
+          }
+        }
       }
     },
     "下移": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Move Down" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "下へ移動" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "下移" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Down"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下へ移動"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下移"
+          }
+        }
       }
     },
     "下一首播放": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Play Next" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "次に再生" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "下一首播放" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play Next"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次に再生"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一首播放"
+          }
+        }
       }
     },
     "佇列曲目操作": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Queue Track Actions" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生キューの操作" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "佇列曲目操作" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queue Track Actions"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生キューの操作"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "佇列曲目操作"
+          }
+        }
       }
     },
     "加入曲庫": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Date Added" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "追加日" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "加入曲庫" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date Added"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加日"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入曲庫"
+          }
+        }
       }
     },
     "加入曲庫時間": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Date Added" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "追加日" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "加入曲庫時間" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date Added"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加日"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入曲庫時間"
+          }
+        }
       }
     },
     "唱片編號": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Disc Number" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ディスク番号" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "唱片編號" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disc Number"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスク番号"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "唱片編號"
+          }
+        }
       }
     },
     "基本資訊": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Basic Information" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "基本情報" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "基本資訊" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basic Information"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基本情報"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基本資訊"
+          }
+        }
       }
     },
     "專輯歌手": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Album Artist" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "アルバムアーティスト" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "專輯歌手" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Album Artist"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アルバムアーティスト"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "專輯歌手"
+          }
+        }
       }
     },
     "復原資訊變更": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Undo Metadata Changes" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "情報の変更を元に戻す" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "復原資訊變更" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo Metadata Changes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報の変更を元に戻す"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復原資訊變更"
+          }
+        }
       }
     },
     "播放時長": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Duration" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生時間" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "播放時長" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生時間"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放時長"
+          }
+        }
       }
     },
     "日期": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Date" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "日付" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "日期" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期"
+          }
+        }
       }
     },
     "曲目編號": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Track Number" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "トラック番号" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "曲目編號" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track Number"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トラック番号"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲目編號"
+          }
+        }
       }
     },
     "未提供": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Not Available" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "情報なし" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "未提供" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Available"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報なし"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未提供"
+          }
+        }
       }
     },
     "檔案修改時間": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "File Modification Date" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ファイルの更新日" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "檔案修改時間" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File Modification Date"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルの更新日"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案修改時間"
+          }
+        }
       }
     },
     "檔案與曲目": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "File and Track" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ファイルとトラック" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "檔案與曲目" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File and Track"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルとトラック"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案與曲目"
+          }
+        }
       }
     },
     "歌曲資訊": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Track Info" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "歌曲資訊" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track Info"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲の情報"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌曲資訊"
+          }
+        }
       }
     },
     "沒有差異": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "No Changes" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "変更なし" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "沒有差異" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Changes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更なし"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有差異"
+          }
+        }
       }
     },
     "發行日期": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Release Date" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "リリース日" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "發行日期" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release Date"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリース日"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "發行日期"
+          }
+        }
       }
     },
     "相對路徑": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Relative Path" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "相対パス" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "相對路徑" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relative Path"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相対パス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相對路徑"
+          }
+        }
       }
     },
     "確認套用": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Confirm Changes" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "変更を適用" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "確認套用" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm Changes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を適用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認套用"
+          }
+        }
       }
     },
     "確認批次變更？": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Apply Batch Changes?" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "一括変更を適用しますか？" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "確認批次變更？" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Batch Changes?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一括変更を適用しますか？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認批次變更？"
+          }
+        }
       }
     },
     "移到最前": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Move to Play Next" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "次に再生する位置へ移動" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移到最前" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Play Next"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次に再生する位置へ移動"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移到最前"
+          }
+        }
       }
     },
     "移除": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "削除" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移除" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除"
+          }
+        }
       }
     },
     "類型": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Genre" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ジャンル" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "類型" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ジャンル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "類型"
+          }
+        }
       }
     },
     "無法整理接下來播放：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to organize the upcoming queue: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "次の再生キューを整理できません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法整理接下來播放：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to organize the upcoming queue: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の再生キューを整理できません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法整理接下來播放：%@"
+          }
+        }
       }
     },
     "無法更新接下來播放：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to update the upcoming queue: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "次の再生キューを更新できません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法更新接下來播放：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to update the upcoming queue: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の再生キューを更新できません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法更新接下來播放：%@"
+          }
+        }
       }
     },
     "無法還原播放佇列：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to restore the playback queue: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生キューを復元できません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法還原播放佇列：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to restore the playback queue: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生キューを復元できません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法還原播放佇列：%@"
+          }
+        }
       }
     },
     "無法預覽歌曲資訊：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to preview track information: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報をプレビューできません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法預覽歌曲資訊：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to preview track information: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲の情報をプレビューできません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法預覽歌曲資訊：%@"
+          }
+        }
       }
     },
     "無法復原歌曲資訊：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to undo track information changes: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲の情報の変更を元に戻せません：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法復原歌曲資訊：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to undo track information changes: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲の情報の変更を元に戻せません：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法復原歌曲資訊：%@"
+          }
+        }
       }
     },
     "部分歌曲資訊已再次變更，未覆蓋後續修改。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Some tracks have changed again. Later edits were preserved." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "一部の曲は再び変更されています。後の変更は保持されました。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "部分歌曲資訊已再次變更，未覆蓋後續修改。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some tracks have changed again. Later edits were preserved."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部の曲は再び変更されています。後の変更は保持されました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分歌曲資訊已再次變更，未覆蓋後續修改。"
+          }
+        }
       }
     },
     "預覽 %lld 首歌曲（顯示前 %lld 首）；確認後才會寫入曲庫。原始檔案不會變動。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Preview %lld tracks (showing the first %lld). Changes are saved only after confirmation. Original files are unchanged." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%lld曲をプレビュー（最初の%lld曲を表示）。確認後にライブラリへ保存します。元のファイルは変更されません。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "預覽 %lld 首歌曲（顯示前 %lld 首）；確認後才會寫入曲庫。原始檔案不會變動。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview %lld tracks (showing the first %lld). Changes are saved only after confirmation. Original files are unchanged."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld曲をプレビュー（最初の%lld曲を表示）。確認後にライブラリへ保存します。元のファイルは変更されません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預覽 %lld 首歌曲（顯示前 %lld 首）；確認後才會寫入曲庫。原始檔案不會變動。"
+          }
+        }
       }
     },
     "搜尋歌手": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Search Artists" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "アーティストを検索" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "搜尋歌手" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Artists"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーティストを検索"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜尋歌手"
+          }
+        }
       }
     },
     "搜尋專輯": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Search Albums" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "アルバムを検索" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "搜尋專輯" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Albums"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アルバムを検索"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜尋專輯"
+          }
+        }
       }
     },
     "找不到符合的目錄": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "No Matching Collections" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "一致する項目がありません" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "找不到符合的目錄" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Matching Collections"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致する項目がありません"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到符合的目錄"
+          }
+        }
       }
     },
     "請嘗試其他歌手、專輯或曲目名稱。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Try another artist, album, or track name." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "別のアーティスト名、アルバム名、または曲名をお試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "請嘗試其他歌手、專輯或曲目名稱。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try another artist, album, or track name."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のアーティスト名、アルバム名、または曲名をお試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請嘗試其他歌手、專輯或曲目名稱。"
+          }
+        }
       }
     },
     "顯示 %lld / %lld 個目錄": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Showing %lld of %lld collections" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "全 %2$lld 件中 %1$lld 件を表示" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "顯示 %lld / %lld 個目錄" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing %lld of %lld collections"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全 %2$lld 件中 %1$lld 件を表示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示 %lld / %lld 個目錄"
+          }
+        }
       }
     },
     "載入更多": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Load More" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "さらに読み込む" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "載入更多" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load More"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "さらに読み込む"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "載入更多"
+          }
+        }
       }
     },
     "分析這首音樂": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Analyze This Track" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "この曲を分析" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "分析這首音樂" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyze This Track"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この曲を分析"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分析這首音樂"
+          }
+        }
       }
     },
     "分析完成，節奏約 %.0f BPM。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Analysis complete. Tempo around %.0f BPM." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "分析完了。テンポは約 %.0f BPM です。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "分析完成，節奏約 %.0f BPM。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analysis complete. Tempo around %.0f BPM."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分析完了。テンポは約 %.0f BPM です。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分析完成，節奏約 %.0f BPM。"
+          }
+        }
       }
     },
     "音訊分析已完成。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Audio analysis complete." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "音響分析が完了しました。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "音訊分析已完成。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio analysis complete."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音響分析が完了しました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音訊分析已完成。"
+          }
+        }
       }
     },
     "已取消分析。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Analysis canceled." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "分析をキャンセルしました。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已取消分析。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analysis canceled."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分析をキャンセルしました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已取消分析。"
+          }
+        }
       }
     },
     "音訊分析失敗：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Audio analysis failed: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "音響分析に失敗しました：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "音訊分析失敗：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio analysis failed: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音響分析に失敗しました：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音訊分析失敗：%@"
+          }
+        }
       }
     },
     "Smart DJ": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ"
+          }
+        }
       }
     },
     "Smart DJ 播放選項": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ playback options" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ の再生オプション" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 播放選項" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ playback options"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ の再生オプション"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ 播放選項"
+          }
+        }
       }
     },
     "Smart DJ 是 Pro 功能": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ is a Pro feature" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ は Pro 機能です" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 是 Pro 功能" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ is a Pro feature"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ は Pro 機能です"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ 是 Pro 功能"
+          }
+        }
       }
     },
     "Smart DJ 暫時沒有推薦結果，請稍後再試。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ has no recommendations right now. Please try again later." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "現在おすすめを生成できません。後でもう一度お試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 暫時沒有推薦結果，請稍後再試。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ has no recommendations right now. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在おすすめを生成できません。後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ 暫時沒有推薦結果，請稍後再試。"
+          }
+        }
       }
     },
     "Smart DJ 會依照最愛、評分與已儲存的聲學分析，挑出一段可以直接播放的曲序。分析全部在裝置上完成。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ uses favorites, ratings, and saved audio analysis to build a ready-to-play queue. Analysis stays on your device." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ はお気に入り、評価、保存済みの音響分析から再生リストを作ります。分析はデバイス上で完結します。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 會依照最愛、評分與已儲存的聲學分析，挑出一段可以直接播放的曲序。分析全部在裝置上完成。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ uses favorites, ratings, and saved audio analysis to build a ready-to-play queue. Analysis stays on your device."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ はお気に入り、評価、保存済みの音響分析から再生リストを作ります。分析はデバイス上で完結します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ 會依照最愛、評分與已儲存的聲學分析，挑出一段可以直接播放的曲序。分析全部在裝置上完成。"
+          }
+        }
       }
     },
     "先讀取分段候選曲目，再交給本機評分核心。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Sampling tracks, then scoring them on this device." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲を分けて読み込み、このデバイスで評価しています。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "先讀取分段候選曲目，再交給本機評分核心。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sampling tracks, then scoring them on this device."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲を分けて読み込み、このデバイスで評価しています。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先讀取分段候選曲目，再交給本機評分核心。"
+          }
+        }
       }
     },
     "加入佇列": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Add to Queue" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "キューに追加" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "加入佇列" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to Queue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キューに追加"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入佇列"
+          }
+        }
       }
     },
     "已取消 Smart DJ 推薦。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ recommendations canceled." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ のおすすめをキャンセルしました。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已取消 Smart DJ 推薦。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ recommendations canceled."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ のおすすめをキャンセルしました。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已取消 Smart DJ 推薦。"
+          }
+        }
       }
     },
     "已從分段抽樣的最多 %lld 首候選曲目中選出 %lld 首": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Selected %2$lld tracks from up to %1$lld sampled candidates" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "最大 %1$lld 曲の候補から %2$lld 曲を選びました" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已從分段抽樣的最多 %lld 首候選曲目中選出 %lld 首" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected %2$lld tracks from up to %1$lld sampled candidates"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大 %1$lld 曲の候補から %2$lld 曲を選びました"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已從分段抽樣的最多 %lld 首候選曲目中選出 %lld 首"
+          }
+        }
       }
     },
     "從分段候選曲目產生新的 Smart DJ 播放清單": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Create a new Smart DJ queue from sampled tracks" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "抽出した曲から新しい Smart DJ キューを作成" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "從分段候選曲目產生新的 Smart DJ 播放清單" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a new Smart DJ queue from sampled tracks"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "抽出した曲から新しい Smart DJ キューを作成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從分段候選曲目產生新的 Smart DJ 播放清單"
+          }
+        }
       }
     },
     "推薦結果": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Recommendations" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "おすすめ" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "推薦結果" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommendations"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おすすめ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推薦結果"
+          }
+        }
       }
     },
     "曲庫目前沒有可讀取的曲目。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "There are no readable tracks in your library." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ライブラリに読み込める曲がありません。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "曲庫目前沒有可讀取的曲目。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no readable tracks in your library."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリに読み込める曲がありません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲庫目前沒有可讀取的曲目。"
+          }
+        }
       }
     },
     "最多 25 首": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Up to 25 tracks" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "最大 25 曲" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "最多 25 首" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to 25 tracks"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大 25 曲"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最多 25 首"
+          }
+        }
       }
     },
     "本機處理": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "On-device processing" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "デバイス上で処理" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "本機處理" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device processing"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス上で処理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機處理"
+          }
+        }
       }
     },
     "查看 CMV Pro": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "View CMV Pro" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "CMV Pro を見る" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "查看 CMV Pro" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View CMV Pro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV Pro を見る"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看 CMV Pro"
+          }
+        }
       }
     },
     "正在準備 Smart DJ": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Preparing Smart DJ" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ を準備中" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "正在準備 Smart DJ" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing Smart DJ"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ を準備中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在準備 Smart DJ"
+          }
+        }
       }
     },
     "為你排一段夜航": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "A listening journey for you" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "あなたのための選曲" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "為你排一段夜航" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A listening journey for you"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたのための選曲"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "為你排一段夜航"
+          }
+        }
       }
     },
     "無法讀取曲庫，請稍後再試。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Couldn’t read the library. Please try again later." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ライブラリを読み込めませんでした。後でもう一度お試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法讀取曲庫，請稍後再試。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t read the library. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリを読み込めませんでした。後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取曲庫，請稍後再試。"
+          }
+        }
       }
     },
     "目前候選曲目都暫時無法播放，請檢查音樂來源。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "None of the sampled tracks can play right now. Check your music sources." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "候補の曲を再生できません。音楽ソースを確認してください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "目前候選曲目都暫時無法播放，請檢查音樂來源。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None of the sampled tracks can play right now. Check your music sources."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "候補の曲を再生できません。音楽ソースを確認してください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前候選曲目都暫時無法播放，請檢查音樂來源。"
+          }
+        }
       }
     },
     "目前沒有可推薦的曲目": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "No tracks to recommend yet" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "おすすめできる曲がありません" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "目前沒有可推薦的曲目" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tracks to recommend yet (´・ω・`)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おすすめできる曲がまだありません (´・ω・`)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前沒有可推薦的曲目 (´・ω・`)"
+          }
+        }
       }
     },
     "節奏約 %@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Tempo around %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "テンポ約 %@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "節奏約 %@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo around %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テンポ約 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "節奏約 %@"
+          }
+        }
       }
     },
     "解鎖 CMV Pro 後，讓本機分析與 Smart DJ 根據你的曲庫排出下一段音樂。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unlock CMV Pro to make a Smart DJ queue from your library and on-device analysis." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "CMV Pro を解放すると、Smart DJ がライブラリとデバイス上の分析から次の曲を選びます。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖 CMV Pro 後，讓本機分析與 Smart DJ 根據你的曲庫排出下一段音樂。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock CMV Pro to make a Smart DJ queue from your library and on-device analysis."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CMV Pro を解放すると、Smart DJ がライブラリとデバイス上の分析から次の曲を選びます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解鎖 CMV Pro 後，讓本機分析與 Smart DJ 根據你的曲庫排出下一段音樂。"
+          }
+        }
       }
     },
     "請先加入音樂來源，或稍後再試。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Add a music source, or try again later." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "音楽ソースを追加するか、後でもう一度お試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "請先加入音樂來源，或稍後再試。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a music source, or try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音楽ソースを追加するか、後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請先加入音樂來源，或稍後再試。"
+          }
+        }
       }
     },
     "重新推薦": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Recommend Again" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "もう一度選曲" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "重新推薦" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommend Again"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一度選曲"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新推薦"
+          }
+        }
       }
     },
     "開始推薦": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Get Recommendations" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "選曲を開始" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "開始推薦" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Recommendations"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選曲を開始"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始推薦"
+          }
+        }
       }
     },
     "已加入最愛": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "In your favorites" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "お気に入りに登録済み" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已加入最愛" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In your favorites"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お気に入りに登録済み"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加入最愛"
+          }
+        }
       }
     },
     "評分很高": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Highly rated" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "高評価" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "評分很高" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Highly rated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高評価"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "評分很高"
+          }
+        }
       }
     },
     "尚未播放過": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Not played yet" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "未再生" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "尚未播放過" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not played yet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未再生"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未播放過"
+          }
+        }
       }
     },
     "依聆聽習慣推薦": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Based on listening habits" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生傾向からおすすめ" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "依聆聽習慣推薦" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Based on listening habits"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生傾向からおすすめ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依聆聽習慣推薦"
+          }
+        }
       }
     },
     "選擇音訊輸出裝置": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Choose audio output" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "音声出力先を選択" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "選擇音訊輸出裝置" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose audio output"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声出力先を選択"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇音訊輸出裝置"
+          }
+        }
       }
     },
     "讓 Smart DJ 幫你選歌": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Let Smart DJ choose your music" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ に選曲をまかせる" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "讓 Smart DJ 幫你選歌" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let Smart DJ choose your music"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ に選曲をまかせる"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讓 Smart DJ 幫你選歌"
+          }
+        }
       }
     },
     "依收藏、評分與本機分析產生推薦，並告訴你選歌原因。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Get recommendations from favorites, ratings, and on-device analysis, with reasons for each pick." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "お気に入り、評価、デバイス上の分析から選曲し、その理由も表示します。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "依收藏、評分與本機分析產生推薦，並告訴你選歌原因。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get recommendations from favorites, ratings, and on-device analysis, with reasons for each pick."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お気に入り、評価、デバイス上の分析から選曲し、その理由も表示します。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依收藏、評分與本機分析產生推薦，並告訴你選歌原因。"
+          }
+        }
       }
     },
     "依照你的收藏與評分，排出下一段音樂": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Queue up music from your favorites and ratings" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "お気に入りと評価から次の曲を選びます" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "依照你的收藏與評分，排出下一段音樂" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queue up music from your favorites and ratings"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お気に入りと評価から次の曲を選びます"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依照你的收藏與評分，排出下一段音樂"
+          }
+        }
       }
     },
     "星海晨光": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Celestial Dawn" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "星海の朝焼け" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "星海晨光" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Celestial Dawn"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "星海の朝焼け"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "星海晨光"
+          }
+        }
       }
     },
     "土星環軌站": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Saturn Ring Station" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "土星リングステーション" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "土星環軌站" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturn Ring Station"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星リングステーション"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星環軌站"
+          }
+        }
       }
     },
     "綿羊幻想鄉": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Sheep Dreamland" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ひつじ幻想郷" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "綿羊幻想鄉" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sheep Dreamland"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ひつじ幻想郷"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "綿羊幻想鄉"
+          }
+        }
       }
     },
     "銀河月夜": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Milky Way Night" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "銀河月夜" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "銀河月夜" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Milky Way Night"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "銀河月夜"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "銀河月夜"
+          }
+        }
       }
     },
     "解鎖綿羊幻想鄉與土星環軌站。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unlock Sheep Dreamland and Saturn Ring Station." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ひつじ幻想郷と土星リングステーションを解放。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖綿羊幻想鄉與土星環軌站。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock Sheep Dreamland and Saturn Ring Station."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ひつじ幻想郷と土星リングステーションを解放。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解鎖綿羊幻想鄉與土星環軌站。"
+          }
+        }
       }
     },
     " · 已讀取 %.1f 秒": {
@@ -1267,7 +4104,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "一度きりのアンロック"
+            "value": "買い切りでアンロック"
           }
         },
         "zh-Hant": {
@@ -1311,7 +4148,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "一度きりの購入で、自動更新はありません。"
+            "value": "買い切りの一括購入です。自動更新はありません。"
           }
         },
         "zh-Hant": {
@@ -1415,19 +4252,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Queue is empty"
+            "value": "Queue is empty (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キューは空です"
+            "value": "キューは空です (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "佇列是空的"
+            "value": "佇列目前是空的 (´・ω・`)"
           }
         }
       }
@@ -1437,19 +4274,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Pro experience is ready"
+            "value": "Your Pro experience is ready (｡•̀ᴗ-)✧"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Proの準備ができました"
+            "value": "Proの準備が整いました (｡•̀ᴗ-)✧"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 Pro，已經準備好了"
+            "value": "你的 Pro，已經準備好了 (｡•̀ᴗ-)✧"
           }
         }
       }
@@ -2625,19 +5462,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Albums"
+            "value": "No albums yet (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アルバムはありません"
+            "value": "アルバムはまだありません (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚無專輯"
+            "value": "尚無專輯 (´・ω・`)"
           }
         }
       }
@@ -2647,19 +5484,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Artists"
+            "value": "No artists yet (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アーティストはありません"
+            "value": "アーティストはまだいません (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚無歌手"
+            "value": "尚無歌手 (´・ω・`)"
           }
         }
       }
@@ -3285,7 +6122,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove from CMV? · %lld selected"
+            "value": "Remove %lld tracks from CMV?"
           }
         },
         "ja": {
@@ -3307,13 +6144,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a video from Files that hasn't been added to the library"
+            "value": "Choose a video file not yet added to the library"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ファイルからライブラリに追加されていないビデオを選択"
+            "value": "ライブラリに追加していない動画ファイルを選択"
           }
         },
         "zh-Hant": {
@@ -3571,19 +6408,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep the songs you want on your device, then give tonight's music a new sky."
+            "value": "Keep the songs you want on your device, then give tonight's music a new sky. 🌌"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "聴きたい曲をデバイスに保存して、今夜の音楽に新しい景色を。"
+            "value": "聴きたい曲をデバイスに保存して、今夜の音楽に新しい空を広げましょう。🌌"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "把想聽的歌先留在裝置上，再替今晚的音樂換一片天空。"
+            "value": "把想聽的歌先留在裝置上，再替今晚的音樂換一片天空。🌌"
           }
         }
       }
@@ -3835,19 +6672,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Play a favorite; its starlit details will appear here."
+            "value": "Play a favorite; its starlit details will appear here. ✨"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お気に入りを再生すると、その星明かりのような詳細がここに表示されます。"
+            "value": "お気に入りを再生すると、星明かりのような詳細がここに表示されます。✨"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "播放一首收藏，星光會在這裡留下它的細節。"
+            "value": "播放一首收藏，星光會在這裡留下它的細節。✨"
           }
         }
       }
@@ -4448,16 +7285,46 @@
     },
     "未知專輯": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unknown Album" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "不明なアルバム" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "未知專輯" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown Album"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不明なアルバム"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知專輯"
+          }
+        }
       }
     },
     "未知歌手": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unknown Artist" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "不明なアーティスト" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "未知歌手" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown Artist"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不明なアーティスト"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知歌手"
+          }
+        }
       }
     },
     "未知資料庫錯誤": {
@@ -4685,19 +7552,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Playlist is Empty"
+            "value": "Playlist is empty (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "プレイリストは空です"
+            "value": "プレイリストは空です (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "歌單是空的"
+            "value": "歌單目前是空的 (´・ω・`)"
           }
         }
       }
@@ -5455,19 +8322,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Matching Tracks"
+            "value": "No matching tracks (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "一致する曲目がありません"
+            "value": "一致する曲がありません (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "沒有符合的曲目"
+            "value": "沒有符合的曲目 (´・ω・`)"
           }
         }
       }
@@ -7809,19 +10676,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Thanks for supporting CMV. Pick another song you love."
+            "value": "Thank you for supporting CMV. Enjoy picking your next favorite song! ( ´ ▽ ` )ﾉ"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMVを応援してくださってありがとうございます。好きな曲をもう一曲選んでください。"
+            "value": "CMVを応援していただきありがとうございます。次のお気に入りの曲を選びましょう！( ´ ▽ ` )ﾉ"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "謝謝你支持 CMV。繼續挑一首喜歡的歌吧。"
+            "value": "謝謝你支持 CMV。繼續挑一首喜歡的歌吧！( ´ ▽ ` )ﾉ"
           }
         }
       }
@@ -8161,19 +11028,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Favorite Songs Yet"
+            "value": "No favorite songs yet (´・ω・`)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お気に入りの曲はまだありません"
+            "value": "お気に入りの曲はまだありません (´・ω・`)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "還沒有最愛歌曲"
+            "value": "還沒有最愛歌曲 (´・ω・`)"
           }
         }
       }
@@ -9170,233 +12037,904 @@
     },
     "批次離線釘選 · Pro": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch Pin for Offline · Pro" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "オフライン用に一括ピン留め · Pro" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次離線釘選 · Pro" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Pin for Offline · Pro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフライン用に一括ピン留め · Pro"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次離線釘選 · Pro"
+          }
+        }
       }
     },
     "批次編輯資訊 · Pro": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch Edit Info · Pro" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "情報を一括編集 · Pro" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯資訊 · Pro" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Edit Info · Pro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報を一括編集 · Pro"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次編輯資訊 · Pro"
+          }
+        }
       }
     },
     "取消離線準備": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Cancel Offline Preparation" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備をキャンセル" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "取消離線準備" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel Offline Preparation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフライン準備をキャンセル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消離線準備"
+          }
+        }
       }
     },
     "離線準備 %lld／%lld": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Offline preparation %lld/%lld" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備 %lld／%lld" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "離線準備 %lld／%lld" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline preparation %lld/%lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフライン準備 %lld／%lld"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "離線準備 %lld／%lld"
+          }
+        }
       }
     },
     "離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Offline preparation complete: %lld added, %lld already present, %lld failed%@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "オフライン準備完了：新規 %lld、既存 %lld、失敗 %lld%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline preparation complete: %lld added, %lld already present, %lld failed%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフライン準備完了：新規 %lld、既存 %lld、失敗 %lld%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "離線準備完成：新增 %lld、已存在 %lld、失敗 %lld%@"
+          }
+        }
       }
     },
     "（已取消）": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": " (Canceled)" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "（キャンセル済み）" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "（已取消）" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (Canceled)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（キャンセル済み）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（已取消）"
+          }
+        }
       }
     },
     "批次編輯 %lld 首歌曲": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch edit %lld songs" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%lld 曲の曲情報を一括編集" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯 %lld 首歌曲" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch edit %lld songs"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 曲の曲情報を一括編集"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次編輯 %lld 首歌曲"
+          }
+        }
       }
     },
     "只修改勾選的欄位；原始音樂檔不會變動。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Only modify checked fields; original music files won't be changed." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "選択した項目のみ変更します。元の音楽ファイルは変更されません。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "只修改勾選的欄位；原始音樂檔不會變動。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only modify checked fields; original music files won't be changed."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した項目のみ変更します。元の音楽ファイルは変更されません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只修改勾選的欄位；原始音樂檔不會變動。"
+          }
+        }
       }
     },
     "統一套用": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Apply to All" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "一括適用" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "統一套用" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply to All"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一括適用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "統一套用"
+          }
+        }
       }
     },
     "批次編輯歌曲資訊": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch Edit Song Info" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を一括編集" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯歌曲資訊" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Edit Song Info"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲情報を一括編集"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次編輯歌曲資訊"
+          }
+        }
       }
     },
     "套用變更": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Apply Changes" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "変更を適用" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "套用變更" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Changes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を適用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "套用變更"
+          }
+        }
       }
     },
     "全選已載入": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Select All Loaded" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "読み込み済みをすべて選択" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "全選已載入" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All Loaded"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込み済みをすべて選択"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全選已載入"
+          }
+        }
       }
     },
     "批次移出歌單 · Pro": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch Remove from Playlist · Pro" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストから一括削除 · Pro" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次移出歌單 · Pro" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Remove from Playlist · Pro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレイリストから一括削除 · Pro"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次移出歌單 · Pro"
+          }
+        }
       }
     },
     "選取歌曲": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Select Song" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲を選択" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "選取歌曲" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Song"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲を選択"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選取歌曲"
+          }
+        }
       }
     },
     "取消選取歌曲": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Deselect Song" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲の選択を解除" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "取消選取歌曲" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect Song"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲の選択を解除"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消選取歌曲"
+          }
+        }
       }
     },
     "將所選歌曲移出歌單？": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove Selected Songs from Playlist?" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "選択した曲をプレイリストから削除しますか？" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "將所選歌曲移出歌單？" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Selected Songs from Playlist?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した曲をプレイリストから削除しますか？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將所選歌曲移出歌單？"
+          }
+        }
       }
     },
     "移出所選歌曲": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove Selected Songs" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "選択した曲を削除" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "移出所選歌曲" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Selected Songs"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した曲を削除"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移出所選歌曲"
+          }
+        }
       }
     },
     "只修改這張歌單，不刪除原始音樂檔。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Only this playlist will be changed; original music files won't be deleted." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "このプレイリストのみを変更します。元の音楽ファイルは削除されません。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "只修改這張歌單，不刪除原始音樂檔。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only this playlist will be changed; original music files won't be deleted."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このプレイリストのみを変更します。元の音楽ファイルは削除されません。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只修改這張歌單，不刪除原始音樂檔。"
+          }
+        }
       }
     },
     "正在更新歌曲資訊": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Updating song information" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を更新中" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "正在更新歌曲資訊" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating song information"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲情報を更新中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在更新歌曲資訊"
+          }
+        }
       }
     },
     "無法更新歌曲資訊：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Could not update song information: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲情報を更新できませんでした：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法更新歌曲資訊：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not update song information: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲情報を更新できませんでした：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法更新歌曲資訊：%@"
+          }
+        }
       }
     },
     "正在整理歌單": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Organizing playlist" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストを整理中" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "正在整理歌單" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Organizing playlist"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレイリストを整理中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在整理歌單"
+          }
+        }
       }
     },
     "無法從歌單移除歌曲：%@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Could not remove songs from playlist: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "プレイリストから曲を削除できませんでした：%@" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法從歌單移除歌曲：%@" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not remove songs from playlist: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレイリストから曲を削除できませんでした：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法從歌單移除歌曲：%@"
+          }
+        }
       }
     },
     "可播放": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Playable" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生可能" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "可播放" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playable"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生可能"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可播放"
+          }
+        }
       }
     },
     "開始播放此曲目": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Start playing this track" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "この曲の再生を開始" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "開始播放此曲目" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start playing this track"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この曲の再生を開始"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始播放此曲目"
+          }
+        }
       }
     },
     "此曲目目前無法播放": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "This track can't be played right now" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "この曲は現在再生できません" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "此曲目目前無法播放" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This track can't be played right now"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この曲は現在再生できません"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此曲目目前無法播放"
+          }
+        }
       }
     },
     "鎖定的 Pro 主題會開啟升級頁": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Locked Pro themes open the upgrade page" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "ロックされた Pro テーマを選ぶとアップグレードページが開きます" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "鎖定的 Pro 主題會開啟升級頁" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked Pro themes open the upgrade page"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ロックされた Pro テーマを選ぶとアップグレードページが開きます"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鎖定的 Pro 主題會開啟升級頁"
+          }
+        }
       }
     },
     "展開完整播放控制": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Expand full playback controls" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "完全な再生コントロールを展開" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "展開完整播放控制" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand full playback controls"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完全な再生コントロールを展開"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展開完整播放控制"
+          }
+        }
       }
     },
     "無法讀取播放歷史，請稍後再試。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Couldn't read play history. Please try again later." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "再生履歴を読み込めませんでした。後でもう一度お試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "無法讀取播放歷史，請稍後再試。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't read play history. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生履歴を読み込めませんでした。後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取播放歷史，請稍後再試。"
+          }
+        }
       }
     },
     "Smart DJ 無法完成推薦，請稍後再試。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Smart DJ couldn't complete its recommendation. Please try again later." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "Smart DJ はおすすめを作成できませんでした。後でもう一度お試しください。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "Smart DJ 無法完成推薦，請稍後再試。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ couldn't complete its recommendation. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ はおすすめを作成できませんでした。後でもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart DJ 無法完成推薦，請稍後再試。"
+          }
+        }
       }
     },
     "解鎖 %@ 與 %@。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unlock %@ and %@." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%@ と %@ をアンロック。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "解鎖 %@ 與 %@。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock %@ and %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ と %@ をアンロック。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解鎖 %@ 與 %@。"
+          }
+        }
       }
     },
     "進階批次整理": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Advanced Batch Organization" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "高度な一括整理" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "進階批次整理" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced Batch Organization"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高度な一括整理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "進階批次整理"
+          }
+        }
+      }
+    },
+    "釘選曲目供離線播放": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin tracks for offline playback"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲をピン留めしてオフライン再生"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "釘選曲目供離線播放"
+          }
+        }
+      }
+    },
+    "Pro 可將本機或 NAS 曲目釘選保存到裝置；來源離線時仍可播放。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro pins local or NAS tracks to your device so they remain playable when the source is offline."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ProならローカルまたはNASの曲をデバイスに保存してピン留めでき、ソースがオフラインでも再生できます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro 可將本機或 NAS 曲目釘選保存到裝置；來源離線時仍可播放。"
+          }
+        }
       }
     },
     "批次編輯歌曲資訊與歌單多選移除。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Batch edit song info and remove multiple songs from playlists." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "曲情報の一括編集とプレイリストからの複数曲削除。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "批次編輯歌曲資訊與歌單多選移除。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch edit song info and remove multiple songs from playlists."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲情報の一括編集とプレイリストからの複数曲削除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批次編輯歌曲資訊與歌單多選移除。"
+          }
+        }
       }
     },
     "已保存到裝置的歌曲，來源離線時仍可播放。": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Songs already saved to your device remain playable when their source is offline." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "デバイスに保存済みの曲は、ソースがオフラインでも再生できます。" } },
-        "zh-Hant": { "stringUnit": { "state": "translated", "value": "已保存到裝置的歌曲，來源離線時仍可播放。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Songs already saved to your device remain playable when their source is offline."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスに保存済みの曲は、ソースがオフラインでも再生できます。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存到裝置的歌曲，來源離線時仍可播放。"
+          }
+        }
+      }
+    },
+    "尚未保存播放佇列": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playback queue not saved"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生キューが保存されていません"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未保存播放佇列"
+          }
+        }
+      }
+    },
+    "最近的佇列變更尚未寫入磁碟。請確認可用空間與寫入權限後再試；仍然結束可能還原舊佇列。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent queue changes haven't been written to disk. Check available space and write permissions, then try again; quitting anyway may restore the previous queue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近のキューの変更をディスクに書き込めませんでした。空き容量と書き込み権限を確認してから再試行してください。それでも終了すると、以前のキューに戻る可能性があります。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近的佇列變更尚未寫入磁碟。請確認可用空間與寫入權限後再試；仍然結束可能還原舊佇列。"
+          }
+        }
+      }
+    },
+    "留在 App": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay in App"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appに留まる"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留在 App"
+          }
+        }
+      }
+    },
+    "仍然結束": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Anyway"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのまま終了"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍然結束"
+          }
+        }
+      }
+    },
+    "無法保存播放佇列：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not save playback queue: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生キューを保存できませんでした：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法保存播放佇列：%@"
+          }
+        }
+      }
+    },
+    "曲庫內容已變更，請重新整理音樂來源後再試。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The library changed. Refresh your music sources and try again."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリの内容が変わりました。音楽ソースを更新してからもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲庫內容已變更，請重新整理音樂來源後再試。"
+          }
+        }
       }
     },
     "前往曲庫選歌": {
@@ -9439,6 +12977,820 @@
           "stringUnit": {
             "state": "translated",
             "value": "從曲庫選擇歌曲開始播放"
+          }
+        }
+      }
+    },
+    "牡羊": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aries"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おひつじ座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "牡羊座"
+          }
+        }
+      }
+    },
+    "金牛": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taurus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おうし座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金牛座"
+          }
+        }
+      }
+    },
+    "雙子": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ふたご座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雙子座"
+          }
+        }
+      }
+    },
+    "巨蟹": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "かに座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "巨蟹座"
+          }
+        }
+      }
+    },
+    "獅子": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しし座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "獅子座"
+          }
+        }
+      }
+    },
+    "處女": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Virgo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おとめ座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "處女座"
+          }
+        }
+      }
+    },
+    "天秤": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "てんびん座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天秤座"
+          }
+        }
+      }
+    },
+    "天蠍": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scorpius"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "さそり座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天蠍座"
+          }
+        }
+      }
+    },
+    "射手": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sagittarius"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いて座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "射手座"
+          }
+        }
+      }
+    },
+    "摩羯": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capricornus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やぎ座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "摩羯座"
+          }
+        }
+      }
+    },
+    "水瓶": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquarius"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "みずがめ座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水瓶座"
+          }
+        }
+      }
+    },
+    "雙魚": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pisces"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "うお座"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雙魚座"
+          }
+        }
+      }
+    },
+    "北極星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポラリス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北極星"
+          }
+        }
+      }
+    },
+    "天狼星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sirius"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シリウス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天狼星"
+          }
+        }
+      }
+    },
+    "大角星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arcturus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アークトゥルス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大角星"
+          }
+        }
+      }
+    },
+    "織女星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vega"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベガ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "織女星"
+          }
+        }
+      }
+    },
+    "參宿四": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Betelgeuse"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベテルギウス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "參宿四"
+          }
+        }
+      }
+    },
+    "牛郎星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altair"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アルタイル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "牛郎星"
+          }
+        }
+      }
+    },
+    "角宿一": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スピカ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "角宿一"
+          }
+        }
+      }
+    },
+    "心宿二": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antares"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アンタレス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "心宿二"
+          }
+        }
+      }
+    },
+    "天津四": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deneb"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デネブ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天津四"
+          }
+        }
+      }
+    },
+    "Megrez": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Megrez"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メグレズ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天權"
+          }
+        }
+      }
+    },
+    "Rigil Kentaurus": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rigil Kentaurus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リギル・ケンタウルス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南門二甲"
+          }
+        }
+      }
+    },
+    "Achernar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Achernar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アケルナル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水委一"
+          }
+        }
+      }
+    },
+    "Hadar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hadar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ハダル"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "馬腹一"
+          }
+        }
+      }
+    },
+    "Mimosa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mimosa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ミモザ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "十字架三"
+          }
+        }
+      }
+    },
+    "Acrux": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acrux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクルックス"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "十字架二"
+          }
+        }
+      }
+    },
+    "Toliman": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toliman"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トリマン"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南門二乙"
+          }
+        }
+      }
+    },
+    "Adhara": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adhara"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アダーラ"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "弧矢七"
+          }
+        }
+      }
+    },
+    "水星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mercury"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水星"
+          }
+        }
+      }
+    },
+    "金星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Venus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金星"
+          }
+        }
+      }
+    },
+    "地球": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earth"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地球"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地球"
+          }
+        }
+      }
+    },
+    "火星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mars"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "火星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "火星"
+          }
+        }
+      }
+    },
+    "木星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jupiter"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木星"
+          }
+        }
+      }
+    },
+    "土星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturn"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土星"
+          }
+        }
+      }
+    },
+    "天王星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uranus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天王星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天王星"
+          }
+        }
+      }
+    },
+    "海王星": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neptune"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "海王星"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "海王星"
           }
         }
       }

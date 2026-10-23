@@ -25,20 +25,20 @@ struct ProUpgradeView: View {
                                 .accessibilityHidden(true)
                             Text(store.hasPro
                                  ? AppLanguage.localized("你的 Pro，已經準備好了")
-                                 : AppLanguage.localized("讓收藏，多一點自由"))
+                                 : AppLanguage.localized("把喜歡的收藏，留在身邊"))
                                 .font(.title.bold())
                                 .accessibilityAddTraits(.isHeader)
                             Text(store.hasPro
                                  ? AppLanguage.localized("謝謝你支持 CMV。繼續挑一首喜歡的歌吧。")
-                                 : AppLanguage.localized("把想聽的歌先留在裝置上，再替今晚的音樂換一片天空。"))
+                                 : AppLanguage.localized("出門前準備離線收藏，回到曲庫探索下一首，也能換一片喜歡的天空。"))
                                 .foregroundStyle(.secondary)
                         }
 
                         VStack(alignment: .leading, spacing: 16) {
-                            benefit(AppLanguage.localized("離線也有準備"), symbol: "arrow.down.circle",
-                                    detail: AppLanguage.localized("已保存到裝置的歌曲，來源離線時仍可播放。"))
+                            benefit(AppLanguage.localized("釘選曲目供離線播放"), symbol: "pin.fill",
+                                    detail: AppLanguage.localized("將可讀取的本機或 NAS 曲目存到裝置。離線副本準備完成後，來源離線也能播放。"))
                             benefit(AppLanguage.localized("進階批次整理"), symbol: "square.and.pencil",
-                                    detail: AppLanguage.localized("批次編輯歌曲資訊與歌單多選移除。"))
+                                    detail: AppLanguage.localized("一次更新多首歌曲的曲庫資訊，或從歌單移除多首歌曲；不改寫原始音樂檔。"))
                             benefit(AppLanguage.localized("換一片喜歡的天空"), symbol: "paintpalette",
                                     detail: proThemeBenefitDetail)
                             benefit(AppLanguage.localized("讓 Smart DJ 幫你選歌"), symbol: "wand.and.stars",

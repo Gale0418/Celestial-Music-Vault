@@ -55,6 +55,10 @@ enum AppLanguage {
     }
 
     static func localizedError(_ error: Error) -> String {
+        if let repository = error as? LibraryRepositoryError,
+           repository == .duplicateRepairPlanChanged {
+            return localized("曲庫內容已變更，請重新整理音樂來源後再試。")
+        }
         if let access = error as? MediaSourceAccessError {
             switch access {
             case .staleBookmark: return localized("音樂來源授權已過期，請重新選擇資料夾。")

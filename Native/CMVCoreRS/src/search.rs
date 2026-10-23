@@ -25,16 +25,18 @@ pub fn search_tracks(query: &str, tracks: &[SearchTrack], limit: usize) -> Vec<S
     let mut scored: Vec<(usize, u32, String, String)> = tracks
         .iter()
         .enumerate()
-        .map(|(index, track)| {
+        .filter_map(|(index, track)| {
             let score = score_track(&query, track);
-            (
+            if !query.is_empty() && score == 0 {
+                return None;
+            }
+            Some((
                 index,
                 score,
                 normalize(&track.title),
                 track.identifier.clone(),
-            )
+            ))
         })
-        .filter(|(_, score, _, _)| query.is_empty() || *score > 0)
         .collect();
 
     scored.sort_by(|left, right| {
@@ -85,12 +87,34 @@ fn score_track(query: &str, track: &SearchTrack) -> u32 {
 }
 
 fn normalize(value: &str) -> String {
-    value
-        .trim()
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+    let lower = value.trim().to_lowercase();
+    let mut needs_collapse = false;
+    let mut previous_space = false;
+    for character in lower.chars() {
+        if character == ' ' {
+            if previous_space {
+                needs_collapse = true;
+            }
+            previous_space = true;
+        } else if character.is_whitespace() {
+            needs_collapse = true;
+            previous_space = true;
+        } else {
+            previous_space = false;
+        }
+    }
+    if !needs_collapse {
+        return lower;
+    }
+
+    let mut normalized = String::with_capacity(lower.len());
+    for token in lower.split_whitespace() {
+        if !normalized.is_empty() {
+            normalized.push(' ');
+        }
+        normalized.push_str(token);
+    }
+    normalized
 }
 
 #[cfg(test)]
@@ -149,5 +173,16 @@ mod tests {
         favorite.favorite = true;
         let results = search_tracks("", &[favorite, track("a", "Alpha", "A", "B")], 10);
         assert_eq!(results[0].identifier, "z");
+    }
+
+    #[test]
+    fn normalize_preserves_contextual_unicode_lowercase_and_collapses_whitespace() {
+        assert_eq!(normalize("ΟΣ"), "ος");
+        assert_eq!(normalize("  Moon Lane  "), "moon lane");
+        assert_eq!(
+            normalize("Moon\tLane\nAlbum\u{00a0}Side"),
+            "moon lane album side"
+        );
+        assert_eq!(normalize("Moon Lane"), normalize("Moon\tLane"));
     }
 }

@@ -98,6 +98,39 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(AudioMetadataParser.integerTag(from: "id3.trackNumber", value: "03/12"), 3)
     }
 
+    func testAudioMetadataParserRecognizesAppleTrackAndDiscIdentifiersPrecisely() {
+        XCTAssertEqual(
+            AudioMetadataParser.integerTag(
+                from: AVMetadataIdentifier.iTunesMetadataTrackNumber.rawValue,
+                value: "7"
+            ),
+            7
+        )
+        XCTAssertEqual(
+            AudioMetadataParser.integerTag(
+                from: AVMetadataIdentifier.iTunesMetadataDiscNumber.rawValue,
+                value: "3"
+            ),
+            3
+        )
+        XCTAssertEqual(
+            AudioMetadataParser.integerTag(
+                from: AVMetadataIdentifier.id3MetadataTrackNumber.rawValue,
+                value: "03/12"
+            ),
+            3
+        )
+        XCTAssertEqual(
+            AudioMetadataParser.integerTag(
+                from: AVMetadataIdentifier.id3MetadataPartOfASet.rawValue,
+                value: "2/4"
+            ),
+            2
+        )
+        XCTAssertNil(AudioMetadataParser.integerTag(from: "com.example.notrkn", value: "99"))
+        XCTAssertNil(AudioMetadataParser.integerTag(from: "com.example.diskography", value: "99"))
+    }
+
     func testAnalyzerCancellationMarkerOnlyAppliesToInFlightAnalysis() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CMVAnalyzer-\(UUID().uuidString)", isDirectory: true)
@@ -172,6 +205,36 @@ final class CMVCoreTests: XCTestCase {
         let rescanned = try await repository.tracks(matching: "", limit: 1_100, offset: 0)
         XCTAssertEqual(rescanned.filter { $0.availability == .available }.count, 500)
         XCTAssertEqual(rescanned.filter { $0.availability == .missing }.count, 500)
+    }
+
+    func testPreCancelledSearchThrowsAndLaterQueryRecovers() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        try await repository.applyScan([
+            ScannedMediaFile(relativePath: "Album/one.flac", fileIdentifier: "one", fileSize: 1, modifiedAt: .now, title: "Target One"),
+            ScannedMediaFile(relativePath: "Album/two.flac", fileIdentifier: "two", fileSize: 1, modifiedAt: .now, title: "Other Two")
+        ], sourceID: sourceID, sourceWasReachable: true)
+
+        let preCancelled = Task { () -> Bool in
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                _ = try await repository.searchCandidates(matching: "Target")
+                return false
+            } catch is CancellationError {
+                return true
+            } catch {
+                return false
+            }
+        }
+        let cancelledResult = await preCancelled.value
+        XCTAssertTrue(cancelledResult)
+
+        let recovered = try await repository.searchCandidates(matching: "Target")
+        XCTAssertEqual(recovered.map(\.title), ["Target One"])
     }
 
     func testInvalidatedScanCannotWriteOldBatchesOrFinalizeMissingTracks() async throws {
@@ -400,10 +463,13 @@ final class CMVCoreTests: XCTestCase {
             upserts: [], missingIdentifiers: ["old-volume-id"], sourceID: sourceID
         )
 
-        let repairedCount = try await repository.repairDuplicateTracksByRelativePath(sourceIDs: [])
+        let plan = try await repository.prepareDuplicateTrackRepair(sourceIDs: [])
+        XCTAssertEqual(plan.replacements, [newTrack.id: oldTrack.id])
+        let repair = try await repository.commitDuplicateTrackRepair(plan)
         let repairedTracks = try await repository.tracks(sourceID: sourceID)
         let repaired = try XCTUnwrap(repairedTracks.first)
-        XCTAssertEqual(repairedCount, 1)
+        XCTAssertEqual(repair.repairedCount, 1)
+        XCTAssertEqual(repair.replacements, [newTrack.id: oldTrack.id])
         XCTAssertEqual(repaired.id, oldTrack.id)
         XCTAssertEqual(repaired.fileIdentifier, "new-volume-id")
         XCTAssertEqual(repaired.title, "手動月光")
@@ -419,6 +485,46 @@ final class CMVCoreTests: XCTestCase {
         let rescannedTracks = try await repository.tracks(sourceID: sourceID)
         let rescanned = try XCTUnwrap(rescannedTracks.first)
         XCTAssertEqual(rescanned.title, "手動月光")
+    }
+
+    func testDuplicateRepairStableKeeperForEqualScoresAcrossFetchOrder() async throws {
+        let sourceID = UUID()
+        let keeperID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let duplicateID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+        let files = [
+            keeperID: ScannedMediaFile(relativePath: "same/song.flac", fileIdentifier: "keeper",
+                                       fileSize: 1, modifiedAt: Date(timeIntervalSince1970: 1),
+                                       title: "Same"),
+            duplicateID: ScannedMediaFile(relativePath: "same/song.flac", fileIdentifier: "duplicate",
+                                          fileSize: 1, modifiedAt: Date(timeIntervalSince1970: 1),
+                                          title: "Same")
+        ]
+
+        func repository(inserting ids: [UUID]) throws -> SwiftDataLibraryRepository {
+            let container = try ModelContainer(
+                for: MediaSourceRecord.self, TrackRecord.self, PlaylistRecord.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
+            let context = ModelContext(container)
+            for id in ids {
+                context.insert(TrackRecord(id: id, sourceID: sourceID, file: files[id]!))
+            }
+            try context.save()
+            return SwiftDataLibraryRepository(container: container)
+        }
+
+        let firstRepository = try repository(inserting: [keeperID, duplicateID])
+        let plan = try await firstRepository.prepareDuplicateTrackRepair(sourceIDs: [sourceID])
+        XCTAssertEqual(plan.replacements, [duplicateID: keeperID])
+        let committed = try await firstRepository.commitDuplicateTrackRepair(plan)
+        XCTAssertEqual(committed.replacements, [duplicateID: keeperID])
+
+        let secondRepository = try repository(inserting: [duplicateID, keeperID])
+        let repaired = try await secondRepository.repairDuplicateTracksByRelativePathWithReplacements(
+            sourceIDs: [sourceID]
+        )
+        XCTAssertEqual(repaired.repairedCount, 1)
+        XCTAssertEqual(repaired.replacements, [duplicateID: keeperID])
     }
 
     func testMetadataFieldsSurviveReconciliation() async throws {
@@ -638,6 +744,10 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertEqual(candidates[0].title, "Canci\u{00F3}n")
         XCTAssertEqual(candidates[0].artist, "Beyonc\u{00E9}")
         XCTAssertEqual(candidates[0].album, "D\u{00E9}j\u{00E0} Vu")
+        XCTAssertEqual(candidates[0].searchIdentifier, candidates[0].id.uuidString)
+        XCTAssertEqual(candidates[0].searchTitle, "cancion")
+        XCTAssertEqual(candidates[0].searchArtist, "beyonce")
+        XCTAssertEqual(candidates[0].searchAlbum, "deja vu")
     }
 
     func testSearchCandidatesReturnMatchesBeyondFiveHundred() async throws {
@@ -848,6 +958,64 @@ final class CMVCoreTests: XCTestCase {
         )
         let updatedCandidates = try await repository.searchCandidates(matching: "moon")
         XCTAssertEqual(updatedCandidates.count, 2)
+    }
+
+    func testSearchASCIIByteCachePreservesFieldBoundariesUnicodeAndInvalidation() async throws {
+        let container = try ModelContainer(
+            for: MediaSourceRecord.self, TrackRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = SwiftDataLibraryRepository(container: container)
+        let sourceID = UUID()
+        let initial = [
+            ScannedMediaFile(
+                relativePath: "boundary.flac", fileIdentifier: "boundary", fileSize: 1,
+                modifiedAt: .now, title: "AB", artist: "CD"
+            ),
+            ScannedMediaFile(
+                relativePath: "unicode.flac", fileIdentifier: "unicode", fileSize: 1,
+                modifiedAt: .now, title: "Cafe\u{301} 🌧️", artist: "Beyonc\u{00E9}"
+            ),
+            ScannedMediaFile(
+                relativePath: "nul.flac", fileIdentifier: "nul", fileSize: 1,
+                modifiedAt: .now, title: "nul token"
+            ),
+            ScannedMediaFile(
+                relativePath: "chinese.flac", fileIdentifier: "chinese", fileSize: 1,
+                modifiedAt: .now, title: "Moon Signal", artist: "虛構歌手・星河"
+            ),
+            ScannedMediaFile(
+                relativePath: "kelvin.flac", fileIdentifier: "kelvin", fileSize: 1,
+                modifiedAt: .now, title: "Kelvin Signal", artist: "ASCII Artist"
+            )
+        ]
+        try await repository.applyReconciliation(upserts: initial, missingIdentifiers: [], sourceID: sourceID)
+
+        let crossField = try await repository.searchCandidates(matching: "abcd")
+        let foldedUnicode = try await repository.searchCandidates(matching: "cafe beyonce")
+        let emoji = try await repository.searchCandidates(matching: "🌧️")
+        let nulToken = try await repository.searchCandidates(matching: "nul\u{0}token")
+        let chineseAcrossFields = try await repository.searchCandidates(matching: "moon 星河")
+        let unmatchedUnicode = try await repository.searchCandidates(matching: "宇宙")
+        let canonicalKelvin = try await repository.searchCandidates(matching: "Kelvin")
+        XCTAssertTrue(crossField.isEmpty)
+        XCTAssertEqual(foldedUnicode.count, 1)
+        XCTAssertEqual(emoji.count, 1)
+        XCTAssertTrue(nulToken.isEmpty)
+        XCTAssertEqual(chineseAcrossFields.count, 1)
+        XCTAssertTrue(unmatchedUnicode.isEmpty)
+        XCTAssertEqual(canonicalKelvin.count, 1)
+
+        let updatedBoundary = ScannedMediaFile(
+            relativePath: "boundary.flac", fileIdentifier: "boundary", fileSize: 1,
+            modifiedAt: .now, title: "ABCD", artist: "CD"
+        )
+        try await repository.applyReconciliation(
+            upserts: [updatedBoundary] + Array(initial.dropFirst()),
+            missingIdentifiers: [], sourceID: sourceID
+        )
+        let updated = try await repository.searchCandidates(matching: "abcd")
+        XCTAssertEqual(updated.count, 1)
     }
 
     func testApplyScanBatchRejectsDuplicateFileIdentifiers() async throws {
@@ -1312,6 +1480,52 @@ final class CMVCoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: pinnedURL.path))
     }
 
+    func testOfflineCachePreservesPinnedAndSmartMediaAcrossTrackIdentityRepair() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cache-repair-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("source.bin")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data(repeating: 4, count: 64).write(to: source)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try FileOfflineCacheStore(
+            pinnedRoot: root.appendingPathComponent("Pinned", isDirectory: true),
+            smartRoot: root.appendingPathComponent("Smart", isDirectory: true)
+        )
+        let pinnedLoser = UUID()
+        let smartLoser = UUID()
+        let pinnedKeeper = UUID()
+        let smartKeeper = UUID()
+        let pinnedURL = try await store.pin(trackID: pinnedLoser, sourceURL: source)
+        let smartURL = try await store.prefetch(trackID: smartLoser, sourceURL: source)
+        let migratedPinnedURL = try await store.pin(trackID: pinnedKeeper, sourceURL: pinnedURL)
+        let migratedSmartURL = try await store.prefetch(trackID: smartKeeper, sourceURL: smartURL)
+
+        let resolvedPinned = await store.cachedURL(trackID: pinnedKeeper)
+        let resolvedSmart = await store.cachedURL(trackID: smartKeeper)
+        let migratedPinnedIDs = await store.pinnedTrackIDs(in: [pinnedKeeper])
+        XCTAssertEqual(resolvedPinned?.resolvingSymlinksInPath(), migratedPinnedURL.resolvingSymlinksInPath())
+        XCTAssertEqual(resolvedSmart?.resolvingSymlinksInPath(), migratedSmartURL.resolvingSymlinksInPath())
+        XCTAssertTrue(migratedPinnedIDs.contains(pinnedKeeper))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pinnedURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: smartURL.path))
+
+        let pinnedLoserWithSmartKeeper = UUID()
+        let smartOnlyKeeper = UUID()
+        _ = try await store.pin(trackID: pinnedLoserWithSmartKeeper, sourceURL: source)
+        _ = try await store.prefetch(trackID: smartOnlyKeeper, sourceURL: source)
+        let pinnedLoserURL = await store.cachedURL(trackID: pinnedLoserWithSmartKeeper)
+        let pinnedKeeperURL = try await store.pin(
+            trackID: smartOnlyKeeper,
+            sourceURL: try XCTUnwrap(pinnedLoserURL)
+        )
+        try await store.trim(to: 0)
+        let keeperIsPinned = await store.isPinned(trackID: smartOnlyKeeper)
+        let keeperAfterTrim = await store.cachedURL(trackID: smartOnlyKeeper)
+        XCTAssertTrue(keeperIsPinned)
+        XCTAssertEqual(keeperAfterTrim?.resolvingSymlinksInPath(), pinnedKeeperURL.resolvingSymlinksInPath())
+    }
+
     func testCorruptedOfflineMediaIsRejectedBeforePlayback() async throws {
         let source = FileManager.default.temporaryDirectory.appendingPathComponent("cache-corrupt-\(UUID().uuidString).bin")
         try Data(repeating: 3, count: 64).write(to: source)
@@ -1647,6 +1861,148 @@ final class CMVCoreTests: XCTestCase {
             XCTFail("取消掃描應拋出 CancellationError")
         } catch is CancellationError {
             // Expected.
+        }
+    }
+
+    func testIncrementalScannerReadsFixtureEmbeddedMetadataFromAVFoundation() async throws {
+        let fixtureRootPath = ProcessInfo.processInfo.environment["CMV_RICH_FIXTURE_ROOT"] ?? ""
+        try XCTSkipUnless(!fixtureRootPath.isEmpty,
+                          "Set CMV_RICH_FIXTURE_ROOT to the rich fixture root to run the AVFoundation test")
+        let fixtureRoot = URL(fileURLWithPath: fixtureRootPath).appendingPathComponent("Source-B")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: fixtureRoot.path),
+                          "CMV_RICH_FIXTURE_ROOT/Source-B is unavailable in this environment")
+
+        let scanner = IncrementalScanner()
+        let files = try await scanner.scan(
+            url: fixtureRoot,
+            accessAlreadyGranted: true,
+            onProgress: { _ in }
+        )
+        XCTAssertEqual(files.count, 7)
+
+        let expected: [(prefix: String, title: String, artist: String, album: String,
+                        albumArtist: String, genre: String, date: String)] = [
+            ("07_", "夢の反射", "朝霧ミオ", "Synthetic Nebula 07", "Nova Fictional Group", "synthwave", "2018-01-01"),
+            ("08_", "紙飛行機", "陳青禾", "Synthetic Nebula 08", "Paper Moon Fiction", "acoustic", "2017-01-01"),
+            ("09_", "雨音標本", "雨宮ユイ", "Synthetic Nebula 09", "Paper Moon Fiction", "minimal", "2025-01-01"),
+            ("10_", "無重力ダンス", "宋宇辰", "Synthetic Nebula 10", "CMV Fictional Ensemble", "dance", "2026-01-01"),
+            ("11_", "長夜の灯", "夜見サラ", "Synthetic Nebula 11", "Long Night Fiction", "cinematic", "2016-01-01"),
+            ("12_", "背景測試 / Background Candle", "未知樣本", "Synthetic Nebula 12", "Long Night Fiction", "drone", "2015-01-01"),
+            ("13_", "星座圖案 / Simple Motion", "CMV Fictional Visualist", "Synthetic Video 01", "CMV Fictional Visualist", "visual", "2026-01-01")
+        ]
+
+        for item in expected {
+            let file = try XCTUnwrap(files.first { $0.relativePath.hasPrefix(item.prefix) })
+            XCTAssertEqual(file.title, item.title, item.prefix)
+            XCTAssertEqual(file.artist, item.artist, item.prefix)
+            XCTAssertEqual(file.album, item.album, item.prefix)
+            XCTAssertEqual(file.albumArtist, item.albumArtist, item.prefix)
+            XCTAssertEqual(file.genre, item.genre, item.prefix)
+            XCTAssertEqual(file.releaseDate, AudioMetadataParser.releaseDate(from: item.date), item.prefix)
+            XCTAssertNil(file.trackNumber, item.prefix)
+            XCTAssertNil(file.discNumber, item.prefix)
+        }
+    }
+
+    func testIncrementalScannerReadsV3AppleTrackAndDiscTags() async throws {
+        let fixtureRootPath = ProcessInfo.processInfo.environment["CMV_SORT_FIXTURE_ROOT"] ?? ""
+        try XCTSkipUnless(!fixtureRootPath.isEmpty,
+                          "Set CMV_SORT_FIXTURE_ROOT to the owned-sort-fixtures root to run the v3 metadata test")
+        let fixtureRoot = URL(fileURLWithPath: fixtureRootPath).appendingPathComponent("media-v3")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: fixtureRoot.path),
+                          "CMV_SORT_FIXTURE_ROOT/media-v3 is unavailable in this environment")
+
+        let files = try await IncrementalScanner().scan(
+            url: fixtureRoot,
+            accessAlreadyGranted: true,
+            onProgress: { _ in }
+        )
+        XCTAssertEqual(files.count, 205)
+        let first = try XCTUnwrap(files.first { $0.relativePath.hasSuffix("sort-fixture-001.m4a") })
+        XCTAssertEqual(first.trackNumber, 1)
+        XCTAssertEqual(first.discNumber, 1)
+        let boundary = try XCTUnwrap(files.first { $0.relativePath.hasSuffix("sort-fixture-200.m4a") })
+        XCTAssertEqual(boundary.trackNumber, 200)
+        XCTAssertEqual(boundary.discNumber, 3)
+    }
+
+    func testIncrementalScannerPrefersExplicitAlbumArtistOverAuthorFallback() async throws {
+        let fixtureRootPath = ProcessInfo.processInfo.environment["CMV_RICH_FIXTURE_ROOT"] ?? ""
+        try XCTSkipUnless(!fixtureRootPath.isEmpty,
+                          "Set CMV_RICH_FIXTURE_ROOT to the rich fixture root to run the AVFoundation test")
+        let sourceRoot = URL(fileURLWithPath: fixtureRootPath).appendingPathComponent("Source-B")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: sourceRoot.path),
+                          "CMV_RICH_FIXTURE_ROOT/Source-B is unavailable in this environment")
+        let sourceURL = try XCTUnwrap(
+            FileManager.default.enumerator(at: sourceRoot, includingPropertiesForKeys: nil)?
+                .compactMap { $0 as? URL }
+                .first { $0.lastPathComponent.hasPrefix("12_background-") }
+        )
+
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CMVScannerAlbumArtist-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        func metadataItem(_ identifier: AVMetadataIdentifier, value: String) -> AVMetadataItem {
+            let item = AVMutableMetadataItem()
+            item.identifier = identifier
+            item.value = value as NSString
+            return item
+        }
+
+        let cases: [(name: String, metadata: [AVMetadataItem], expected: String, hasExplicit: Bool)] = [
+            (
+                "explicit-album-artist-first",
+                [
+                    metadataItem(.iTunesMetadataAlbumArtist, value: "Explicit Album Artist"),
+                    metadataItem(.iTunesMetadataAuthor, value: "Author Fallback")
+                ],
+                "Explicit Album Artist",
+                true
+            ),
+            (
+                "explicit-author-first",
+                [
+                    metadataItem(.iTunesMetadataAuthor, value: "Author Fallback"),
+                    metadataItem(.iTunesMetadataAlbumArtist, value: "Explicit Album Artist")
+                ],
+                "Explicit Album Artist",
+                true
+            ),
+            (
+                "fallback",
+                [metadataItem(.iTunesMetadataAuthor, value: "Author Fallback")],
+                "Author Fallback",
+                false
+            )
+        ]
+
+        for testCase in cases {
+            let outputDirectory = root.appendingPathComponent(testCase.name, isDirectory: true)
+            try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+            let outputURL = outputDirectory.appendingPathComponent("probe.m4a")
+            let exporter = try XCTUnwrap(
+                AVAssetExportSession(asset: AVURLAsset(url: sourceURL), presetName: AVAssetExportPresetPassthrough)
+            )
+            exporter.metadata = testCase.metadata
+            try await exporter.export(to: outputURL, as: .m4a)
+
+            let exportedAsset = AVURLAsset(url: outputURL)
+            let exportedMetadata = (try? await exportedAsset.load(.metadata)) ?? []
+            let exportedIdentifiers = Set(exportedMetadata.compactMap { $0.identifier?.rawValue })
+            XCTAssertTrue(exportedIdentifiers.contains(AVMetadataIdentifier.iTunesMetadataAuthor.rawValue), testCase.name)
+            if testCase.hasExplicit {
+                XCTAssertTrue(exportedIdentifiers.contains(AVMetadataIdentifier.iTunesMetadataAlbumArtist.rawValue), testCase.name)
+            }
+
+            let scanned = try await IncrementalScanner().scan(
+                url: outputDirectory,
+                accessAlreadyGranted: true,
+                onProgress: { _ in }
+            )
+            XCTAssertEqual(scanned.count, 1, testCase.name)
+            XCTAssertEqual(scanned.first?.albumArtist, testCase.expected, testCase.name)
         }
     }
 

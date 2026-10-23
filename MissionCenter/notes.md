@@ -1,5 +1,138 @@
 # 筆記
 
+## 2026-10-08 Mac佇列補驗與Gemini商店文案
+
+主人指定Antigravity Bridge Codex的Gemini撰寫活潑三語文案，保留「現在可以傾聽你家白月光的歌聲啦(X」。實際model gemini-3.8-flash-high，初稿／修稿同cascade terminal完成；工具無filesystem寫入能力，由Root保存回應並整合canonical、核12欄字數與功能界線。Apple兩次拒絕符號的原始stderr保留；移除副標題星星、替換描述不接受的emoji／顏文字後，ASC15目標欄exact＋18保護欄exact，共33。WhatsNew僅本機；未上傳Build、送審或發布。舊33欄封存不改。
+
+Mac main同final-v2 binary：原創Amber/Cobalt真2首多選播放；mixed插入Video、重排Cobalt至下一首、移除future Video均保持Amber播放與時間前進。兩首shuffle開關與quit/relaunch保留順序及paused current；25秒位置回0秒，不宣稱位置恢復。僅PASS_SCOPED，不取代gapless、完整mixed EOF、iPad多選、排序／跨分頁矩陣。
+
+fresh本輪五檔baseline於CMV停止後還原byte exact；重啟9資料表全列exact、曲庫1971／DB1980／來源114／歌單0。queue非revision欄exact（295→298），app-owned偏好exact；系統window frame與StoreKit最後檢查欄有變。私人曲目paused0秒、未播放。回收本輪原創下載／解壓／衍生fixtures共70,538,107bytes，基準與小型收據保留，WDA／relay保留。
+
+開工30GB記USER_REPORTED；本輪root可用19.47GB，後續19.03GB。sim devices0，不容量不足不清唯一runtime；主人已授權不足時清GAI／MediBuddy可重建sim。現有final-v2Development成品不可上架，歷史Distributionactual IPA／PKG／executable缺失；新現行Distribution準備中，尚無qualification PASS。
+
+新收據：`.cmv-local-evidence/2026-10-08-task-zero/mac-queue-gemini-copy/manifest.json`（SHA d18781df8439e0b9631bdc29c2a924b4f4dc91ad234a14bfa8dc913389b771fd）、`gemini-asc-final-readback-receipt.json`、`mac-owned-queue-gui-receipt.json`、`mac-restored-readback-receipt.json`、`cleanup-receipt.json`。任務狀態保留；iPad解鎖仍pending，不重測已接受PiP／聽感／窄Cancel，不改S01/S02或RT4封存。
+
+
+## 2026-10-08T07:48:35.628326+08:00 任務清零／Apple與現行證據對帳
+
+主人要求目標任務清零，並授權參照GAI/MediBuddy既有Apple資料。最新ASC唯讀回讀：CMV App ID6815468050、Bundle com.windsheep.cmv；IOS/MAC_OS均只有2.0 PREPARE_FOR_SUBMISSION，完整build列表0；兩平台各en-US/ja/zh-Hant localization存在，六組screenshot/preview sets均0。GAI有READY_FOR_SALE與更新IN_REVIEW；MediBuddy有READY_FOR_SALE及1.4 REJECTED。別的產品已發布不能取代CMV正式成品；CMV既有聯絡/版權/三語文案依現有授權沿用，不新建帳號或重複App Record。
+
+final-v2 manifest526項：現行525項SHA/大小exact，唯一差異AppModelReliabilityTests.swift為firstLease=nil測試引用釋放，無產品source drift；不能稱全526exact。核對人工與工程delta，更新11個任務的過時下一步文字，状态暫不轉Done：已接受PiP/聽感/窄Cancel/約60秒等待，10GiB實填不需要，排除項不重啟。真NAS slow/stale與其餘未驗矩陣保留。
+
+commitments只讀報告92列缺少optional current evidence envelope；這是既有證據格式遷移缺口，不能等同92項產品測試未通過，也不能刪除既有Done。任務生命週期仍以tasks.md為唯一來源。新raw與收據位於`.cmv-local-evidence/2026-10-08-task-zero/initial-reconciliation/`，原S01/S02/241archive/11cleanup/R02不改。
+
+
+## 2026-10-08 使用者補充：重開機與不可重現異常
+
+主人確認剛才曾重開機，並指定「無法重現的失敗就不視為失敗」。本輪環境中斷記 `ENV_INTERRUPTED`；未能重現且未獲足夠產品缺陷證據的異常記 `NOT_REPRODUCED`，不列產品 FAIL。保留原始紀錄；未測／工具阻擋維持待驗，不冒列 PASS，也不覆寫已有可重現證據的缺陷。詳細 scope 以 `remaining-validation-report-20261008.md` 為準。
+
+## 2026-10-08 01:06 最終補驗
+
+Mac mini-player 長曲名已取樣字首→完整字尾→返回字首，列普通 Mac 版面 scoped roundtrip PASS；iPad／窄窗／Reduce Motion 不延伸。載入並暫停的影片上，13模式逐一核對影片音效可用；強度30→0實際成立，0%對照停用，reset回原音30%。全部仍是UI／route scope，13種聽感不冒列PASS。補驗後再次還原Mac：`restore/mac-final-restore-readback.json` raw exact；`restore/mac-final-postlaunch-readback.json` 最终重開資料／queue内容／app-ownedprefs一致，revision自然更新。iPad raw還原已完，postlaunch/PiP暫停人工問題仍pending。最新結論取代下方01:00 checkpoint中zero未測／Mac loop待驗的舊描述。
+
+## 2026-10-08 remaining validation canonical update
+
+本輪 review packet：`MissionCenter/remaining-validation-report-20261008.md`。重新連線後以 `/tmp/cmv-core-local-20261008` source copy 實際執行 4 組 focused filters，共 36 tests、0 failures；Package／Sources／Tests 25 檔 SHA 與 production 全部相同。先前原工作樹 SwiftPM 啟動卡住的 0/0 只保留為 `ENV_INTERRUPTED`，不可沿用成測試失敗。
+
+EOF host 收據 `.cmv-local-evidence/2026-10-08-remaining-validation/eof-host/eof-terminal-replay-verdict.json`：natural EOF timer 64→64 停止、level 0、same item；seek/replay 後 timer 89、playing、level 非零，compile/run actual0。因使用 scratch `VideoAudioMeter` double，只列 host AVPlayer timer lifecycle PASS，不列 native DSP／聽感／裝置 UI PASS。
+
+slow NAS 現有兩層證據：舊 `.cmv-local-evidence/2026-10-08-remaining-validation/slow-nas/host-receipt.json`／`slow-nas-lease-verdict.json` 只列 OS API capability probe；新增 `slow-nas/production-lease/production-lease-verdict.json` 實際走 production `SourceAccessCoordinator.lease`、`SecurityScopedMediaSourceProvider.makeBookmark/resolveWithRefresh/status`，SMB 讀 65,536 bytes、NAS→test-owned local lease switch、兩個 weak lease clear 後 nil，1 test／0 failure，判定 `PASS_SCOPED_PRODUCTION_COORDINATOR_PROVIDER_NAS_READ_SWITCH_CLEAR`。`stale=false`／refreshed nil 僅代表未注入 stale，slowresolve/acquired→stale 仍 pending；不重跑已通過 10 GiB capacity。
+
+Mac UI 為原始 tool observation：選 2 首 queue2/index0，Next 後 index1/next disabled，末曲 natural EOF 後 queue empty／停止／回原音；marquee offset 有變化。13 preset 與 custom reverb10%／delay50ms 對照返回保留屬 UI config scope，非完整聽感。iPad playing→Home PiP `PASS_SCOPED`；native PiP pause 因 tool latency/self-hiding 未證明，browser policy check 不繞過。Mac VoiceOver `USER_EXCLUDED`；iPad VoiceOver 接受使用者整體 PASS。
+
+本輪 restore 已由 `.cmv-local-evidence/2026-10-08-remaining-validation/restore/independent-restored-readback.json` 獨立核對為 `PASS_RESTORED_RAW`：iPad 429／10／queue19 current1 revision214、Mac 1980／114／queue1962 current59 revision283；兩端 rows／integrity／queue／app-owned preferences exact。Mac 重開 paused 0:00、目前曲目「少年よ我に帰れ」；iPad postlaunch 仍 pending（app stopped，browser policy 阻擋安全 UI 重開）。13 preset 目前是 UI config PASS，非 13 種完整聽感；zero intensity 未實測（30→27 後 reset 30）。Main full-50k UI publication／p95、slow NAS stale、iPad 14 GiB、完整 loop 與 final four-seat review 仍為 Review；四席未獲新明確預算核准，不 dispatch。
+
+### 2026-10-08 00:13 iPad 旁白整體人工驗收 PASS（AERO-PQ40，維持 Review）
+
+主人明確回報「感覺都可以全旁白 PASS~」。本聊天依目前 iPad 操作情境接受為 iPad 旁白整體人工驗收 PASS，取代前一輪僅限聆聽頁基本操作的人工結論；證據來源為使用者回報，沒有冒稱 Codex 自行聽測或逐項驗證。未提供逐項朗讀、方向、字級等原始結果，既有工程矩陣的未知範圍仍如實保留；Mac 旁白本輪 `USER_EXCLUDED`（2026-10-08），AERO-PQ40 因跨平台與正式審查未結案仍維持 Review。旁白保持開啟，未擅自還原。
+
+### 2026-10-08 00:11 iPad 旁白基本焦點與播放控制人工 PASS（AERO-PQ40，維持 Review）
+
+主人回報「感覺都可以 PASS~」。依上一輪明確指示的範圍，記為 CMV 聆聽頁左右輕掃切換焦點、未卡住及雙點播放／暫停的人工 PASS，與 00:07 基本可聽見證據一併保留。未提供其他頁面／控制或直橫向、大字級的結果，不推定完整 iPad VoiceOver 矩陣或 Mac 旁白通過；集中清單已新增勾選的局部項目，任務仍維持 Review。旁白仍依主人要求保持開啟，未進行關閉或偏好還原。
+
+### 2026-10-08 00:07 iPad 旁白基本朗讀人工回報（AERO-PQ40，維持 Review）
+
+本聊天恢復既有 WDA 與本機遙控頁後，透過設定 UI 開啟 iPad 旁白；畫面確認綠色開關，並已返回正式 CMV 聆聽頁。主人針對「點歌名或播放按鈕，確認朗讀」回報「都有聽到喔」，作為基本朗讀可聽見的人工證據。開關截圖位於 `local-only: ipad-voiceover-enabled-20261008.png`。不延伸為完整朗讀正確性、焦點順序、雙點控制、其他頁面或 Mac 旁白通過；任務維持 Review。旁白依主人要求保持開啟，尚未還原為關閉；集中驗收清單已更新基本項目。
+
+### 2026-10-07 人工音效回饋與 Prior Art 研究（AERO-PQ43／AERO-FX32～FX36，維持 Review）
+
+使用者回報「音效有變化，但是沒想像中的好」，並明確選擇「日常音質與誇張場景分開設計」。僅證明使用者聽到變化；裝置、build、曲目、模式與完整聽測矩陣未提供，不標主觀音質 PASS。本輪只研究與保存事實，未修改 DSP、安裝依賴、建置或部署。
+
+搜尋前想法：先檢查現有預設與參數耦合，區分日常音色修飾與場景塑形；不直接把混響強度提高當作音質改善。Chrome 已實讀 Signalsmith repository 與 Valhalla 官方說明，GitHub API 回讀候選版本／授權／非 archived 狀態，原始 source 只做概念比較。
+
+| 來源／作者／查閱版本 | 分類與可學重點 | 授權／整合成本與限制 |
+| --- | --- | --- |
+| [Signalsmith Basics](https://github.com/Signalsmith-Audio/basics)／Signalsmith Audio／369e906e03760ec219d07b06fa06dc4fd099f377 | Learn；FDN、early reflections、room size、RT20、低高頻 damping 分離，參數平滑與尾音 reset 契約；優先作場景演算法候選 | MIT；具體重用須保留授權與著作權告示；C++＋DSP／Hilbert／Linear，需 Apple AU 封裝與實機成本量測；9月有多筆更新，不據此宣稱完整維護或安全驗收 |
+| [SoundpipeAudioKit](https://github.com/AudioKit/SoundpipeAudioKit)／AudioKit／68c59e21c554b0047bc545ff511ed4e79afb5bcd | Learn；Costello FDN、Zita 的 predelay／分頻衰減／damping，Apple AU 與Swift介面；[issue 41](https://github.com/AudioKit/SoundpipeAudioKit/issues/41)參數範圍問題有對應修補commit | repository MIT；各底層模組／依賴仍須逐項授權核對；AudioKit／AudioKitEX／KissFFT／Tonic 增加依賴，不直接導入整套；最近讀回commit為4月 |
+| [FunDSP](https://github.com/SamiPerttu/fundsp)／Sami Perttu／559584043aa3369e92d5aad12a5e3b003cfacfd5 | Learn；Rust 32-channel FDN／hybrid FDN、room／time／diffusion／loop-filter介面，適合離線比較或後續核心候選 | MIT OR Apache-2.0；依所選授權保留必要告示；需新的Rust realtime FFI／生命週期與效能驗證，預設files／FFT feature有依賴成本；最近讀回commit為3月 |
+| [Easy Effects](https://github.com/wwmm/easyeffects)／wwmm／master（未鎖commit，僅產品流程參考） | Learn；日常 EQ／loudness／compressor／limiter 與可調處理鏈 | GPL-3.0-or-later；Reject直接引入Linux PipeWire／Qt整套與其程式碼；只學產品概念，沒有複製 |
+| [ValhallaRoom 官方控制說明](https://valhalladsp.com/2011/05/02/valhallaroom-the-high-level-sliders/)／Sean Costello／2011-05-02文章 | Learn；predelay保留清晰度、early／late混合、decay、高頻衰減與輸出平衡 | 商業封閉實作；僅取公開概念，不複製演算法或預設。web fetch遭403後由Chrome正常讀取公開頁，未繞過登入或權限 |
+
+本地親讀 NativePlaybackEngine.swift:861～879／937～946：bathroom與sewer共用smallRoom；delay wet mix綁delay時間，feedback綁reverb量；filter以Hz線性混合intensity。VideoAudioEffectsRenderer.swift:481～517同主要公式，:539將user EQ bypass；音樂的10-band user EQ可啟用。這些是source事實；尚不能證明就是使用者聽感不足的原因。
+
+建議（未實作）：先低成本解除參數耦合與重新調音，分日常／場景兩組；若原生混響的塑形能力仍不足，再比較Signalsmith／Soundpipe／FunDSP的隔離原型。以相同歌曲、等響度A/B、耳機與喇叭、mono、音樂與影片、CPU／尾音／切換安全驗證；任何新增依賴須先完成精確授權與相容性評估。
+
+### 2026-10-07 18:33 最終父層封面與逐首選取回歸完成（維持 Review）
+
+18:39 最終 parent 工程封存 main-parent-artwork-final-20261007.tar.gz SHA `3db3df4849f63eb6455f098c08d4850b3aa27f9d1ab808af6503953c4cce8489`，manifest SHA `33d14bce60bdd8855ea6666a527f7fdccfe30e241801b17ec2bc51116531b264`；321 data members＋嵌入 manifest，主代理逐檔 SHA／大小與成員集合回讀 actual0。新正式審查12k總額／每席3k／每席6次工具／20分鐘已送出待核准，未派評論員；舊額度與超額紀錄不挪用。Mission Center首次同步因PQ41少驗證欄失敗，補回13欄後 sync與doctor actual0；既有legacy passport警告保留。時間戳修正與初次錯誤已記於 mission-center-sync-closeout-receipt.json，不以手填operation時間當工具實際時間。
+
+相對已凍結來源，LibraryViews 最終採用兩行修正（8a6）：縮圖不攔截觸控，目錄 NavigationLink 的 label 明確設定矩形點擊區；VideoExperienceView a40 保持不變。正式 Main iPad binary70e 的專輯／歌手封面中央皆能進入明細，小縮圖實際勾選首首1、逐首5、取消一首4、取消全選0，六組 XML／PNG／metadata SHA 與主代理回讀均已保存。相對 Git HEAD 尚有先前工作差異，不把整體差異宣稱只有兩行。
+
+最終安裝與觸控後資料：九張表 schema／欄位／完整 rows 含 WAL exact，queue 非 revision 值 exact（安裝前201→觸控後203），preferences 唯一差異為 SKTransactionUpdatesLastChecked 自然時間戳，其餘逐值 exact。首次比較 UTF-8 語法失敗與 corrected retry actual0 均保留；主代理已獨立回讀原始副本。最終兩行 LibraryViews CodeRabbit actual0／review_completed／0 findings，主代理核 raw nine events、來源 SHA 與出口。
+
+Mac universal final binary51985／ZIP8be0 已由主代理核對 build actual0、deep strict0、雙架構、七份 plist bytes／values、三語系590 keys、privacy、entitlements 與 ZIP13檔逐 bytes exact；「檢查 iPad 遠端操作能力」已完成桌面交付，主代理再回讀13檔與22筆簽章原始紀錄及全部使用者資料源 exact，原版本 rollback ZIP SHA 核對。Mac1980曲／114來源、queue1962／current59／history24／revision280保留，App未啟動。Mac 畫面仍鎖定，未宣稱 Mac GUI PASS。舊 a77／QA A/B 封存保留，正式新快照評論尚未派出；聽感、完整 VoiceOver、播放中 PiP、真實 NAS 與10GiB容量仍依各自證據標待驗／受限，不標全案 Done。
+
+### 2026-10-07 18:12 縮圖選取已修復，補測父層封面導航
+
+Main LibraryViews一行a77已正式採用；同Main容器23827／binary58d8，首卡1、逐卡5、單卡取消4、取消全選0、中縮圖首卡1，真實XML與SHA均核對。安裝前後九張表與preferences全值exact，queue非revision exact（199→201）。LibraryViews獨立CodeRabbit actual0／review_completed／0 findings。Mac a77 universal成品d73f已建置簽章，尚未部署；QA50k已封存後移除，Main保留。
+
+專輯NavigationLink原生按鈕可進明細；fresh截圖的封面中心兩次未導航，直接點文字標籤則成功，故未將封面座標導航列PASS。隔離的新候選將明確設定父層label VStack的contentShape(Rectangle())，production第二行尚未採用，等待實機比對。原a77縮圖選取限定PASS保留，完整父層目錄回歸仍待驗，未宣稱全案Done。
+
+### 2026-10-07 17:47 實機續測補證（維持 Review）
+
+Main a40 的 paused PiP entry → native return 在0:28保持位置，resume後暫停0:42，列為 PASS_SCOPED_PIP_RETURN；播放中 pause stale guard failure保留。restore3九張表、九個偏好值、queue非revision值exact（197→199）。CodeRabbit只審a40 VideoExperienceView，actual0、review_completed、0 findings，不等於formal council。
+
+Main PID23816小縮圖首卡native與fresh screenshot center均NO_CHANGE_SCOPED；toolbar全選使19首已選，card menu正常。清單模式首卡native可選，取消後已回小縮圖。QA兩版本五張封面操作均通過但未重現Main；normal Main一行Thumbnail.allowsHitTesting(false)候選隔離建置中，production未採用、根因未確診。
+
+候選前備份九張SQLite表與queue exact；偏好唯一差異為SKTransactionUpdatesLastChecked時間，app-owned preferences exact，原全值比較false保留。QA封存138項SHA exact，自己的NAS caches清除680188903 bytes，不等於Mac30GB恢復。17:36 OS鎖定狀態仍Yes；Mac GUI待解鎖。使用者交回iPad控制權，持續穿插觸控，未宣稱全程keepalive PASS。
+
+2026-10-07 14:15 續測中的目前基準（取代舊資料還原指示，維持 Review）
+
+使用者已交回 iPad 控制權；現在 Main 的權威備份為429曲／10來源／0歌單、收藏0，queue19／base19／current17／history18／revision197。保留 zh-Hant、crimsonNebula、bathroom／0.76，禁止還原歷史204曲／7來源／25項queue。完整 Support（含SQLite WAL）與preferences已備份，SHA清單位於 `.cmv-local-evidence/2026-10-07-final-runtime/runtime-baseline.json`。
+
+本輪已實際操作直向四分頁中的設定、音效、聆聽、曲庫，浴室音效→對照原音→返回音效標籤成立，未播放／改queue。既有 QA4b/e634 receipt 可重用 50k IDs／250頁 order／recover correctness 與 pre-cancel focused evidence，不重裝 QA50k；硬體 full-50k UI publication、中途 cancellation 與 p95 仍是 Review。曲庫搜尋按鈕已開鍵盤；送文字時 WDA 服務拒絕連線，該次搜尋未驗成，不盲重送。slow NAS 已另有 production lease focused receipt；stale／slowresolve 仍 pending。
+
+actual production video session host診斷exit0：seek／stop／wet baseline通過；自然EOF後timer58→89（一秒），非零level47→47。已安排最小terminal polling修正與EOF後seek／重播回歸，尚未通過修正版、尚未交付新版。Mac最終成品須包含arm64＋x86_64，iPad為arm64。正式新四席審查尚未啟動，完整人工朗讀／聽感及iPad10GiB條件項由另一聊天集中整理。全斷網／AirPlay／Bluetooth依使用者排除；工作前30GB僅本人回報，不能當本輪實測。
+
+2026-10-07 01:58 完成證據封存：1172 entries逐檔SHA讀回通過，archive SHA 22ad98ac7e2ac2d55d8a5ae028063c8a803def2754c8c82c3b9edcce4525b925；僅清除本輪已完成且無process引用的local DerivedData（allocated358703104 bytes，約342MiB）。freeBytesBefore3076333568／after3427610624是當時快照，不能將工作前口述30GB與本輪單獨歸因。簽章成品／來源／raw與失敗收據均保留，WDA／relay保持運行；cleanup receipt位於 .cmv-local-evidence/2026-10-04-remaining-validation/main-final-owned-scratch-cleanup-20261007-receipt.json。
+
+2026-10-07 01:53 最新權威 checkpoint（取代以下較早的 build pending／PiP return unknown；維持 Review）
+
+最終 Main 為 source audit v8 的117檔，audit SHA 0da7c6296b1adba69caf722024a8512b7714b1b7860dd45f487bc38622b7bffa。Mac／iPad 最後 build actual0，strict/deep 簽章、五份 plist 所有鍵值、ZIP逐檔SHA／CRC與三張有效Sky素材非零尺寸均通過；兩端同Main bundle已安裝啟動。Mac binary 505021de01f4c52ff60ccfa0c07e5504881808bc5d90b0194586291a454e065e；iPad binary 6ba80bb96f7daa948af35b76e6bbe1f4b406584331fcb4e262d624c3b1fb3432。五個已驗程式檔已guarded promotion，workspace117來源SHA逐檔exact，未stage／commit／發布。
+
+背景漏包修復已由兩端實際CUA畫面確認；使用者核准縮薄與透明，header44pt／左右20pt、opacity0.18，PlayerBar cover44／spacing2／padding6且控制44pt。右欄隱藏時搜尋clear X曾錯觸UpNext；最終將兩個面板按鈕並排左側，Mac日文搜尋5→清除200、iPad cobalt搜尋1→清除46，右欄仍Hidden，真觸控回歸通過。保留ReduceTransparency不透明分支。兩張不可達SkyEmeraldAurora／SkySaturnOrbit（201716bytes）先SHA exact备份再移除；SkyAmberDawn／SkyCrimsonNebula／SkyMilkyWayDepth仍打包，羊羊主題使用SheepStorybook，不刪其素材。
+
+Mac最後交付前後9表全欄列exact，1980曲／114來源／0歌單，queue1962／cur59／hist24除revision277→280全同，amberDawn保存。iPad交付前後9表exact，204曲／7來源／0歌單、收藏0，原25／base25／cur13／hist5除revision73→76全同，使用者選的emeraldAurora保存。PiP4後另核對SQLite含WAL：僅兩首owned測試曲之playcount／lastPlayed／Z_OPT及CoreData記帳改動，非測試曲無新增／刪除／變更；原25除revision76→64全欄位相同。不能用相同DB main檔SHA忽略不同WAL。
+
+PiP4實際 native minimize→Home→PiP返回全螢幕，返回前後1:02／3:00保持，Play後進度2:54；guarded original25還原actual0，fresh XML為會いたい、Play、Original、0:00／5:14。Home的foreground transition guard拒絕屬預期防護，screen-only重新觀察後才點返回，未弱化guard。首次portrait命名capture實際1180×820，不能當直向證據；先前slim版直向四tab證據保留，最後117版只記已觀察範圍。
+
+Core107 tests／2 skipped／0 failures actual0；50k QA4b暖樣本58.870–141.594ms、45started／16published／0stale已驗，冷4.735／4.691秒依使用者接受；QA5未採用，不冒稱硬體全50k IDs/order或p95通過。影片13音效production session與seek／pause／resume／stop皆有限PASS，完整聽感／音訊路由／lease／slow NAS／meter與VoiceOver完整朗讀焦點仍UNKNOWN；iPad10GiB容量TOOL_LIMITED，全斷網／AirPlay／Bluetooth為USER_EXCLUDED。Pro由「Pro購買功能結案」獨立負責。
+
+正式council沿用sealed limited紀錄；工程Luna核對不是formal closure，最後117來源尚無四席final-snapshot closure，不標Done或整體App Store ready。原超額仲裁與失敗收據保留。新證據將封存到main-final-background-cleanup-checkpoint-20261007.tar.gz；精確SHA與cleanup結果依旁附receipt／v16 checkpoint。
+
+
+2026-10-07 01:20 最後117來源v8候選正在雙平台建置；Root header僅將Spacer移到queue button後，面板開關並排左側，避免iPad右欄隱藏時搜尋clear X與UpNext開關共用觸控區。已在user明確交回控制權後證明搜尋中央觸控Keyboard=true、cobalt→Loaded1；clear X錯誤開啟右欄的實測保留，展開右欄後clear→Loaded46。Mac精簡117首次NAS build actual65（XCBuildData Bad file descriptor）；metadata rename Errno13失敗保留（combined command actual2；rename個別exit未捕獲）且舊scratch未動；改用fresh local DerivedData重建actual0。最新header修正版另跑雙端build，不把前版結果當最後版PASS。iPad羊羊主題由使用者選擇後保留，直向四分頁／背景／聆聽與設定可觸控。
+
+2026-10-07 01:09 使用者授權清理不再使用背景；reachability audit 確認 SkyEmeraldAurora（固定走SheepStorybookBackground）與SkySaturnOrbit（titanium只用MilkyWayDepth＋SaturnCloudMap shader）皆不可達。兩組imageset共201716 bytes已先SHA exact備份至unused-background-cleanup-20261007/removed-assets，再從workspace與候選移除。完整121來源先凍結備份；final source audit v7為117檔，5code modifications不變。最終雙端重建中，尚未交付精簡包。前一修正版兩端背景已由CUA確認恢復；Mac所有9資料表exact、1962queue除revision一致，theme amberDawn保存；iPad204／7與原25同樣exact、theme crimsonNebula保存。
+
+2026-10-07 00:55 最新背景修復進行中：使用者回報 Mac／iPad 背景皆消失。root 已確認隔離來源五個 Sky imageset 只含 Contents.json，缺被引用的 HEIC；舊交付 Mac Assets.car 的 assetutil actual0 列出 7 個資產且沒有任何 Sky 背景。已從 workspace SHA exact 補回 5 張原圖，新增所有 imageset filename 引用存在性與 SHA 檢查。source audit v6 actual0，實際121檔＝歷史114＋2既有Rust fixtures＋5漏包背景；仍僅5個程式碼修改。使用者核准縮薄＋更透明已套入隔離候選：header 0.18、PlayerBar spacing2／padding6／cover44，44pt控制與 ReduceTransparency 不透明分支保留。兩端 incremental build 進行中，尚未交付背景修正版，不宣稱視覺通過。已交付前版兩端資料保存：Mac1980／114、iPad204／7及原25全表exact；新GUI月島／cobalt搜尋成功，一次語意中心重開焦點失敗保留。正式整體仍 Review。
+
+2026-10-07 00:17 最新進行中：使用者確認「整條工具列對齊」，候選 WideRoot header／PlayerBar 共用左右20pt、明確滿寬，保留高度、材質、transport與Compact MiniPlayer。先凍結hit-test版Mac actual build0，再於安全邊界套用對齊；root source audit v5 actual0，實際116 files／5 code modifications＋2既有workspace test fixtures、workspace drift0。兩端新版建置中，未安裝／未確認搜尋焦點與版面。更新前Mac正常退出，完整app／Support／preferences SHA exact、SQLite integrity ok、1980 tracks／114 sources、queue1962／cur59／hist24；NAS SQLite回讀actual1保留，改SHA相同本機副本後actual0。iPad guarded stop／copy／relaunch actual0，204／7／0、原25／cur13／hist5備份完整，queue SHA1be81c…2a3；CUA持續原生曲庫／歌手／專輯操作，refresh不算防鎖觸控。
+
+2026-10-06 最新容量基準：使用者更正本次開工前可用空間為 **30GB**，取代先前33GB回報；兩者皆非工具實測。已執行simctl shutdown all（actual exit0），唯一模擬器原已Shutdown。依使用者「不停iPad測試，交分身清點」指示續測；fresh Luna spawn達thread上限，改既有Luna於QA3收據後做唯讀清點。WDA／relay／活躍建置及Codex管理Bridge服務保留。
+
+2026-10-06 21:08 容量基準更正：使用者確認本次開工前可用空間為33GB（本人回報，非本輪工具量測）。當次df約1.34GiB，swap使用9480.50MiB，不能把整體差額歸因於本輪檔案。已確認無編譯程序占用，且QA2成品binary／ZIP雜湊與封存一致後，僅清理本輪完成的QA DerivedData／cargo-target合計365380KiB；df可用1403236→1743912KiB，約1.66GiB。原始碼、成品、失敗紀錄與證據保留，其他專案模擬器及系統swap未動。
+
 ## 研究紀錄
 
 | 搜尋前構想 | 參考來源 | 採納內容 | 授權狀態 |
@@ -257,3 +390,271 @@ StoreKit pending 唯讀診斷：最後 single-listener 測試的 `compileHostFla
 遙控補充：同名 label 不足以判斷目的，例如曲目「最愛」按鈕與側欄「最愛」；必須按所在區域與 element type 篩選，每次以新 source 驗證後才操作。最後 source delta／建置 log／二進位 SHA／實機 PNG 與 AX 存 ignored 私有 checkpoint；沒有追加逾期正式評論。Pro pending listener FAIL、完整 NAS／無障礙／聲學／Sandbox／Distribution 及最後獨立 delta 仍未完成，不宣稱 P0/P1 清零或已送審。
 
 最後資源收尾：自有 WDA session DELETE 回應成功，核對自有 host 命令後 SIGINT，確認程序結束；本次 Simulator 已刪除，測試空歌單與選取已回收。未終止其他任務程序；舊桌面副本保留可回復備份。私有交付 checkpoint 保留最終 delta、二進位 SHA 與 PNG／AX，與先前正式評論快照分開，不能冒充獨立 delta PASS。
+
+## 2026-10-04 音效交付證據
+
+最後 source manifest 11／11 SHA matching；Rust 33／0、Swift 92／0、hosted 偏好 2／0，Mac／Simulator／實機 Release 均成功。Mac 同路徑覆蓋、31% 重啟記憶、六 custom binding、Reset 通過；iPad 同 App ID 覆蓋成功但啟動 Locked。Simulator 原生 Scroll Down 可捲到下半部並 Reset 回原音，physical drag 未驗。fresh Impeccable reviewer disposition `fix`：僅留下實機 touch scroll／Reset QA，FX36 保留 Review；RT4 依使用者核准完成退場。音效維護文件見 `Native/AUDIO_EFFECTS.md`，不改既有 DESIGN／tokens；未擴張為完整發行 gate 通過。
+
+本次 QA Simulator 已 shutdown／delete；約 1.5 GB 本次 DerivedData／Rust test cache 已回收，收據、xcresult、桌面回復副本與已簽 iPad App 保留。RT4 實際退場已完成，formal Review→Done 仍保留 Review：Completion Passport 必須綁定正確 taskDigest，現有 CLI help 未提供產生方式，不以缺附件的直接 Done 繞過規則。
+
+## 2026-10-04 可販售品質中途 checkpoint（v3，已由 v4 取代）
+
+Core97／0、hosted AppModel／preferences4／0、v3三種Release與簽章已驗；實體iPad同ID升級、launch及保存佇列25／history5讀回通過。桌面保存佇列1964／history16；舊畫面100為分頁範圍，不能當總保存筆數。最後視覺 disposition fix 正在一次有界收斂，詳 Native/SELLABLE_QUALITY.md。
+
+正式critic_full：not dispatched: approval/budget missing。本候選沒有新 CompletionPassport；普通 Luna、CodeRabbit、Impeccable finish review 不取代該gate。沿用references/completion-critic-council.md 的明文 numeric-budget規則，沒有當前gate總額／每席／工具／時限完整核准就不派送。Pending autoupdate clean harness FAIL根因未知，refresh PASS不能覆寫。所有正式上市與完整裝置／NAS gate保留。
+
+## 2026-10-04 v4 最後 checkpoint
+
+最後可追溯結果以 Native/SELLABLE_QUALITY.md、tasks.md 和 closeout.md 的v4紀錄為準。111檔manifest一致，三Release／簽章／local preflight通過、Core97／0、visual disposition ship只屬畫面範圍；Mac／iPad覆蓋啟動及queue1964／25、history16／5保留。Pending autoupdate仍FAIL，完整Sandbox／實機NAS矩陣及正式critic_full未完成，不標Done／ready。自建Simulator與QA已回收，其他裝置／production資料保留；僅系統root擁有的1716bytes StoreKitTest receipt留在本機，沒有為清理提升權限。
+
+## 2026-10-04 AERO-PQ42 推薦體驗候選
+
+- 使用者要求改到敢推薦：自備音樂引導、canonical 加入來源、Pro 離線成功條件／批次整理範圍、Smart DJ Pro 與理由、三語介紹稿完成；不變更商業模式，不發布。
+- 111 檔 source tree `4b4e297504ff1e2cdb1ebe7251fd6e351de95ab2fb6b1ba6bb9ec49e98dda78a`；雙 Release exit 0，三語568／0，三語商店欄位長度與 diff check 通過。獨立 copy reviewer 可接受；實際發現並修復語言切換後品牌／佇列停舊語言，最後候選熱切三語通過。
+- Mac 同 ID 覆蓋啟動與資料保留已驗：曲庫／佇列1964、history16、index48。iPad 同 ID 安裝與前後快照一致：25、history5、index13；CoreDevice 明確 Locked 拒絕啟動，已請解鎖，未宣稱啟動 PASS。
+- PQ42 為 Review；既有 Pro pending autoupdate FAIL、Sandbox、完整NAS／實機無障礙、Distribution與正式critic gates不閉合。新文案不替代舊候選測試或外部門檻。
+- 成品、資料與logs保存ignored私有evidence；版本化詳見 Native/RECOMMENDATION_KIT.md。
+
+## 2026-10-04 AERO-PQ43 音色探索候選
+
+使用者要求提升聆聽樂趣；依 Game Studios dev-story 完成八場景「下一個音色」與暫時「對照原音／返回音效」，保留強度、自訂值、偏好與佇列。不增加 DSP／render 工作、遊戲獎勵、帳號或付費策略。實際發現 popover 關閉回呼延後，已用 presentation state 與完成按鈕直接恢復修正。
+
+111 檔 tree `86bfcfcf637b6cc1331f592c4c585b35992a9e7b8ce53eeee27760f8755f9b89` 前後一致；最終 hosted 5 PASS／0 FAIL／0 skip、三語574／0、雙Release、strict簽章／local preflight通過。完整 Core／Rust／StoreKit 未重跑，原品質候選保留範圍；首輪 NAS xcresult 儲存失敗不算 PASS，最後本機有效 result 已保存完整性驗證ZIP。獨立唯讀review無可重現finding，reviewer未完成的build不算測試通過。
+
+Mac獨立QA以原創44.1k stereo WAV實際播放，九次場景循環保持29%與兩首順序，播放持續前進；對照返回、編輯退出、Escape與重啟保留設定通過。Desktop同ID覆蓋啟動、binary對應與曲庫／queue1964、base1964、history16、index48及模式保留。iPad同ID覆蓋與快照byte identity通過（25／25、history5、index13）；首個安裝連線中斷，檢查連線後一次重試成功。新候選啟動被Locked拒絕，待使用者解鎖，不宣稱觸控／聽感PASS。
+
+PQ43維持Review，未宣稱整體販售／推薦ready或正式critic閉合。成品、舊桌面備份、來源ZIP、資料與原始log在ignored `.cmv-local-evidence/2026-10-04-playfulness/`；版本化詳 Native/PLAYFUL_LISTENING.md。既有 StoreKit pending、Sandbox／完整NAS／無障礙／Distribution gates 不變。
+
+## 2026-10-04 解鎖後完整測試續驗
+
+使用者已解鎖 iPad 並要求完成所有需要測試項目。最新 86bfcfc 候選 devicectl launch 成功，接續既有 PQ37／PQ38／PQ41／PQ43、FX36、DV4 的測試，不代表全部 gate 已完成。先執行實機操作與資料保留，再補同候選自動測試及有限故障注入；涉及真實 Sandbox、路由設備、Distribution 與正式 critic 的能力／預算另保留實際狀態，不偽造通過或自動購買。
+
+## 2026-10-04 iPad 最大字級焦點修復
+
+實體 iPad 開啟最大 Accessibility Dynamic Type 時，音效探索兩顆按鈕仍並排且逐字拆行；已記錄私有 XML／PNG，依 AERO-PQ40／PQ43 做最小 VStack 修復並重新建置交付。使用者明確將藍牙／AirPlay 排除本輪 CMV 驗收，不列完成阻礙；目前無 Sandbox 帳號，Pro 核准 listener-only 的已知 FAIL 獨立追蹤。
+
+### 最新使用者修正：按鈕長文字使用跑馬燈
+
+使用者否定僅以 VStack 解決大字級拆字，要求使用既有跑馬燈；按鈕採單行 MarqueeText 與完整 AX 名稱，Reduce Motion 靜態可讀。未交付的 VStack-only 建置只保留歷史結果，不作最後成品。AERO-PQ40／PQ43 收斂同檔最小修正，重新建置與實機驗證後交付。
+
+## 2026-10-04 解鎖續驗與跑馬燈最終交付
+
+最後候選 Marquee v3：111 檔 tree `f897d5917c291b8ed2551a8cddc302fa5be7e24e70db56c7283bc2647b4fc6f0`，production `721e18c58b968ee688660fb45bb184d7703d933006d2bec73397489a33200228`。來源快照與工作樹逐檔一致，三 Release、strict signing／local preflight 通過；Mac adhoc、iPad Development，不是 Distribution。來源及三成品 ZIP 完整性通過。
+
+使用者要求以跑馬燈解決長按鈕；重用 MarqueeText，明確 HStack 避免系統 Label 圖示欄把文字擠碎。實體 iPad 最大 Accessibility 字級：兩張同框畫面證實文字位移，兩顆按鈕 164×78pt 且 AX 名稱完整；Reduce Motion 以完整兩行文字靜態顯示。最後候選實際下一音色 Orbit→Sewer、對照 Original 保留60%、恢復原音為30%／出廠custom值；靜態按鈕點擊嘗試未觀察到轉換，不計PASS。原佇列與字級還原後最後啟動保持paused。
+
+Mac 同 ID 覆蓋啟動保留1964 entries／base、history16、index48；iPad 同 ID覆蓋啟動保留25／25、history5、index13。順序、history、index、version、shuffle、repeat均一致。一般字級67%、輔助大字級0、ReduceMotion0、原粗體1保留；音效偏好回讀Original／0.3與出廠custom值。使用者明確排除Bluetooth／AirPlay本輪gate。
+
+自動測試範圍：Core97與Rust33、fmt／clippy／bridge PASS；完整hosted19在08c2production為18 PASS／1 FAIL（Pro pending approval listener-only timeout）；reliability3與真實SMB NAS cache7 PASS；音效偏好5在Marquee v1 PASS。v3只改同一label排列，補三build與焦點實機，不虛稱完整hosted重跑。50k NAS／完整VoiceOver、contrast、StageManager／Sandbox／Distribution仍未驗。正式critic_full因缺explicit total／per-seat／tool／wall-clock budgets未派送，無新CompletionPassport。
+
+結果詳見 Native/IPAD_TEST_REPORT.md；私有收據位於ignored `.cmv-local-evidence/2026-10-04-ipad-unlocked/`。既有Review與In Progress保留，不標sellableReady或整體Done。
+
+### 本輪資源回收
+
+`cleanup-final.json`：來源111檔最後比對通過，自有controller正常exit0；WDA host收到SIGINT後exit75，兩個本輪PID均已不存在。已刪本輪使用者擁有的build／scratch與NAS測試fixtures，production資料與證據ZIP／logs保留。只有系統root擁有的1726bytes StoreKitTest receipt及父目錄因PermissionError保留，不提升權限。此殘留不影響已交付Release，亦不代表全部暫存目錄消失。最後Simulator只建置與local qualification；交付啟動為Mac／iPad兩端。
+
+## 2026-10-04 Sandbox 帳號狀態更正與現有 Pro 實測
+
+使用者最新確認目前一直使用 Sandbox 帳號維持 Pro，並回報未登入時 Pro／付費背景會鎖住；先前「目前無 Sandbox 帳號」是已被新資訊取代的歷史紀錄，不再作為現行阻擋。Mac 桌面實際顯示 Pro Unlocked，恢復購買完成顯示 Your Pro purchase is confirmed；正常結束並重新啟動後仍解鎖，土星環站 Pro 背景可選且實際呈現，再還原銀河夜幕。未登出、清空購買紀錄、退款或新購買。
+
+這是目前已購權益、恢復、線上冷啟動與 Pro 背景的實測；尚未直接讀取 Transaction.environment，不以 UI 宣稱已獨立證實 Sandbox 環境。Ask to Buy 核准／拒絕使用 Xcode StoreKitTest；本機模擬與 Apple Sandbox 交易證據分開保存，不用現有 Pro 狀態代替完整交易矩陣。測試腳本已修正改名後的案例入口，要求每例 xcresult total=1／passed=1／failed=0／skipped=0，零測試不能 PASS；單一 raw StoreKit consumer 另作獨立診斷，沒有和 ProStore 同例競爭事件。
+
+
+## 2026-10-04 Pro 可靠性完成要求與診斷續驗
+
+使用者明確要求將 Pro 付費可靠性任務完成，沿用 AERO-PQ38／MON30，不建立重複任務。既有帳號可用的更正保留：Mac 現有版本恢復購買、正常重啟仍 Pro、付費背景實際呈現通過；環境依使用者回報 Sandbox，未直接回讀 Transaction.environment。
+
+本輪獨立七例 macOS StoreKitTest 有效 xcresult 為6 PASS／1 FAIL／0 skip。Raw單consumer待核准通知PASS，raw listener＋production purchase PASS，production listener＋直接purchase FAIL；listener存活卻streamUpdates0且current verified entitlement1。只一次startup refresh及ready barrier／weak callback分離／parent建立串流均FAIL；後三實驗已撤回，正式授權行為逐字還原，只保留DEBUG專用probe。這些控制結果限縮失敗路徑，不能宣稱根因確定或修復。iPad iOS26.5 Simulator配置SKTestSession時Code3，未測到購買，已停止並刪除自建Simulator。
+
+原始結果／分階段來源／最終118檔来源ZIP均已封存ignored私有evidence。接續單一consumer弱引用轉交production handler判別；工作樹production尚未修改，不以持續polling掩飾listener，不操作使用者退款、登出或真實付款。
+
+
+### StoreKitTest propagation 交叉反證
+
+同一物件 ObjectIdentifier 的 marker 顯示：waiter先取得timeout快照，接著讀currentEntitlements期間，raw callback才進入receive且counter 0→1；並非方法未被呼叫或弱引用失效。獨立對照：production listener在test-only `waitForCurrentEntitlement(true)` barrier後核准PASS（matching verified update至少1，沒有call ProStore.refresh／直接授權）；raw listener刪掉同樣的post-approval read也FAIL（allUpdates0）。原先「production listener本身有缺陷」的推測已由交叉反證撤回；Apple未承諾currentEntitlements會促進updates，僅記錄本機Xcode26.6的實際時序差異，不推廣成SDK契約。
+
+已將barrier加入三個核准測試、補六個真StoreKitTest故障案例，16例逐項xcresult驗證進行中。沒有變更正式授權行為。實體iPad將以獨立QA App ID及已存在的wildcard Development profile執行；初次誤將憑證CN中的使用者ID當Team ID，建置被signing拒絕，未裝App／未測交易；已核對憑證OU與快取profile，改用正確簽章。原production App與資料保留。
+
+### 2026-10-04 Pro 本輪驗證進度
+
+Mac／實體 iPad StoreKitTest 各17 PASS、0FAIL、0skip，逐項xcresult ZIP CRC與實際測試數已驗。Mac真Apple Sandbox既有正式SKU直接讀到sandbox環境，商品價格／權益／恢復／fresh ProStore 1PASS；原桌面版已還原開啟，1,964曲、Pro Unlocked與銀河夜幕由畫面確認。正式ProStore排除test-host DEBUG區塊後與原始snapshot逐字一致。iPad最後真Sandbox測試於Xcode deviceprep -3等待解鎖，已向使用者提出；尚未覆蓋為PASS。另提出新的critic_full數字預算12k總tokens／每席2.5k與12工具／20分鐘，尚未獲回覆，不dispatch。
+
+補記：iPad真Sandbox xcodebuild等待鎖定後exit65，未啟動付款assertion；同來源原App安裝因CoreDevice error60連線逾時，尚未確認。保留原版簽章／source／ZIP binding與安裝前AppData私有ZIP（CRC PASS）。AERO-PQ38以transition receipt pro-review-202610041111從In Progress→Review，MON30仍In Progress；不跳過正式critic／Passport。
+
+使用者已核准本輪critic_full總12,000tokens／每席2,500tokens與12工具／20分鐘，三席Luna加獨立仲裁；修正與delta共用上限，不重問。採converge，等最後iPad證據後凍結snapshot再dispatch，避免消耗額度重看中途結果。
+
+更新：裝置恢復連線，原App同ID安裝及launch成功。before資料有1-entry／revision88的QA queue，還原後讀到原25-entry／index13／history5（revision55）；DB/WAL/SHM與pinned byte-identical，偏好僅SKTransactionUpdatesLastChecked改變。未把所有資料一致誤標PASS，兩份queue皆保留。iPad真Sandbox新測actual1FAIL：environment sandbox、hasPro、商品價格、restore失敗後保留Pro、freshStore均assert通過；唯一失敗為restore success message（實際restore failure message），115.266秒。正在私人DEBUG probe加domain/code診斷，未改正式ProStore語義；已請使用者查看是否有Apple/Sandbox帳號驗證。
+
+Xcode Devices→Take Screenshot已實際確認iPad正顯示Apple帳號密碼視窗。v2 probe已讀到Sandbox transaction、hasPro與商品價格，停在AppStore.sync；已明確請使用者在iPad本人完成，密碼不傳給Codex。私人截圖移入ignored證據，公開紀錄不含帳號。正式critic budget已核准但尚未dispatch，保留待最終實機結果。
+
+使用者已在iPad完成Apple登入；v2真Sandbox1PASS，restoreConfirmed=true、hasPro=true、freshStore=true。最新Mac17+iPad17+Sandbox各1=36PASS/0FAIL/0skip；舊失敗分開保留。原App最後同ID安裝與launch成功，原25首queue整份JSON一致；自建QA App已移除，device handoff已写入remaining-validation。其他任務已用receipt確認原1-entry是QA中途狀態，撤回install資料遺失疑慮。
+
+正式Pro council完成三席盲評＋獨立仲裁，snapshot pro-36-final-20261004，passed/findings=[]；18artifact hashes及4sealed report hashes一致，critic_contract.py兩task皆exit0。Native Rust length-framed task digest算法已讀實作並與9個既有Passport全數匹配，不猜digest。PQ38/MON30 current Passport通過原生Review→Done transition，另加crab-done生命週期標記並重新綁定digest。正式source未變，Pro技術結案，不代表整體發行Done；physical radio-off與Sandbox新購／退款未執行的scope限制保留。
+
+2026-10-04 remaining-validation 最後更新：Pro裝置交接後重新安裝final v3 exact-ID，程序路徑與receipt一致。歌單List borderless修復實機上下移保持2entry且不誤播放／刪除，batch remove及ownplaylist清理通過；title升降／Violet搜尋通過。撤回一度報告的多選2首／EOF PASS：原XML實為Selected:1且只Silver；逐步觸控未使Violet勾選，不假產品FAIL。最後183track IDs與9metadata欄一致，favorite/rating/pin/playlist已清理；queue關App回讀全等25/25/history5/index13，重啟後曲目與history順序及模式一致且paused，occurrenceUUID/revision依既有實作重建。Cloud素材下載等待、真NAS/UI50k150ms與完整VO/PiP/離線矩陣保留，任務不冒標Done。詳Native/REMAINING_VALIDATION_REPORT.md。
+
+### 2026-10-04 晚間續測
+
+依主人要求繼續實機 QA，略過遙控多選勾選支線。AirDrop 後本機 Source-B 7 檔已匯入，183→190，原資料保留。重現 scanner 漏讀 AAC/MOV metadata，已最小修正並以實際 AVFoundation 媒體測試驗證（2 tests／0 fail／0 skip）；新 snapshot 的 iPad／Mac／Simulator Release 與 local qualification 通過，已覆蓋安裝 iPad。原檔暫移出來源後冷啟動仍以釘選副本播放到 1:02，checksum 一致；網路保持連線，不稱飛航 PASS。三分鐘音訊 73.9 秒背景返回與 PiP 暫停 enter／Home／restore 各有實機證據。NAS 13 檔 scanner＋持久化 repository 的初始／重掃／差異與來源失聯保留分支已驗；50k tiny AAC 實體生成完成，production 壓測與其餘實機矩陣接續中。詳 Native/REMAINING_VALIDATION_REPORT.md 續測節；正式 Done／Distribution／critic_full 不由中途結果推定。
+
+### 2026-10-04 非 Pro 續測收尾
+
+本節取代上一段「壓測接續中」的現行狀態，歷史失敗保留。Source-A/B 共 13 檔的 iPad production metadata 匯入／重掃通過，196 首與 7 來源、原 183 筆 metadata9／favorite／rating 保留；Faults 壞檔顯示可關閉錯誤且不清目錄。Smart budget 預設 10 GiB、Pinned 使用獨立根目錄；已實測原檔移走後新版冷啟動仍播放釘選副本，未塞滿 10 GiB 或完全斷網。
+
+Mac SMB 的真實 50,000 份合法 tiny AAC 經 production scanner＋持久化 repository 完成初始索引，50,000 available／0 missing／0 issues，offset501=25；耗時約34m24、maxRSS509034496 bytes。13 檔差異／不可達保留 API 另有收據；不是 iPad FileProvider／150ms UI。
+
+新發現 mixed 末曲 stale base 造成拒存空 queue，兩檔最小修復的 production transition／store.load focused tests 2 PASS／0 skip。新113檔 tree `011828a6e361a8afe47af503dc7a39347acb338915b99cbc86a25ba8ade56c81`，三 Release／local qualification PASS；iPad exact-ID 同 bundle 覆蓋，binary `ab5abe0feccd287ba8f7a6d2491af35196655781e67a911261489c8fd563fddd`。實機末曲3項存檔／冷啟動3項及 video→audio 自然接續通過，terminal EOF 合法降為單曲，不稱 EOF 後保留 full3。第一輪中間影片截圖沒拍到，另輪有原創影片實際圖像；結尾 Next 遭 fresh XPath／座標 guard 拒絕未送達，快速 EOF 仍待驗，不算產品失敗。Slider 遠端疑似 isSeeking stale 亦保留診斷，沒有憑推測改 production。
+
+最後僅還原原25項 queue JSON，未覆寫DB；25／25、history5、index13、modes 與 paused 順序一致，occurrence UUID／revision 正常重建。196首／7來源、原183 metadata9 及 favorite/rating 一致，playlist0、pin0。合成資料與私有收據保留。詳 Native/REMAINING_VALIDATION_REPORT.md。八個非Pro任務 Next Step 已更新、維持 Review；本輪 scoped review 無新增 P1/P2，不冒稱 formal critic_full 或 Distribution；Pro 專項既有 Done 不更動。
+
+2026-10-05 非Pro續測：主人最新排除完全斷網(USER_EXCLUDED)，不再列為待驗。正式critic_full範圍與12k總額／每席3k tokens、6工具、整體20分鐘已明確核准；本機測試與immutable snapshot後dispatch，四席跨輪次共用上限。iPad操作runbook已新增並核對實際RootView Done/Return semantics、queue-only lifecycle與CUA input邊界。WDA本次啟動因裝置鎖定失敗，已請本人解鎖，未盲目重啟；獨立容量／UI隔離harness與可及性契約核對繼續。
+
+## 2026-10-06 解鎖後續測與 QA3 checkpoint（Review）
+
+本節是解鎖後的目前狀態，保留前文作為歷史紀錄；不代表正式結案或 promotion。QA2 production video driver 在 iPad13 的限定 session 實測 `14.616 s`，13 modes 逐項事件核對、所有非 neutral wetCount 增加、seek／pause／resume／stop 通過，`stop 405→405`、`errors=0`；此範圍仍不涵蓋主觀聽感、完整 lease 或全 PiP 矩陣。
+
+Main frozen `e288` 的 13 個 mode label 已逐一 GUI 回讀；Custom 保留 `76%／52%／262.6 ms` 並完成原音返回比較，影片自動 EOF 到 terminal 約 `54 s`。PiP Original 已實機進入、Pause→Resume，HomePiP 兩張截圖可見畫面與進度變化；從 Home 回全螢幕因 fresh guard 過期且圖像點擊無效，不能列 PASS，之後 PiP 自然 EOF 關閉。Main13 與 PiP/lease 的完整矩陣仍為 Review。
+
+原始 queue restore receipt（`20261006T135119Z`）actual exit `0`；25 entries／base25／current13／history5，非 revision 欄位完全一致（原 queue hash 前綴 `56a8657d…226`）。允許的播放差異限於兩筆 track 的 `Z_OPT`、`playCount`、`lastPlayedAt`；CoreData history 有 4 筆新 transaction/change rows 與 primary-key allocation counters，不能解讀成整個 SQL byte identical。
+
+QA2 search runtime 只有限定暖查詢證據：`QA-501-after-target 54.302 ms`、`Synthetic Track 50000 72.874 ms`、`星河 119.884 ms`、`Fictional Artist 03 134.315 ms`；`61 started／10 published／0 stale publication`。cold final `3242.827 ms`、empty outlier `170.059 ms` 尚未解決，沒有 p95 或整體 150 ms promotion 結論。QA3 cancellation artifact 已通過本機 build/sign/ZIP 收據，local tests `107 tests／2 skipped／0 failures`；1 ms cancellation 測試不能證明在第一批中點 deterministic cancel，硬體驗收仍待 root 執行。
+
+容量與程序紀錄：使用者最新基準 `30 GB` supersedes 舊的 `33 GB` 歷史報告；當時 simulator 已是 Shutdown，root `simctl shutdown all` actual exit `0`。本輪已清理已完成工作留下的 cache `365380 + 505688 KiB`，swap 仍增加，不宣稱可用空間已回到 30 GB，也未處理其他任務程序。
+
+目前 next actions 維持 Review：root 以 QA3 在硬體量 cold／empty 與取消 stage，重跑四暖查詢並保留完整 metrics；補 fresh guard 下的 PiP Home→fullscreen 與 lease／subjective listening；未達證據前不升級 150 ms 或標示 Done。MissionCenter syncdoctor 由 root 另行處理，本節未執行。
+
+### 2026-10-06 22:04 current checkpoint v13
+
+QA3 已備份QA2、安裝及啟動 actual0；根代理逐項核對121來源檔、只變更repository及AppModel、全部原始exit/log雜湊、ZIP每一App檔案bytes。實機冷搜尋最新target正確count1，但query→publish **14368.014ms**（退步，禁止promotion）；六個舊request只有candidates.start/cancelled沒有end，未證明處理實體批次數。昂貴enumerate前漏entry cancellation check，QA4修正及建置已委派既有Luna。
+
+清除／重新聚焦後，完整中文、假歌手及尾端曲目暖查詢分別120.246／142.117／66.579ms，顯示200／200／1；截至尾端metrics為68started／12published／0stale。誤輸入帶`-target`尾字的紀錄保留但不算預期暖查詢通過。v6輸入教訓已加入runbook。
+
+PiP後額外Main資料核對：對post13基準204tracks／7sources／0playlists不變；僅兩個自有測試track播放統計，CoreData新增6個change／transaction、既有history全部保留，Z_PRIMARYKEY僅allocation值。原25所有非revision字段exact。391檔新證據封存且逐entry SHA讀回通過（私有R之postunlock-hardware-qa3-archive-receipt.json）；不覆寫舊封存。MC sync committed、doctor actual0/pass，legacy completion-passport unknown warning仍保留。QA4／cold性能／PiP返回等仍未完成。
+
+
+### 2026-10-06 22:50 最新續測（取代較早的 QA3／QA4 下一步，維持 Review）
+
+QA4 原 unsigned 候選誤用 QA2 AppModel 基底，被根代理拒絕且未安裝。QA4b 保留 QA3 AppModel、121 來源檔僅 repository/tests 兩項差異；deterministic pre-cancel/recovery focused test 1 test／0 failure、unsigned build actual0。根代理完成 Development 簽章 strict/deep、五份 plist/privacy 及 ZIP 每檔 bytes 驗證。首次 QA 名稱改寫漏保留本地化 NSMotionUsageDescription；原成品保留，已另製逐鍵保留的成品（binary b1f1e4d4…9700、ZIP 73a5e842…442f），備份、同 QA bundle 補裝及啟動 actual0。Main e288/aecc 沒有 promotion。
+
+QA4b 暖查詢：target72.727ms／中文109.128及122.753ms／虛構歌手140.992及141.594ms／50000末筆65.686ms；無結果58.870ms並顯示無符合曲目，清除後恢復200筆。原簽章包45started／16published／0stale；暖樣本都<=150ms，但沒有p95或完整50k硬體IDs/order結論。冷target4735.116ms，metadata補裝後冷末筆4691.073ms：QA3的14.368秒退步已改善，冷瓶頸仍待修；QA5真正500筆fetch分頁候選正在隔離處理，尚未實機驗收。
+
+QA3實際捲動越過200邊界，generation69發布200→400，曲目00200/00201/00213可見、第二頁repository→publish64.672ms。不能把第一個queryStart到23分鐘後手動捲動的間隔當分頁延遲。
+
+本機實測約7.3GiB可用，工作前30GB仍為使用者報告。唯一MediBuddy模擬器已Shutdown且保留。分身清除本次完成的241468KiB候選build cache；先前240548KiB及365380/505688KiB記錄保留。3224檔／487678713bytes證據已比對搬至NAS：原cleanup因權限actual1，2967剩餘檔再驗證0mismatch後只補本機owned舊目錄寫權、cleanup actual0；NAS與source/raw保留，舊路徑有效symlink。WDA/relay與他人程序持續運作。
+
+PiP回全螢幕、full lease／slow NAS／meter／完整VoiceOver與iPad10GiB容量缺口照實保留；全斷網/AirPlay/Bluetooth依使用者排除，Pro由隔壁負責。正式council仍limited，沒有新增formal審查或Done宣告。checkpoint v14新增235檔封存且逐entry SHA讀回；不覆寫v13失敗或舊archives。本段的文件更新尚未另執行MC sync/doctor。
+
+
+### 2026-10-06 22:54 使用者更新效能取捨
+
+使用者表示五萬首首次載入即使等待約一分鐘也能接受。驗收重點改為初始化期間可操作、背景進度與取消，以及後續暖搜尋順暢；首次建立索引4–5秒不再當作必須壓到150ms的失敗。歷史QA3退步保留，暖搜尋150ms與資料完整性仍須依實測驗收。QA5只先審閱分頁安全性，不為cold擴大持久索引／prewarm重構；是否採用以必要性、正確性與回歸結果決定。
+## 2026-10-06 23:40｜cold 取捨與 Main 續測
+
+五萬首首次 4–5 秒依使用者最新取捨接受；封存 QA5 而不擴大 cold 最佳化。QA4b 暖樣本 58.870–141.594 ms scoped PASS；Main 隔離整合 Core actual 0，107／2 skipped／0 failures，雙平台 build 尚未交付。Root 完整盤點 actual116：3 modifications＋2 existing-workspace Rust test-fixture additions，不沿用 manifest114 是全部來源的錯誤簡稱。source audit v3 已驗 bytes，未把 detached parent cancellation 宣稱為物理中止 map/rank。
+
+e288 Main 直向 ASCII／日文搜尋各 1 筆並核對 metadata；橫向 SearchField 可見卻未取得焦點，其他控制正常，保留新 scoped finding，遮擋原因未證實。PiP3 未成功進入，不採為 PiP PASS；原25 restored actual0／全非revision exact，204／7／0保留；overlap capture 不當作 pre-stop 證明。正式 council 既有 limited／Review 維持，沒有新正式評論。
+
+
+### 2026-10-07 15:02 五萬筆重開完整性
+
+QA bundle `com.windsheep.cmv.qa50k` 重開與讀回 actual0。第一份讀回仍為舊 initial 收據，保留且不列為重開通過證據。新 restore 收據 generatedAt `2026-10-07T06:58:20Z`，priorReceiptSHA 與 initial 原始檔完全一致。八組 query manifests、每頁 digest、ID 順序與總數全同；空查詢50,000筆／250頁，零重複、零漏筆。根驗證檔：`.cmv-local-evidence/2026-10-07-final-runtime/qa50k-restore-root-verdict.json`。範圍為 QA4b instrumented AppModel 加 exact repository；不是整份 Main 原始碼相同，UI 舊結果發布 gate 仍 LIMITED。新的事件追蹤候選正在隔離準備。
+
+### 2026-10-07 16:15 最新候選與實機續測，維持 Review
+
+Main frozen117 僅追加 VideoExperienceView 的 terminal polling 修復，來源 SHA `a40fdc9a…eeb8b99`；雙平台建置、簽章、plist/privacy/localization 與 ZIP 每檔讀回通過。Mac universal binary `84bd1d89…194381` 已交付 Desktop，iPad arm64 `c604b83b…27c36d9` 安裝及啟動 actual0。iPad 新版單結果自有影片 GUI 實際顯示 0:04／0:12，EOF 清空播放；新候選 PiP／seek／replay 尚未借用舊成品證據。Mac GUI 因工具回報電腦鎖定，待使用者解鎖。
+
+Main 現行基準為429 tracks／10 sources／0 playlists與19項 queue。自有影片測試曾自動接到私人歌曲，該操作與原始失敗均保留；完成後只對 Main 容器還原今日實測前 Support／Preferences，九張資料表逐列全欄 exact、preferences 全值 exact、queue 所有非revision欄位 exact（revision197→199為重新啟動變更）。原始實體媒體未刪除。原25項及204／7只保留歷史，不作目前還原基準。
+
+新 QA 候選 `e63454c2…6718` 已安裝，保留 Main 的 mapping 前後取消檢查，另加 atomic publication event mirror。自然冷查詢與暖替換有實際舊 generation 工作重疊、取消且零舊發布；最新目標各1筆發布及 layout。新版 initial 八組 query manifests 與獨立 Rust／repository oracle 完全相同：50,000 IDs／250頁，零重複、零漏筆。這是 instrumented projection 的限定證據；空查詢整體冷 race、完整 Main 50k UI 與 p95 未建立。第一次新版 restore 讀回仍是舊 initial，未計為 restore PASS，正在另讀。誤用取代文字而留下游標後綴的輸入 attempt 明確排除。
+
+慢 resolve 的取消／bookmark失效提交防護與 MainActor heartbeat 斷言通過；實際本機 security-scoped lease clear／switch-then-clear／video-stop 配平通過，根代理獨立讀回 raw。真實 NAS bookmark/open capability 受限，已保存 sample 與明確 skip；不能宣稱真實 acquired→stale NAS 已量測。10GiB容量測試因 iPad 重要可用空間約3.98GiB、檔案系統約2.26GiB，低於14GiB安全門檻，未配置檔案，狀態 TOOL_LIMITED。Mac 工作前30GB是使用者提供的參考，僅回收本次完成 cache，不處理私人資料或其他工作程序。
+
+直向小縮圖第四格在先前 Main 測試未選取，QA 同樣位置可選取；新版 Main 重啟後第一格原生按鈕操作亦未變更，截圖中心觸控則成功。正在核對 relay 命中位置與 Main hit-test，根因未確認、未宣稱修復。實際觸控持續穿插，但未將全程防鎖時間間隔標為 PASS。正式 council 未新增執行，既有額度限制及人工聽感／完整 VoiceOver 缺口保留。
+
+16:23 補充：新版 QA restore-check-3 已有 fresh mode restore，generatedAt `2026-10-07T08:17:23Z`，priorReceiptSHA 精確對應新 initial `fca94cba…042b44a`；八組 manifests 全同、沒有 error。分身及根代理分別讀回確認，根收據 `qa50k-new-guard-restore-root-verdict.json`。兩份先前 stale initial 仍保留 NOT_PASS；行政帶回前景與 restore launch 都是 PID23700，不能據此斷言唯一延遲原因。copy 工具 actual0，但分身外層 zsh 曾誤用保留變數 status，該外層錯誤亦留存，未重跑 copy。完整性收據不包含 UI 發布 gate；該 gate 由另外的自然 cold／warm 原生操作事件證明。下一個合成封面 A/B 專案僅限 QA namespace，不改 Main 或既有全量驗收收據。
+
+### 2026-10-07 22:00 土星背景緊急修復
+
+使用者回報土星背景消失。實機舊 Main 顯示白底；工作區的土星使用 ShaderLibrary.saturnScene，但 frozen117 漏收既有 SaturnAtmosphere.metal，舊 iPad／Mac 成品均缺 default.metallib。舊背景覆蓋聲明因此失效；先前封面、多選等限定實測保留。新 corrected118 與最新 parent117 每檔 SHA 完全相同，唯一補回原 Metal（60670630…5c7d89），Library8a6／Videoa40 保留，不恢復已退休的靜態背景。
+
+首次 builder 誤選較舊117基線，根代理在交付前攔下；失敗65、interrupted retry、plist parse failure 與 launch64 原始紀錄保留。正確雙平台 CompileMetal／MetalLink、strict codesign、原語系與隱私／external pinned entitlements 核對通過。來源缺 entitlements 由原既有外部簽章輸入補足，實際 decoded exact，沒有觀察到權限流失。
+
+iPad 新 binary66996／ZIPa874 已安裝，launch retry0；土星與光環在直向、橫向、曲庫頁實際恢復，小縮圖單格1→cancel0通過，七組原始截圖/XML SHA 與 Main identity 已由根代理獨立核對。安裝前後九張資料表含 WAL 全列全欄相同，queue 非revision相同（209→211），preferences 僅 StoreKit 自然時間戳差異，titaniumEclipse保持選取；重開播放進度0:00，不宣稱恢復先前1:03。
+
+Mac 新 binary9697／ZIP523c 已交付 Desktop，行政備份及 rollback 保存，交付前後資料 exact；根代理另核對新 Desktop binary與deep strict0。CUA 實際啟動並暫切土星環軌站，設定及收聽頁原生截圖均看見土星與光環，PASS_SCOPED_MAC_SATURN_GUI。已透過UI還原原星海晨光並回收聽暫停；原生截圖保留在工具輸出，未存本地PNG。交付資料exact不借用為GUI後全資料exact。
+
+新增唯讀 verify-runtime-resource-inputs.py，檢查來源 Metal SHA、ShaderLibrary／stitchable contract、catalog filename、編譯 metallib／symbol、external entitlements pin。old117負向actual1，新118 iPad／Mac正向actual0。收據集中 /tmp/cmv-saturn-shader-repair-20261007；新版工程封存待完成。iPad遙控其後Errno61中斷，已請服務擁有者診斷，無法宣稱持續觸控防鎖。正式 council 未新增派出，全案與人工聽感／VO／完整五萬首Main UI等既有缺口仍保留，不轉全案Done。
+
+22:03 封存補充：Saturn checkpoint `saturn-shader-repair-final-20261007.tar.gz` 72,825,385 bytes、SHA `a5e0a156d32c64ddabe0d801a2d6c70ce52586fdf7f14228d34808a86bca90bc`，292 data members＋embedded manifest；根代理逐檔 bytes／SHA、無重複 member、manifest bytes 與最新 Desktop readback 均 exact。首次特別讀回採錯 tar prefix，檢視 manifest 後修正，保留原失敗，不更改封存。這是 shader hotfix 的限定工程 checkpoint。
+
+後續唯讀資料核對：Mac GUI 後一致快照九張表 schema／全欄全列仍相同，queue 除 revision280→283 外全值相同；偏好只新增視窗位置紀錄及 StoreKit timestamp，外部偏好全值相同。根代理獨立SELECT／plist核對 actual0，收據 `.cmv-local-evidence/2026-10-07-final-runtime/saturn-mac-post-gui-root-readback.json`。此新收據在封存後產生，單獨保留，不重寫已封存 tar。Recovery3曾status ready，但實際relay source502與runner22:03退出；根代理CUA更新仍Errno61，成功callback已由owner撤回，receipt未生成；維持工具阻礙、根因未明，不列恢復PASS。
+
+遙控後續診斷（服務owner回報）：recovery3 xcresult summary actual0記錄 `Test crashed with signal kill.`，22:00:48短暫status200與22:03:02 runner退出的時點差異已釐清；目前非wrong URL/session證據，未歸因test-timeouts。作為owner診斷回報保存，Root未自行讀回xcresult；正在查system crash/jetsam終止原因，尚未恢复實際觸控，不能宣稱keepalive或服務穩定PASS。
+
+Recovery4 後續：使用者於服務owner chat授權重啟服務一次，實際exit65／automation initialization timeout，無ready、無relay、無fresh畫面。Root獨立讀回 restart-receipt 與 raw log SHA exact，核對逾時文字；既有兩份SIGABRT报告為不同PID，只能限定早前XCTest初始化異常，不證明本次共同根因。收據 `.cmv-local-evidence/2026-10-07-final-runtime/wda-recovery4/restart-receipt.json`。未重啟整台iPad，土星與資料既有scopedPASS保留，剩餘觸控仍工具阻礙。
+
+## 2026-10-08 Apple審核資料沿用邊界
+
+主人授權參照GAI與MediBuddy。CMV既有審核聯絡／版權已填，公開文案33欄fresh exact；Review Kit已補七類資訊對照。不能沿用其他App的隱私回答、示範影片、版本或功能宣稱；本App Record兩平台2.0草稿／build0／六組截圖集合0。無遠端變更。
+
+## 2026-10-08 現行 Distribution 完成／iPad 續驗交接
+
+Mac universal PKG 18,253,407 bytes／SHA e98984cd…031e5、iPad arm64 IPA 14,788,526 bytes／SHA e150dfeb…989d 已建立；四份 archive／出口 bundle 的 Distribution qualification、strict codesign 均exit0。主代理親核95檔production exact、profiles與binary／dSYM UUID，完整251 payload／241,901,191bytes封存manifest SHA 75ed75bd…8f270。詳 Native/DISTRIBUTION_CHECKPOINT_20261008.md。未安裝出口、上傳、提交或發布，不推導整體RC／runtime通過。Mac export helper不支援與iPad缺mapping兩次exit1原始紀錄保留，修正ExportOptions後出口成功。
+
+iPad舊WDA本輪確認已exit65，原relay使用失效session；以既有xctestrun test-without-building重啟自有WDA，再只重啟身分核對過的自有relay。原HTTP8766 fresh畫面已觀察CMV；沒有重編或重裝CMV。fresh裝置passcodeRequired=false，舊待解鎖描述不再是當前阻擋。主代理停止CMV後原子copy五檔基準：DB429tracks／10sources／0playlists、queue19／base19／history19／current1／revision229。原創CMV-Review-Fixtures兩曲仍在但excluded；不播放目前19首私人收藏。本轮iPad M6／有限矩陣由Luna唯一操作，結果尚待直接收據與還原驗收。
+
+review-evidence-index僅為11個指定ID的criterion→receipt對帳，不是critic判定；本次修正真正Verification中的過時重建、聽感、容量與已排除條件，保留歷史證據与工程缺口，不轉Done。root最新可用18,043,428KiB，未容量不足，未清理必要runtime／活躍WDA。正式Full completion council尚未新增dispatch。
+
+## 2026-10-08 音效既有收據補核
+
+主代理讀回swift-test-AudioEffectsTests.raw SHA31cf1ecc…ce82b與三份現行source SHA exact，14／0中直接有mono engine、mono44100 video、anti-phase Orbit、設定不重排timeline、pause mute／play restore及renderer lifecycle passed。唯讀index將13preset stereo harness的限制誤延伸成「沒有mono／anti-phase host工程證據」，本append更正；沒有新測試或裝置／聽感／正式critic升格。主收據 /tmp/cmv-task-zero-20261008/audio-criterion-readback/primary-audio-criterion-readback.json。原索引保留作修正前對帳，不改其歷史輸出。
+
+## 2026-10-08T09:47:41.069584+08:00 metadata修復／Mac排序與iPad M6最新scope
+
+205份自有AAC小檔合計770,213bytes已在Mac實際匯入。歌名、藝術家、專輯、修改時間八方向的可見頭尾與第200／201首均與獨立oracle一致；random追加第二頁前後共同頭端與尾端一致，不宣稱205全列GUI捕捉。第二次尾端viewport多一個前項T020，整viewport等式false是視窗範圍不同，共同13項及末5項exact。原Development final-v2 scope；測後停止CMV、六檔原子還原byte exact，launch後九表全欄/schema exact、queue非revision exact298→301，App-owned prefs exact；可見1971首且paused0:00／6:25。新排序封存218payload manifest SHA a54abc4a6d81e352272b1847d00d64d2ccd8e113a78bd8a34d5564f372dc8882，入口 `.cmv-local-evidence/2026-10-08-task-zero/mac-sort-matrix/`。
+
+iPad M6：真2selected、批次加入queue19→21、Cancel與九表全欄還原exact、queue除revision exact229→232、prefs僅Store timestamp changed。播放所選兩次未觀察播放器變更，保留UNKNOWN；不PASS或產品FAIL。selectedTwoScreen沒有localPNG，選取由XML直接綁定。worker實際沿用Chrome1/tab903829336原ASC頁改HTTP8766，非原IAB；如實記deviation。封存54payload manifest SHA 56f7660c117388abac82bdd99ed211be4ddeb41242e58a84c7092f8ff03f55b2，parent逐檔讀回。
+
+Mac真匯入另重現Apple itsk/trkn與itsk/disk曲／碟序205全nil，已共享exact classifier最小修正Parser／Scanner，拒不相干key；before parser/scanner exit1，after parser/scanner/focus exit0。fixture scanner需CMV_SORT_FIXTURE_ROOT，無env會XCTSkip，未偽稱一般CI自動覆蓋。修復封存27payload manifest SHA 407354111b7ca2a13799d91b4a6f41c42fff4807f4b0e280b82271439f2adf1f，兩檔精準delta SHA 7c524055ed38dd576f0e9d2daaf3844357f6a07ea7eed21fff4c57b58bff316f。source已變，舊Distribution退為前候選資格證據；修正版Development与Distribution由Luna另建，未安裝／未upload／未submit。Gemini白月光三語草稿與ASC33欄exact已完成，未重寫。
+
+本次只更新Next與append-only evidence，不跳任務狀態、不動RT4/S01/S02舊封存；full council budgets尚未核准，未dispatch。
+
+## 2026-10-08T10:05:07.629309+08:00 修正版正式成品完成／Mac真匯入回歸
+
+Parser/Scanner兩production改動後已重新建立Mac universal/iPad arm64 Development與Distribution。主代理實際核95before/after/current exact、四Distribution qualification/strict codesign exit0、profiles get-task-allow false或absent/devices absent/allDevices false、signed與profileidentifier exact、binary/dSYM UUID exact，MacPKG signature exit0。新MacPKG18,257,143bytes SHA dd8e48f832d5fff33c12828b765004e60a7cb61ed701459d5078c677fc1b29a5；新iPadIPA14,790,512bytes SHA19cedc64f1b6067fae6b940f1543c470ab2ec55df592fca1456e8aa622345ffb。primary封存140payload manifestSHA14a151a979b677a4dba684ffa0d47e6c93b791c7ab8530f1aee2cb84989020f2。Archive目錄逐檔manifest綁定，不用directory假SHA；重新簽署後archive與出口binary SHA各別列，UUID一致。
+
+Mac同路徑Desktop/CMV.app覆蓋新Development SHAa41fbc5e5938dd15aa9fb7b29082033fc5336d8b56402847de490e8385c867c0，staged source95 exact。GUI重新匯入205合法小檔，production持久化title/artist/album/albumArtist/track/disc/genre/date/mtime各205exact，SongInfo T200直接顯示曲200／碟3；未播放私人。六檔停機原子還原byte exact，launch後九表schema/全欄rows exact、queue非revision exact301→304、prefs僅SKTransactionUpdatesLastChecked changed；可見1971首paused0:00／6:25。runtime封存13payload manifestSHA55d5720af444cf564557df9d8badf9f9691d77f94d5ea665bbbdab327dd4c130。重用restore腳本的raw scope仍寫Mac sort，另GUI收據註明本輪metadata-fixed baseline correction，不回寫舊封存。
+
+iPad最新Development SHA d016cdc5f8046fddd313ec2e6c5899ce4afd4d096e7da13b42c7573ffb55cbb5已親核本機qualification/codesign/dSYM；同ID覆蓋與實際GUI/還原交由Luna sole operator正在進行，未宣稱已安裝binary direct SHA讀回或runtime PASS。原IABbrowser2/tab2 fresh返回CMV正常，黑畫面是前景狀態回復後消失，device passcodeRequired=false；沒有重启WDA/relay。iPad前一輪Play所選UNKNOWN維持。
+
+三次Development recipe失敗由manual/Xcode-managed profile、cwd、identity衝突診斷後修正，raw保留，未建立/撤銷任何簽章資產。已核本次完成的DerivedData/Swift before-after scratch無activebuildworker後回收2,642,312KiB，archives/出口/原始收據/active鏡像/必要runtime保留。完整原始stage和成品封存入口見Native/DISTRIBUTION_CHECKPOINT_20261008.md。不改任務狀態，不upload/submit/publish，未dispatch未核預算full council。
+
+## 2026-10-08T10:13:28.569089+08:00 最新完整成品封存親核
+
+修正版完整成品封存388檔／359,983,193bytes，manifest SHA5ceb3bd2cc6b2e18e6ade66654b53c3b239c514cd0f836b05b9f85f80f98710a；parent逐檔SHA/bytes讀回mismatches=[]。新closeout-review-packet-20261008.md只整理來源/收據/既有接受與未驗scope，不是正式critic結果。Native/DISTRIBUTION_CHECKPOINT_20261008.md已更新封存入口；iPad最新runtime仍由Luna獨占續驗，未轉Done、未上傳/送審。scratch回收數為完成目錄du配置大小2,642,312KiB；清後df available16,792,656KiB（約17.2GB），不稱恢復原人類回報30GB。
+
+## 2026-10-08T10:21:45.614885+08:00 iPad新版安裝與還原親核／provider續驗
+
+iPad2.0(1) install與launch success，安裝URL／程序URL綁定exact；staged executable d016cdc5…bb5不是device binary直接SHA。父代理原始資料重核9tables schema／全部cols rows exact、integrity ok、queue非revision exact232→235、prefs僅SKTransactionUpdatesLastChecked。205生產匯入UNKNOWN_TOOL_LIMITED、PlaySelectedUNKNOWN。cleanup CLI實際error7000，最後Documents0不能改稱刪除成功。已改由既有測試iCloudprovider的owned folder正常Files續驗，206檔1,092,932bytes（其中205AAC770,213bytes）；不改App source、不重測PiP／聽感／排除項。Mac另一唯一operator補mixed EOF。runtime29與guard2payload父代理SHA讀回0mismatch；正式council四預算已問、未有核准不dispatch；未轉Done或上傳／送審。
+
+## 2026-10-08T11:00:56.321093+08:00 本次實測完成／正式評論凍結
+
+Mac與iPad最新Development真匯入205，九metadata欄位各205 exact；iPad正常iCloud立即下載後成功，latest source掃描時間非null，完整9表／queue／prefs父代理親核已還原。其他進階欄位／批次矩陣仍待驗。 Mac排序四欄八方向可見頭尾／200-201 PASS_SCOPED；iPad最新真2selected後指標點播放所選→僅owned T001/T002 queue、T001播放、raw index1；資料完整還原。完整歌單／移出等矩陣仍待驗，第二首獨立播放frame UNKNOWN。 Mac最新exact3-owned隔離queue起index0後index2/history3、Cobalt最後EOF paused，支持scoped traversal；未捕捉Amber/MOV獨立EOF或gapless音訊，不假完整12sec影片PASS。9表／queue／prefs還原已親核；iPad完整queue矩陣待驗。 正式評論已獲30k/7500tokens、32/8tools、45min含delta上限；實測已收束，資料已還原，未轉Done／未上傳或送審。
+
+## 2026-10-08T11:07:58.571846+08:00 正式評論因預算中止
+
+快照CACC-AERO-RC4-f7a87f105f85維持不可變。首兩席自報17／18工具，至少35超每席8／總32；已停止後續工具與dispatch。共同report路徑誤寫造成journey payload被UX覆寫，僅保留其delivery摘要；UX現存draft已逐檔封存。第三failurecritic／獨立arbiter未執行，不能宣稱Full Council PASS；native契約驗證未通過，完整診斷已保存。最新產品實測／完整restore證據仍有效，所列unknown不是產品缺陷；未轉Done、未上傳／送審。封存completion-council-interrupted-01，續審不得重置原預算，需新明確授權。
+
+## 2026-10-08T11:37:40.309381+08:00 iPad queue實測／末項影片修復
+
+iPad同metadata-fixed Development使用5首合法自有素材。暫停時future Silver移到最前、移除Violet、追加重複Cobalt並移除指定occurrence、shuffle關閉回原4首順序及冷啟動保留均有GUI觀測與持久化讀回；重啟時間回0且paused，不稱保存0:10。播放中future移除撞自然EOF，保留UNKNOWN方法限制。末項12秒MOV播放到0:10後EOF，實際queue entries/base/history全0，確認產品缺陷。測後9表schema／全欄rows exact、queue除revision235→238 exact、prefs全keys exact已親核；未播放私人曲目。
+
+AppModel末項video分支改pause保留item／route／leases，明確stop仍clear。VideoPlaybackSession在EOF後play先seek0；重播實機尚待。新回歸原初snapshot準備不足不算行為重現；準備修正後1test實際失敗16assertions，兩個manualSkip分支均清queue。修後3焦點test passed、0failed／0skipped，包括explicit stop與terminal audio。新iPad Development正以asc-xcode-build既有簽章重建，未安裝、未upload；前候選出口不含這次兩source變更。
+
+封存`.cmv-local-evidence/2026-10-08-task-zero/terminal-video-queue-fix-01/`，27payload manifest SHA ba48fb57b9203b1fee282159a0c9dce9aef9a99140b42c3cc8ade75983e0a818，Root逐檔bytes/SHA0mismatch。正式評論仍預算中止，不重置／續派；未轉Done。
+
+## 2026-10-08T11:44:37.082261+08:00 修復版iPad EOF／重播實機完成
+
+asc xcode archive actual0，2.0(1)同bundle com.windsheep.cmv覆蓋安裝／launch success，staged strict codesign0。95production來源在建置中取樣及完成後exact；不是起跑前取樣，前述口頭「前後」應以此精確收據scope解讀。staged binary SHA見build-binding，不冒device直接hash。正常provider匯入6首自有來源available；只選owned12secMOV播放，GUI naturalEOF paused0:12/0:12且queue1保留。按play回0:00再前進0:07，snapshot start／EOF／replay同occurrence及index0 exact。單一影片PASS_SCOPED，不代替新版混合route／播放中mutation／gapless。
+
+測後原9tables schema／全cols rows exact、integrity ok、queue非revision238→241 exact、prefs全keys exact，GUI回19首原曲paused0:00/5:50。封存terminal-video-ipad-runtime-01，34payload／manifest SHA1d1a4e4a96b5f165565af8c3fbe643fe555e09942f7c0230182e1493aeb9f377，親核SHA/bytes0mismatch；包含新iPad Development archive、sanitized觀測與還原收據，不含私人DB／prefs。Mac Development與雙平台Distribution正在另建；舊成品留歷史，未upload／submit／critic續派或Done。

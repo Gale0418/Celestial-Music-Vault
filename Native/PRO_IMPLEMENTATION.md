@@ -1,6 +1,6 @@
 # CMV Pro 實作與驗收紀錄
 
-日期：2026-09-08；任務：AERO-MON30（In Progress）。
+原始實作：2026-09-08；最新技術結案：2026-10-04；任務：AERO-MON30（Done）。
 
 這份紀錄描述可編譯的施工切片與 2026-09-26 的商店設定，不是 App Store 已可販售的聲明。
 正式商品已建立、商務協議已核對且審核截圖已上傳，但沙盒驗收仍待完成；上市全文仍以
@@ -107,3 +107,19 @@ conversation `c7905386-ec4f-4fdb-a2f4-bfc450b4e0af`，沒有工具寫入。
   並核對購買與恢復按鈕。正式 Sandbox、已購離線冷啟動與完整無障礙矩陣仍未完成。
 - 未向 CodeRabbit 上傳本次程式；使用獨立 Luna 審查，不能稱為 CodeRabbit 通過。
   首輪確認的舊購買結果蓋掉退款競態已修正並加回歸測試；Luna 複查判定 resolved，未發現新的明顯高影響錯誤。
+
+## 2026-10-04 Pro 焦點補驗更新
+
+目前 Mac 與實體 iPad StoreKitTest 各 **17 PASS／0 FAIL／0 skip**，每項有實際 xcresult 計數；歷史 pending FAIL 保留為原始結果，其「production listener 故障」推論已由 test-only 傳播等待與 raw 對照修正。正式授權／監聽行為未變。Mac 真實 Apple Sandbox 既有正式 SKU：交易環境直接讀為 sandbox，權益／恢復／fresh ProStore／商品價格通過（1 PASS）；iPad 最新真Sandbox與還原均完成，見文末；歷史受阻與失敗收據保留。
+
+網路故障為注入錯誤，fresh ProStore 不等於實體斷網冷啟動；本輪未操作真實新購或退款。完整 App、Distribution 與無障礙 gates 仍各自保留。詳見 [SELLABLE_QUALITY.md](SELLABLE_QUALITY.md) 的目前結果與私有收據定位。
+
+### 最新 iPad Sandbox 補驗結果（目前）
+
+使用者在裝置本人完成 Apple 帳號驗證後，私人 v2 probe 的正式 SKU smoke **1 PASS／0 FAIL／0 skip**：direct transaction environment Sandbox、商品價格、既有 Pro、AppStore.sync 恢復成功與 fresh Store 均通過。先前1 FAIL與等待密碼的截圖保存為歷史證據，不混算最新PASS，不宣稱為ProStore程式缺陷。兩平台17例本機交易＋各1例真Sandbox，最新共 **36 PASS／0 FAIL／0 skip**。
+
+原 iPad App 同ID還原、launch通過；production 25 entries／25 base、history5、index13整份queue JSON一致。先前1-entry revision88為另一組QA中途狀態，另一任務已還原原始25首，並有device回讀receipt，不將其誤判為install資料遺失或写回覆蓋。DB與pinned檔未變，StoreKit內部cursor可正常更新；本輪自建QA App已移除。裝置已以共享工作區handoff交接其他QA，本輪Pro不再操作它。
+
+正式 critic_full 已完成：3位Luna＋獨立仲裁，converge passed／findings=[]，四份報告與來源雜湊核對、contract validator及CompletionPassport通過；AERO-PQ38／MON30已由原生transition轉Done。網路故障為注入、fresh Store不等於實體斷網冷啟動；真實新購／退款未操作。完整Distribution與整體App gates仍各自保留，不包裝成已上架。
+
+Pro 技術結案的完整範圍與結果見 [PRO_RELIABILITY_REPORT.md](PRO_RELIABILITY_REPORT.md)；整體App Store readiness依原gate追蹤。

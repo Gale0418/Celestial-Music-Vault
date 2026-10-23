@@ -19,6 +19,17 @@ private func cmvLocalizedFormat(_ key: String, arguments: CVarArg...) -> String 
     )
 }
 
+private struct CMVRootViewportKey: EnvironmentKey {
+    static let defaultValue: CGRect? = nil
+}
+
+extension EnvironmentValues {
+    var cmvRootViewport: CGRect? {
+        get { self[CMVRootViewportKey.self] }
+        set { self[CMVRootViewportKey.self] = newValue }
+    }
+}
+
 struct CelestialBackground: View {
     var starSeedOffset = 0
     var showsLabels = true
@@ -29,6 +40,7 @@ struct CelestialBackground: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.cmvRootViewport) private var rootViewport
     @State private var skyElapsed: TimeInterval = 0
     @State private var skyAnchor: TimeInterval?
     @State private var planisphereDate = Date.now
@@ -48,27 +60,48 @@ struct CelestialBackground: View {
 
     private var celestialSky: some View {
         GeometryReader { geometry in
+        let localFrame = geometry.frame(in: .global)
+        // Side panels change the page width, not the camera. Keep the original
+        // page height so the playback bar does not alter the reference crop.
+        let renderFrame = fixedRootViewport.map {
+            CGRect(x: $0.minX, y: localFrame.minY,
+                   width: $0.width, height: localFrame.height)
+        } ?? localFrame
+        let renderSize = renderFrame.size
+        let rootOffset = CGSize(width: renderFrame.minX - localFrame.minX,
+                                height: renderFrame.minY - localFrame.minY)
+        let rootAlignment: Alignment = fixedRootViewport == nil ? .center : .topLeading
         let overscan: CGFloat = theme.id == .titaniumEclipse ? 64 : 12
-        let portraitShift = backgroundPortraitShift(for: geometry.size)
+        let cameraOffset = CGSize(
+            width: rootOffset.width - (fixedRootViewport == nil ? 0 : overscan / 2),
+            height: rootOffset.height - (fixedRootViewport == nil ? 0 : overscan / 2)
+        )
+        // The fixed root viewport already preserves the shader's right-side
+        // world composition in portrait. Reapplying the local crop shift would
+        // pull Saturn into the left edge and enlarge the content unnecessarily.
+        let portraitShift = fixedRootViewport == nil
+            ? backgroundPortraitShift(for: renderSize)
+            : 0
         // The leftward portrait crop must keep artwork behind the full viewport.
         // Widen both the image and Canvas so the shifted right edge never reveals
         // the view below; their shared size preserves the ring/atmosphere map.
-        let contentSize = CGSize(width: geometry.size.width + overscan + 2 * abs(portraitShift),
-                                 height: geometry.size.height + overscan)
-        ZStack {
+        let contentSize = CGSize(width: renderSize.width + overscan + 2 * abs(portraitShift),
+                                 height: renderSize.height + overscan)
+        ZStack(alignment: rootAlignment) {
         if theme.id == .titaniumEclipse && !reduceTransparency {
             // Keep the galaxy outside the display-clock graph. Its depth changes
             // only with deliberate device movement, independently of the planet.
             Image("SkyMilkyWayDepth")
                 .resizable()
                 .scaledToFill()
-                .frame(width: geometry.size.width + overscan, height: geometry.size.height + overscan)
+                .frame(width: renderSize.width + overscan, height: renderSize.height + overscan)
                 .clipped()
                 .overlay {
                     LinearGradient(colors: [.black.opacity(0.24), .clear, .black.opacity(0.35)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 }
                 .celestialParallax(.distantBackground, enabled: backgroundParallaxEnabled)
+                .offset(x: cameraOffset.width, y: cameraOffset.height)
         }
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldAnimate)) { timeline in
             let now = timeline.date.timeIntervalSinceReferenceDate
@@ -118,11 +151,13 @@ struct CelestialBackground: View {
         }
         .isolatedAnimationSurface()
         .frame(width: contentSize.width, height: contentSize.height)
-        .offset(x: portraitShift)
+        .offset(x: portraitShift + cameraOffset.width, y: cameraOffset.height)
         .celestialParallax(.background, enabled: backgroundParallaxEnabled)
-        .frame(width: geometry.size.width, height: geometry.size.height)
+        .frame(width: geometry.size.width,
+               height: geometry.size.height,
+               alignment: rootAlignment)
         }
-        .frame(width: geometry.size.width, height: geometry.size.height)
+        .frame(width: geometry.size.width, height: geometry.size.height, alignment: rootAlignment)
         .clipped()
         }
         .ignoresSafeArea()
@@ -143,10 +178,19 @@ struct CelestialBackground: View {
         }
     }
 
+    private var fixedRootViewport: CGRect? {
+        guard theme.id == .titaniumEclipse,
+              !reduceTransparency,
+              let rootViewport,
+              rootViewport.width > 0,
+              rootViewport.height > 0 else { return nil }
+        return rootViewport
+    }
+
     private var backgroundAssetName: String {
         switch theme.id {
         case .crimsonNebula: "SkyCrimsonNebula"
-        case .titaniumEclipse: "SkySaturnOrbit"
+        case .titaniumEclipse: "SkyMilkyWayDepth"
         case .emeraldAurora: "SkyEmeraldAurora"
         case .amberDawn: "SkyAmberDawn"
         }

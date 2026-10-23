@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CMVDomain
 import CMVThemes
 
 /// Bound only accessibility-sized toolbar glyphs; preserve the normal layout.
@@ -25,7 +26,7 @@ struct PlayerBar: View {
     var body: some View {
         let _ = appLanguage
         let _ = appModel.playbackControlsRevision
-        VStack(spacing: 6) {
+        VStack(spacing: 2) {
             ViewThatFits(in: .horizontal) {
                 fullLayout.frame(minWidth: 920)
                 compactLayout
@@ -35,7 +36,8 @@ struct PlayerBar: View {
                     .frame(maxWidth: 960)
             }
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
         .background {
             Group {
                 if theme.isStorybook {
@@ -43,6 +45,7 @@ struct PlayerBar: View {
                 } else {
                     Rectangle()
                         .fill(reduceTransparency ? AnyShapeStyle(theme.background) : AnyShapeStyle(.ultraThinMaterial))
+                        .opacity(reduceTransparency ? 1 : 0.78)
                         .celestialParallax(.interface, enabled: theme.id == .titaniumEclipse)
                         .clipped()
                 }
@@ -88,6 +91,7 @@ struct PlayerBar: View {
                                     : AppLanguage.localized("已關閉"))
             SleepTimerMenu()
             Spacer()
+            AudioEffectsButton()
             Slider(value: Binding(get: { Double(appModel.currentOutputVolume) }, set: { appModel.setCurrentMediaVolume(Float($0)) }), in: 0...1)
                 .frame(minWidth: 120, maxWidth: 220)
                 .accessibilityLabel(AppLanguage.localized("音量"))
@@ -119,6 +123,7 @@ struct PlayerBar: View {
             .disabled(!appModel.canShuffleQueue && !appModel.canAdjustQueueOrder)
             .accessibilityHint(AppLanguage.localized("調整隨機與重複播放"))
             SleepTimerMenu()
+            AudioEffectsButton()
         }
     }
 
@@ -145,14 +150,14 @@ struct PlayerBar: View {
                 Circle().fill(theme.secondary)
                 Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal)
             }
-            .frame(width: 52, height: 52)
+            .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 3) {
                 MarqueeText(text: current?.title ?? AppLanguage.localized("尚未播放"))
                     .font(.headline)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 MarqueeText(text: current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.mutedText)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -163,6 +168,7 @@ struct PlayerBar: View {
         HStack(spacing: 4) {
             Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") { appModel.skipCurrentMediaBackward(context: modelContext) }
                 .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
+                .accessibilityLabel(AppLanguage.localized("上一首"))
                 .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
             Button(appModel.isCurrentMediaPlaying
                    ? AppLanguage.localized("暫停")
@@ -173,11 +179,15 @@ struct PlayerBar: View {
             .labelStyle(.iconOnly).modifier(PlaybackIconSize())
             .buttonStyle(.borderedProminent)
             .frame(width: 44, height: 44)
+            .accessibilityLabel(appModel.isCurrentMediaPlaying
+                                ? AppLanguage.localized("暫停")
+                                : AppLanguage.localized("播放"))
             .accessibilityHint(appModel.videoURL == nil
                                ? AppLanguage.localized("播放目前曲目")
                                : AppLanguage.localized("播放或暫停目前影片"))
             Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
                 .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
+                .accessibilityLabel(AppLanguage.localized("下一首"))
                 .disabled(appModel.videoURL != nil &&
                           !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
@@ -226,60 +236,25 @@ struct MiniPlayerBar: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.cmvTheme) private var theme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     var onExpand: () -> Void = {}
 
     var body: some View {
         let _ = appLanguage
         let current = appModel.currentTrack
-        HStack(spacing: 12) {
-            Button(action: onExpand) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 12) {
-                        ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal) }
-                            .frame(width: 42, height: 42)
-                        VStack(alignment: .leading, spacing: 2) {
-                            MarqueeText(text: current?.title ?? AppLanguage.localized("尚未播放"))
-                                .font(.headline)
-                                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                            MarqueeText(text: current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                        }
-                        Spacer(minLength: 0)
-                    }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 8) {
+                    miniPlayerSummary(current: current)
+                    miniPlayerControls
+                }
+            } else {
+                HStack(spacing: 12) {
+                    miniPlayerSummary(current: current)
+                    miniPlayerControls
                 }
             }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .contentShape(Rectangle())
-            .accessibilityHint(AppLanguage.localized("展開完整播放控制"))
-            Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") {
-                appModel.skipCurrentMediaBackward(context: modelContext)
-            }
-            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
-            .frame(width: 44, height: 44)
-            .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
-            Button(appModel.isCurrentMediaPlaying
-                   ? AppLanguage.localized("暫停")
-                   : AppLanguage.localized("播放"),
-                   systemImage: appModel.isCurrentMediaPlaying ? "pause.fill" : "play.fill") {
-                appModel.toggleCurrentMediaPlayback(context: modelContext)
-            }
-            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
-            .frame(width: 44, height: 44)
-            .accessibilityLabel(appModel.isCurrentMediaPlaying
-                                ? AppLanguage.localized("暫停")
-                                : AppLanguage.localized("播放"))
-            .accessibilityHint(appModel.videoURL == nil
-                               ? AppLanguage.localized("播放目前曲目")
-                               : AppLanguage.localized("播放或暫停目前影片"))
-            Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
-                .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
-                .accessibilityLabel(AppLanguage.localized("下一首"))
-                .disabled(appModel.videoURL != nil &&
-                          !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background {
@@ -305,6 +280,73 @@ struct MiniPlayerBar: View {
             }
         }
         .tint(theme.primary)
+    }
+
+    @ViewBuilder
+    private func miniPlayerSummary(current: Track?) -> some View {
+        Button(action: onExpand) {
+            HStack(spacing: 12) {
+                ZStack { Circle().fill(theme.secondary); Image(systemName: "cloud.moon.fill").modifier(PlaybackIconSize(points: 20)).foregroundStyle(theme.metal) }
+                    .frame(width: 42, height: 42)
+                VStack(alignment: .leading, spacing: 2) {
+                    miniPlayerLabel(current?.title ?? AppLanguage.localized("尚未播放"), font: .headline)
+                    miniPlayerLabel(current.map { AppLanguage.localizedArtist($0.artist) } ?? AppLanguage.localized("選擇歌曲開始聆聽"), font: .caption)
+                        .foregroundStyle(theme.mutedText)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityHint(AppLanguage.localized("展開完整播放控制"))
+    }
+
+    @ViewBuilder
+    private var miniPlayerControls: some View {
+        HStack(spacing: 4) {
+            AudioEffectsButton()
+            Button(AppLanguage.localized("上一首"), systemImage: "backward.fill") {
+                appModel.skipCurrentMediaBackward(context: modelContext)
+            }
+            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
+            .accessibilityLabel(AppLanguage.localized("上一首"))
+            .frame(width: 44, height: 44)
+            .disabled(appModel.videoURL != nil && !appModel.canSkipVideoBackward)
+            Button(appModel.isCurrentMediaPlaying
+                   ? AppLanguage.localized("暫停")
+                   : AppLanguage.localized("播放"),
+                   systemImage: appModel.isCurrentMediaPlaying ? "pause.fill" : "play.fill") {
+                appModel.toggleCurrentMediaPlayback(context: modelContext)
+            }
+            .labelStyle(.iconOnly).modifier(PlaybackIconSize())
+            .frame(width: 44, height: 44)
+            .accessibilityLabel(appModel.isCurrentMediaPlaying
+                                ? AppLanguage.localized("暫停")
+                                : AppLanguage.localized("播放"))
+            .accessibilityHint(appModel.videoURL == nil
+                               ? AppLanguage.localized("播放目前曲目")
+                               : AppLanguage.localized("播放或暫停目前影片"))
+            Button(AppLanguage.localized("下一首"), systemImage: "forward.fill") { appModel.skipCurrentMediaForward(context: modelContext) }
+                .labelStyle(.iconOnly).modifier(PlaybackIconSize()).frame(width: 44, height: 44)
+                .accessibilityLabel(AppLanguage.localized("下一首"))
+                .disabled(appModel.videoURL != nil &&
+                          !(appModel.canSkipVideoForward || appModel.canContinueLibraryPlayback))
+        }
+    }
+
+    @ViewBuilder
+    private func miniPlayerLabel(_ text: String, font: Font) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Text(text)
+                .font(font)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(Text(verbatim: text))
+        } else {
+            MarqueeText(text: text)
+                .font(font)
+        }
     }
 }
 #endif

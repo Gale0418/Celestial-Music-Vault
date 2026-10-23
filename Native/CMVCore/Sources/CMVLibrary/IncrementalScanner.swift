@@ -215,30 +215,88 @@ public actor IncrementalScanner {
         let formatMetadata = (try? await asset.load(.metadata)) ?? []
         let metadata = commonMetadata + formatMetadata
         var textValues: [String] = []
+        var authorAlbumArtistFallback: String?
+        var explicitAlbumArtist: String?
         for item in metadata {
             guard let value = try? await item.load(.stringValue), !value.isEmpty else { continue }
             textValues.append(value)
+            // Prefer AVFoundation's normalized common key when it is present.
+            // This covers iTunes/ISO/QuickTime aliases without depending on
+            // the container-specific identifier spelling.
+            switch item.commonKey {
+            case AVMetadataKey.commonKeyTitle:
+                result.title = value
+            case AVMetadataKey.commonKeyArtist:
+                result.artist = value
+            case AVMetadataKey.commonKeyAlbumName:
+                result.album = value
+            case AVMetadataKey.commonKeyAuthor:
+                authorAlbumArtistFallback = value
+            case AVMetadataKey.commonKeyCreationDate:
+                result.releaseDate = AudioMetadataParser.releaseDate(from: value) ?? result.releaseDate
+            default:
+                break
+            }
             switch item.identifier {
             case AVMetadataIdentifier.commonIdentifierTitle: result.title = value
             case AVMetadataIdentifier.commonIdentifierArtist: result.artist = value
             case AVMetadataIdentifier.commonIdentifierAlbumName: result.album = value
-            case AVMetadataIdentifier.commonIdentifierAuthor where result.albumArtist.isEmpty:
-                result.albumArtist = value
+            case AVMetadataIdentifier.commonIdentifierAuthor:
+                authorAlbumArtistFallback = value
             default: break
             }
             let identifier = item.identifier?.rawValue ?? ""
             let normalizedIdentifier = identifier.lowercased()
-            if normalizedIdentifier.contains("genre") {
+            // AVFoundation exposes iTunes/QuickTime tags through their format
+            // identifiers on these m4a/mov fixtures, rather than the common
+            // identifiers above. Keep these mappings exact: a broad
+            // `contains` match can mistake an unrelated metadata key for a
+            // genre or date.
+            switch normalizedIdentifier {
+            case AVMetadataIdentifier.iTunesMetadataSongName.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataTitle.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataDisplayName.rawValue.lowercased():
+                result.title = value
+            case AVMetadataIdentifier.iTunesMetadataArtist.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataArtist.rawValue.lowercased():
+                result.artist = value
+            case AVMetadataIdentifier.iTunesMetadataAlbum.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataAlbum.rawValue.lowercased():
+                result.album = value
+            case AVMetadataIdentifier.iTunesMetadataAlbumArtist.rawValue.lowercased(),
+                 AVMetadataIdentifier.id3MetadataBand.rawValue.lowercased():
+                explicitAlbumArtist = value
+            case AVMetadataIdentifier.iTunesMetadataAuthor.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataAuthor.rawValue.lowercased():
+                authorAlbumArtistFallback = value
+            case AVMetadataIdentifier.iTunesMetadataPredefinedGenre.rawValue.lowercased(),
+                 AVMetadataIdentifier.iTunesMetadataUserGenre.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataGenre.rawValue.lowercased(),
+                 AVMetadataIdentifier.id3MetadataContentType.rawValue.lowercased():
                 result.genre = value
-            } else if normalizedIdentifier.contains("releasedate") || normalizedIdentifier.contains("release_date") ||
-                        normalizedIdentifier.contains("creationdate") || normalizedIdentifier.contains("creation_date") {
+            case AVMetadataIdentifier.iTunesMetadataReleaseDate.rawValue.lowercased(),
+                 AVMetadataIdentifier.isoUserDataDate.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeMetadataCreationDate.rawValue.lowercased(),
+                 AVMetadataIdentifier.quickTimeUserDataCreationDate.rawValue.lowercased(),
+                 AVMetadataIdentifier.id3MetadataRecordingTime.rawValue.lowercased(),
+                 AVMetadataIdentifier.id3MetadataReleaseTime.rawValue.lowercased():
                 result.releaseDate = AudioMetadataParser.releaseDate(from: value) ?? result.releaseDate
+            default:
+                break
             }
-            if normalizedIdentifier.contains("track") {
+            switch AudioMetadataParser.integerTagKind(from: identifier) {
+            case .trackNumber:
                 result.trackNumber = AudioMetadataParser.integerTag(from: identifier, value: value) ?? result.trackNumber
-            } else if identifier.lowercased().contains("disc") {
+            case .discNumber:
                 result.discNumber = AudioMetadataParser.integerTag(from: identifier, value: value) ?? result.discNumber
+            case nil:
+                break
             }
+        }
+        if let explicitAlbumArtist, !explicitAlbumArtist.isEmpty {
+            result.albumArtist = explicitAlbumArtist
+        } else if let authorAlbumArtistFallback, !authorAlbumArtistFallback.isEmpty {
+            result.albumArtist = authorAlbumArtistFallback
         }
         result.replayGainDB = AudioMetadataParser.replayGainDB(from: textValues)
         if let artworkItem = metadata.first(where: { $0.identifier == AVMetadataIdentifier.commonIdentifierArtwork }),

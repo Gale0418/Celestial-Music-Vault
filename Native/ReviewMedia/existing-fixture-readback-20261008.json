@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "1.0",
+  "checkedAt": "2026-10-08T22:07:00.257320+08:00",
+  "locator": "iCloud Drive/Downloads/CMV-Validation-20261004/CMV-Queue-Owned-20261008",
+  "scope": "Existing canonical six fixtures; SHA read-back only; no generation, copy or upload.",
+  "records": [
+    {
+      "canonicalFile": "01-cobalt-echoes.wav",
+      "existingFile": "CMV-QA-01-cobalt-echoes.wav",
+      "bytes": 3528044,
+      "sha256": "96da3f07d7f89419a3b78c770863e25c4e262ac1e8bea030a755e353fd8ce0f0",
+      "matchesCanonicalManifest": true
+    },
+    {
+      "canonicalFile": "02-amber-circuit.wav",
+      "existingFile": "CMV-QA-02-amber-circuit.wav",
+      "bytes": 3351644,
+      "sha256": "b43fa0ebbadae98d00dd2af5016ab390f976e75d3481328bebf634ae9a17b7c7",
+      "matchesCanonicalManifest": true
+    },
+    {
+      "canonicalFile": "03-violet-tide.wav",
+      "existingFile": "CMV-QA-03-violet-tide.wav",
+      "bytes": 3704444,
+      "sha256": "dc4b3b5d1cfa511bd6d30b765bfe341762bf2c4cc83158b7c95231dc0581f001",
+      "matchesCanonicalManifest": true
+    },
+    {
+      "canonicalFile": "04-silver-orbit.wav",
+      "existingFile": "CMV-QA-04-silver-orbit.wav",
+      "bytes": 3175244,
+      "sha256": "825775d8a808510dd0e935d67c9afdd85e43c07cc208f592b858764ffabc9377",
+      "matchesCanonicalManifest": true
+    },
+    {
+      "canonicalFile": "eof-pip-fixture.mov",
+      "existingFile": "CMV-QA-eof-pip-fixture.mov",
+      "bytes": 902362,
+      "sha256": "284956fd8bfe7e0d0bf2555cf7ff793ea6a42bd4c26db8c5ed394b99f44389fa",
+      "matchesCanonicalManifest": true
+    },
+    {
+      "canonicalFile": "review-cover.png",
+      "existingFile": "CMV-QA-review-cover.png",
+      "bytes": 357158,
+      "sha256": "e253b655cf86b353718077e633d8c9feb660e57058b854feec3ef8bb27e212ae",
+      "matchesCanonicalManifest": true
+    }
+  ],
+  "currentGenerator": {
+    "repoPath": "Native/ReviewMedia/generate-review-media.swift",
+    "sha256": "e42197124a80263964f7694bdcb9660f2ddc637b9db9ce9232578ee1dc782bca",
+    "scope": "Source fingerprint at current verification; original generation revision was not pinned by the historical manifest."
+  },
+  "excluded": [
+    "CMV-QA-00-long-cobalt.wav"
+  ],
+  "screenshotsAndPreviews": "NOT_CAPTURED"
+}

@@ -326,7 +326,7 @@ enum PlanisphereRenderer {
             drawDot(in: &context, point: point, radius: 1.1,
                     color: theme.starSecondary.opacity(0.42))
             if showsLabels {
-                drawLabel(name, in: &context, at: CGPoint(x: point.x, y: point.y + 6),
+                drawLabel(AppLanguage.localized(name), in: &context, at: CGPoint(x: point.x, y: point.y + 6),
                           color: theme.starSecondary.opacity(0.38), anchor: .top)
             }
         }
@@ -363,7 +363,7 @@ enum PlanisphereRenderer {
             drawDot(in: &context, point: point, radius: radius,
                     color: theme.starPrimary.opacity(opacity))
             if showsLabels, let name = star.name {
-                drawLabel(name, in: &context, at: CGPoint(x: point.x + 5, y: point.y),
+                drawLabel(AppLanguage.localized(name), in: &context, at: CGPoint(x: point.x + 5, y: point.y),
                           color: theme.starPrimary.opacity(0.32), anchor: .leading)
             }
         }
@@ -388,7 +388,7 @@ enum PlanisphereRenderer {
             ) else { continue }
             drawPlanetIcon(in: &context, at: point, index: index)
             if showsLabels {
-                drawLabel(planet.name, in: &context, at: CGPoint(x: point.x + 10, y: point.y),
+                drawLabel(AppLanguage.localized(planet.name), in: &context, at: CGPoint(x: point.x + 10, y: point.y),
                           color: theme.metal.opacity(0.70), anchor: .leading)
             }
         }

@@ -2,12 +2,17 @@
 
 - 產生日期：2026-09-27（Asia/Taipei）
 - 產生工具：本次 Codex 工作階段的 OpenAI imagegen
-- 歷史素材：`SkySaturnOrbit`；目前 Pro 土星改由下述原創程序球面／星環渲染，不再顯示這張靜態大氣圖。
+- 歷史素材：`SkySaturnOrbit`；2026-10-07 退休，主 App 不再打包；目前 Pro 土星改由下述原創程序球面／星環渲染，不再顯示這張靜態大氣圖。
 - 原始輸出：1586 × 992 PNG，SHA-256 `511857e813ba2c7d6f2193c1aff58e91d1003bc64c63c7123fd5da9ee4841476`
 - 交付轉碼：HEIC，品質參數 82，SHA-256 `a32853ab3e45283ed48638a8132b271586de2625c73bf96268e890e57e5854c3`
 - 輸入參考：先以純文字要求原創土星背景，再兩次編修同一次生成的草稿；最後一版依使用者指出的環面角度，要求星環長軸與大氣雲帶投影方向平行。未上傳或直接改作 NASA 影像。
 - 視覺要求：右側巨大半顆土星、與大氣條帶方向一致的斜向赤道星環、左側深色文字空間、無字樣、標誌及點狀星星。
 - 科學參考：[NASA Saturn's Atmosphere and Rings](https://science.nasa.gov/photojournal/saturns-atmosphere-and-rings/)；僅參考土星大氣與環的形態，未將照片作為輸入或複製到產物。
+
+## 2026-10-07 退休素材註記
+
+`SkySaturnOrbit.imageset` 於 2026-10-07 退休；保留本檔完整生成歷史、原始輸出 SHA 與交付 HEIC SHA。主 App 不再打包此靜態天空素材。可恢復備份位於 repo 相對路徑 `.cmv-local-evidence/2026-10-04-remaining-validation/unused-background-cleanup-20261007/removed-assets/Native/CMV/CMV/Assets.xcassets/`；交付 HEIC SHA 為 `a32853ab3e45283ed48638a8132b271586de2625c73bf96268e890e57e5854c3`。`SkyMilkyWayDepth` 與 `SaturnCloudMap` 仍是現行 Pro 背景路徑，不在本次退休範圍。
+
 - 條款參考：[OpenAI Terms of Use](https://openai.com/policies/terms-of-use/) 的內容權利章節；產生內容的相似性與最終發布適切性仍由發布者檢查。
 
 這份紀錄說明素材來源，不宣稱 NASA 核可或背書，也不代替上架前的整體素材權利審核。

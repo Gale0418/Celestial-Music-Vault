@@ -28,13 +28,14 @@ release gates remain in `MissionCenter/tasks.md`.
 6. Analyze BPM, key, loudness, and acoustic features entirely on device; create an explainable Smart DJ queue while offline.
 7. Pin selected media for guaranteed offline use and maintain a separate budgeted smart cache.
 8. Play video naturally on each platform: a draggable AVPlayerView utility window on Mac and full-screen AVPlayerViewController with PiP on iPad.
+9. Adjust music with an optional equalizer, eight sound scenes and custom reverb, delay, bass, filter, stereo width and distortion. Start with original sound, preserve settings locally, and keep video audio on its existing direct path. Orbit is a stereo sweep rather than a claim of 3D spatial audio.
 
 ## Product truths and constraints
 
 - The user connects a NAS in Finder or the Files app first. CMV never implements SMB login and never stores NAS credentials.
 - Persist access with security-scoped bookmarks. A temporarily unavailable source is not deletion.
 - Pinned media lives in Application Support and is never evicted by LRU. Smart cache lives in Caches, defaults to 10 GB, and may evict only unpinned content.
-- The legacy Electron app and its data stay untouched until the native release passes acceptance. No legacy migration is provided.
+- The legacy Electron／React／Node source and packaging flow are retired under the user's explicit 2026-10-04 decision. Existing user media and library data remain untouched; legacy source is recoverable from Git history. No legacy migration is provided, and retirement does not imply native App Store acceptance.
 - Apple first-party application frameworks remain the only UI, media, persistence,
   sandbox, and platform-integration dependencies. An in-repository Rust static
   library may implement deterministic, platform-neutral core logic behind a
@@ -63,7 +64,7 @@ Pro 的價值在於智慧離線快取與批次釘選、進階曲庫整理與批�
 
 ## Information architecture
 
-- **Mac:** NavigationSplitView with listening, songs, albums, artists, playlists, favorites, and settings in the sidebar; content in the center; a collapsible queue/details inspector; compact bottom transport.
+- **Mac:** Native SwiftUI columns with independently collapsible sidebar and queue/details inspector; listening, songs, albums, artists, playlists, favorites, and settings in the sidebar; content in the center; compact bottom transport.
 - **iPad landscape:** Adaptive two- or three-column library with keyboard, pointer, and Stage Manager support.
 - **iPad portrait and narrow split:** Bottom tabs plus NavigationStack, with a mini-player pinned above the safe area and an expandable Now Playing surface.
 - “加入音樂來源” is the canonical acquisition language. Mac may also accept a folder drop; iPad uses the system folder picker.

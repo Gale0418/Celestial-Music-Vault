@@ -99,6 +99,7 @@ private final class QueuePanelSnapshot {
 }
 
 struct PerformantQueueView: View {
+    @AppStorage(AppLanguage.preferenceKey) private var appLanguage = "system"
     var expanded = false
     @Environment(AppModel.self) private var appModel
     @Environment(\.modelContext) private var context
@@ -116,6 +117,7 @@ struct PerformantQueueView: View {
     }
 
     var body: some View {
+        let _ = appLanguage
         let tracks = snapshot.tracks
         let isSearching = expanded && !search.isEmpty
         let searchIsCurrent = filteredRevision == snapshot.revision && filteredQuery == search
@@ -126,18 +128,19 @@ struct PerformantQueueView: View {
                         .font(.title2.bold())
                     if expanded {
                         Text(cmvLocalizedFormat("與接下來播放同步 · %lld 首", arguments: Int64(tracks.count)))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(theme.mutedText)
                     }
                 }
                 Spacer()
                 Button(AppLanguage.localized("清除")) { appModel.clearPlaybackQueue() }
+                    .accessibilityLabel(AppLanguage.localized("清除"))
                     .disabled(tracks.isEmpty)
             }
 
             if expanded && !tracks.isEmpty {
                 HStack {
                     Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.mutedText)
                     TextField(AppLanguage.localized("搜尋歌曲、歌手或專輯"), text: $search)
                         .textFieldStyle(.plain)
                         .accessibilityLabel(AppLanguage.localized("搜尋歌曲、歌手或專輯"))
@@ -220,14 +223,14 @@ struct PerformantQueueView: View {
         VStack(spacing: 14) {
             Image(systemName: systemImage)
                 .font(.system(size: 40))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.mutedText)
                 .accessibilityHidden(true)
             Text(title)
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             Text(description)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .multilineTextAlignment(.center)
@@ -239,62 +242,23 @@ struct PerformantQueueView: View {
         let isCurrent = index == snapshot.currentIndex && track.id == snapshot.currentTrackID
         let durationSeconds = max(0, Int(track.duration))
         let durationLabel = "\(durationSeconds / 60):\(String(format: "%02d", durationSeconds % 60))"
-        return HStack(spacing: 12) {
-            Button { appModel.play(tracks: tracks, startingAt: index, context: context) } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle().fill(theme.secondary)
-                        Image(systemName: track.mediaKind == .video ? "film.fill" : "cloud.moon.fill")
-                            .foregroundStyle(theme.metal)
-                    }
-                    .frame(width: 44, height: 44)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        MarqueeText(text: track.title)
-                        MarqueeText(text: "\(AppLanguage.localizedArtist(track.artist)) · \(AppLanguage.localizedAlbum(track.album))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let status = statusText(for: track, isCurrent: isCurrent) {
-                            MarqueeText(text: status)
-                                .font(.caption2)
-                                .foregroundStyle(theme.metal)
-                        }
-                        if expanded {
-                            let mediaKind = AppLanguage.localized(track.mediaKind == .video ? "影片" : "音樂")
-                            Text(cmvLocalizedFormat("第 %lld 首 · %@ · %@",
-                                                   arguments: Int64(index + 1), mediaKind, durationLabel))
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer(minLength: 4)
-                }
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                queuePlayButton(track, index: index, tracks: tracks, isCurrent: isCurrent, durationLabel: durationLabel)
+                queueRowControls(track, index: index)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(cmvLocalizedFormat("播放 %@，%@",
-                                                   arguments: track.title, AppLanguage.localizedArtist(track.artist)))
-
-            QueueStarRatingControl(rating: appModel.rating(for: track), width: 100) { rating in
-                appModel.setRating(track, rating: rating, context: context)
-            }
-
-            if expanded && index > snapshot.currentIndex {
-                Menu {
-                    Button(AppLanguage.localized("移到最前"), systemImage: "arrow.up.to.line") {
-                        appModel.movePlaybackQueueItem(from: index, to: snapshot.currentIndex + 1, context: context)
-                    }
-                    Button(AppLanguage.localized("移除"), systemImage: "minus.circle", role: .destructive) {
-                        appModel.removePlaybackQueueItem(at: index, context: context)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                queuePlayButton(track, index: index, tracks: tracks, isCurrent: isCurrent, durationLabel: durationLabel)
+                HStack {
+                    Spacer(minLength: 0)
+                    queueRowControls(track, index: index)
                 }
-                .menuOrder(.fixed)
-                .accessibilityLabel(AppLanguage.localized("佇列曲目操作"))
             }
         }
         .frame(minHeight: 60)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(cmvLocalizedFormat("播放 %@，%@",
+                                               arguments: track.title, AppLanguage.localizedArtist(track.artist)))
         .padding(.vertical, 9)
         .padding(.horizontal, 10)
         .background(isCurrent
@@ -307,6 +271,66 @@ struct PerformantQueueView: View {
             if reduceTransparency && isCurrent {
                 RoundedRectangle(cornerRadius: 14).strokeBorder(theme.primary, lineWidth: 2)
             }
+        }
+    }
+
+    private func queuePlayButton(_ track: Track, index: Int, tracks: [Track], isCurrent: Bool, durationLabel: String) -> some View {
+        Button { appModel.play(tracks: tracks, startingAt: index, context: context) } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(theme.secondary)
+                    Image(systemName: track.mediaKind == .video ? "film.fill" : "cloud.moon.fill")
+                        .foregroundStyle(theme.metal)
+                }
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    MarqueeText(text: track.title)
+                    MarqueeText(text: "\(AppLanguage.localizedArtist(track.artist)) · \(AppLanguage.localizedAlbum(track.album))")
+                        .font(.caption)
+                        .foregroundStyle(theme.mutedText)
+                    if let status = statusText(for: track, isCurrent: isCurrent) {
+                        MarqueeText(text: status)
+                            .font(.caption2)
+                            .foregroundStyle(theme.metal)
+                    }
+                    if expanded {
+                        let mediaKind = AppLanguage.localized(track.mediaKind == .video ? "影片" : "音樂")
+                        Text(cmvLocalizedFormat("第 %lld 首 · %@ · %@",
+                                               arguments: Int64(index + 1), mediaKind, durationLabel))
+                            .font(.caption2).foregroundStyle(theme.mutedText)
+                    }
+                }
+                Spacer(minLength: 4)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(cmvLocalizedFormat("播放 %@，%@",
+                                               arguments: track.title, AppLanguage.localizedArtist(track.artist)))
+        .frame(minWidth: 164, maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func queueRowControls(_ track: Track, index: Int) -> some View {
+        QueueStarRatingControl(rating: appModel.rating(for: track), width: 100) { rating in
+            appModel.setRating(track, rating: rating, context: context)
+        }
+
+        if expanded && index > snapshot.currentIndex {
+            Menu {
+                Button(AppLanguage.localized("移到最前"), systemImage: "arrow.up.to.line") {
+                    appModel.movePlaybackQueueItem(from: index, to: snapshot.currentIndex + 1, context: context)
+                }
+                Button(AppLanguage.localized("移除"), systemImage: "minus.circle", role: .destructive) {
+                    appModel.removePlaybackQueueItem(at: index, context: context)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .frame(width: 44, height: 44)
+            }
+            .menuOrder(.fixed)
+            .accessibilityLabel(AppLanguage.localized("佇列曲目操作"))
         }
     }
 

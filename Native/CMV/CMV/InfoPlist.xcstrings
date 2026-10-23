@@ -1,6 +1,13 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "NSAppleMusicUsageDescription" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "CMV connects with system media controls to display the track title, artist, and playback progress for your selected local or NAS media, and to receive system playback commands (such as pausing from Control Center). CMV does not browse, access, or modify your Apple Music library." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "CMVはシステムメディアコントロールと連動し、ユーザーが選択したローカルやNASメディアの曲名・アーティスト名・再生進捗を表示し、コントロールセンターからの再生・一時停止操作を受信します。Apple Musicライブラリの閲覧・アクセス・変更は一切行いません。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "CMV 與系統媒體控制項連動，為你自行選擇的本機或 NAS 媒體顯示曲名、藝人與播放進度，並接收來自控制中心的暫停或切歌等操作。CMV 不瀏覽、不讀取且不修改你的 Apple Music 曲庫。" } }
+      }
+    },
     "NSMotionUsageDescription" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "CMV uses device tilt for a subtle Saturn theme parallax effect. Motion data stays on your device." } },

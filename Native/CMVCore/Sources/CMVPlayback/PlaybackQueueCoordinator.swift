@@ -173,6 +173,38 @@ public enum PlaybackQueuePlanner {
         return result
     }
 
+    /// Rewrites track IDs while preserving every occurrence ID and both queue
+    /// orders. This is used after duplicate library repair, where several
+    /// occurrences may intentionally point at the same keeper track.
+    public static func replacingTrackIDs(
+        in snapshot: PlaybackQueueSnapshot,
+        replacements: [UUID: UUID]
+    ) -> PlaybackQueueSnapshot {
+        guard !replacements.isEmpty else { return snapshot }
+        var result = snapshot
+        func replacement(for id: UUID) -> UUID {
+            var current = id
+            var visited = Set<UUID>()
+            while let next = replacements[current], visited.insert(current).inserted {
+                current = next
+            }
+            return current
+        }
+        result.entries = snapshot.entries.map {
+            PlaybackQueueOccurrence(occurrenceID: $0.occurrenceID, trackID: replacement(for: $0.trackID))
+        }
+        result.baseEntries = snapshot.baseEntries.map {
+            PlaybackQueueOccurrence(occurrenceID: $0.occurrenceID, trackID: replacement(for: $0.trackID))
+        }
+        if let randomTrackIDs = snapshot.continuation?.randomTrackIDs {
+            var seen = Set<UUID>()
+            result.continuation?.randomTrackIDs = randomTrackIDs
+                .map(replacement)
+                .filter { seen.insert($0).inserted }
+        }
+        return result
+    }
+
     public static func isWellFormed(_ snapshot: PlaybackQueueSnapshot) -> Bool {
         guard snapshot.version == PlaybackQueueSnapshot.currentVersion,
               snapshot.revision >= 0,
@@ -211,6 +243,7 @@ public enum PlaybackQueuePlanner {
 public actor PlaybackQueueSnapshotStore {
     private let url: URL
     private var latestRevision: Int64 = .min
+    private var trackIDReplacements: [UUID: UUID] = [:]
 
     public init(url: URL) { self.url = url }
 
@@ -225,14 +258,47 @@ public actor PlaybackQueueSnapshotStore {
 
     public func load() -> PlaybackQueueSnapshot? {
         guard let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(PlaybackQueueSnapshot.self, from: data),
+              var snapshot = try? JSONDecoder().decode(PlaybackQueueSnapshot.self, from: data),
               snapshot.version == PlaybackQueueSnapshot.currentVersion,
               PlaybackQueuePlanner.isWellFormed(snapshot) else { return nil }
+        snapshot = canonicalized(snapshot)
+        guard PlaybackQueuePlanner.isWellFormed(snapshot) else { return nil }
         latestRevision = max(latestRevision, snapshot.revision)
         return snapshot
     }
 
+    /// Registers an in-memory identity migration before a duplicate repair
+    /// commits its database deletion. Every queued save is canonicalized when
+    /// it reaches this actor, including snapshots captured before registration.
+    /// The map is intentionally process-local; the durable snapshot is written
+    /// with keeper IDs before the database records are removed.
+    @discardableResult
+    public func registerTrackIDReplacements(_ replacements: [UUID: UUID]) -> Bool {
+        guard !replacements.isEmpty else { return true }
+        var proposed = trackIDReplacements
+        for (loserID, keeperID) in replacements {
+            let canonicalKeeper = canonicalTrackID(keeperID, in: proposed)
+            guard loserID != canonicalKeeper else { return false }
+            if let existing = proposed[loserID],
+               canonicalTrackID(existing, in: proposed) != canonicalKeeper {
+                return false
+            }
+            proposed[loserID] = canonicalKeeper
+        }
+        for id in proposed.keys {
+            var current = id
+            var visited = Set<UUID>()
+            while let next = proposed[current] {
+                guard visited.insert(current).inserted else { return false }
+                current = next
+            }
+        }
+        trackIDReplacements = proposed
+        return true
+    }
+
     public func save(_ snapshot: PlaybackQueueSnapshot) throws {
+        let snapshot = canonicalized(snapshot)
         guard snapshot.version == PlaybackQueueSnapshot.currentVersion,
               PlaybackQueuePlanner.isWellFormed(snapshot),
               snapshot.revision >= latestRevision else { return }
@@ -241,5 +307,23 @@ public actor PlaybackQueueSnapshotStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
         latestRevision = snapshot.revision
+    }
+
+    private func canonicalTrackID(_ id: UUID) -> UUID {
+        canonicalTrackID(id, in: trackIDReplacements)
+    }
+
+    private func canonicalTrackID(_ id: UUID, in replacements: [UUID: UUID]) -> UUID {
+        var current = id
+        var visited = Set<UUID>()
+        while let next = replacements[current], visited.insert(current).inserted {
+            current = next
+        }
+        return current
+    }
+
+    private func canonicalized(_ snapshot: PlaybackQueueSnapshot) -> PlaybackQueueSnapshot {
+        guard !trackIDReplacements.isEmpty else { return snapshot }
+        return PlaybackQueuePlanner.replacingTrackIDs(in: snapshot, replacements: trackIDReplacements)
     }
 }

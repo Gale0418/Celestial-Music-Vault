@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AVKit
 import Observation
+import CMVDomain
 
 enum VideoPresentationMode: String, CaseIterable, Identifiable {
     case moonPortal
@@ -32,7 +33,10 @@ final class VideoPlaybackSession {
     @ObservationIgnored private var statusObservation: NSKeyValueObservation?
     @ObservationIgnored private var itemStatusObservation: NSKeyValueObservation?
     @ObservationIgnored nonisolated(unsafe) private var timeObserver: Any?
+    @ObservationIgnored private var videoAudioMeter: VideoAudioTapHandle?
+    @ObservationIgnored nonisolated(unsafe) private var videoAudioTimer: Timer?
     @ObservationIgnored private var playbackGeneration = 0
+    @ObservationIgnored private var terminalPlaybackGeneration: Int?
     var onPlaybackEnded: (@MainActor @Sendable () -> Void)?
     var onStateChanged: (@MainActor @Sendable () -> Void)?
     var onOutputLevelChanged: (@MainActor @Sendable (Float) -> Void)?
@@ -41,6 +45,17 @@ final class VideoPlaybackSession {
     private(set) var outputVolume: Float = 1
     private(set) var currentTime: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
+    private(set) var videoAudioStatus: VideoAudioRouteStatus = .pending
+    private var videoAudioEffects = AudioEffectsSettings()
+
+    /// Read-only route settings for app integration tests and diagnostics.
+    var audioEffectsSettings: AudioEffectsSettings { videoAudioEffects }
+
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+    func setVideoAudioStatusForTesting(_ status: VideoAudioRouteStatus) {
+        videoAudioStatus = status
+    }
+#endif
 
     init() {
         #if os(iOS)
@@ -53,6 +68,8 @@ final class VideoPlaybackSession {
                   generation == playbackGeneration,
                   player.currentItem === item else { return }
             isPlaying = false
+            terminalPlaybackGeneration = generation
+            stopVideoAudioPolling()
             onOutputLevelChanged?(0)
             onPlaybackEnded?()
         }
@@ -67,6 +84,48 @@ final class VideoPlaybackSession {
 
     deinit {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
+        videoAudioTimer?.invalidate()
+    }
+
+    func setAudioEffects(_ settings: AudioEffectsSettings) {
+        videoAudioEffects = settings.validated
+        videoAudioMeter?.update(settings: videoAudioEffects)
+    }
+
+    private func stopVideoAudioPolling() {
+        videoAudioTimer?.invalidate()
+        videoAudioTimer = nil
+    }
+
+    private func stopVideoAudioMeter() {
+        stopVideoAudioPolling()
+        if let item = player.currentItem { item.audioMix = nil }
+        videoAudioMeter?.detach()
+        videoAudioMeter = nil
+    }
+
+    private func startVideoAudioPolling(for item: AVPlayerItem, generation: Int) {
+        videoAudioTimer?.invalidate()
+        videoAudioTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self, weak item] _ in
+            MainActor.assumeIsolated {
+                guard let self, let item,
+                      generation == self.playbackGeneration,
+                      self.player.currentItem === item,
+                      self.terminalPlaybackGeneration != generation,
+                      let meter = self.videoAudioMeter else { return }
+                let priorStatus = meter.status
+                _ = meter.prepareIfNeeded(settings: self.videoAudioEffects)
+                let status = meter.markSupportedIfProcessed(settings: self.videoAudioEffects)
+                if status != priorStatus {
+                    self.videoAudioStatus = status
+                    self.onStateChanged?()
+                }
+                self.onOutputLevelChanged?(self.isPlaying ? meter.latestLevel : 0)
+            }
+        }
+        if let videoAudioTimer {
+            RunLoop.main.add(videoAudioTimer, forMode: .common)
+        }
     }
 
     private func observeItemStatus(_ item: AVPlayerItem, generation: Int) {
@@ -79,6 +138,8 @@ final class VideoPlaybackSession {
                       player.currentItem === item else { return }
                 guard item.status == .failed else { return }
                 isPlaying = false
+                terminalPlaybackGeneration = generation
+                stopVideoAudioPolling()
                 onOutputLevelChanged?(0)
                 let error = item.error ?? NSError(
                     domain: "CMV.VideoPlayback",
@@ -119,6 +180,7 @@ final class VideoPlaybackSession {
     func load(url: URL, autoplay: Bool) {
         playbackGeneration &+= 1
         let generation = playbackGeneration
+        terminalPlaybackGeneration = nil
         if let asset = player.currentItem?.asset as? AVURLAsset, asset.url == url {
             guard let item = player.currentItem else { return }
             endObserver.observe(item, generation: generation)
@@ -127,9 +189,14 @@ final class VideoPlaybackSession {
             player.seek(to: .zero)
             currentTime = 0
             if autoplay { play() }
+            if videoAudioMeter != nil {
+                startVideoAudioPolling(for: item, generation: generation)
+            }
             onStateChanged?()
             return
         }
+        stopVideoAudioMeter()
+        videoAudioStatus = .pending
         let item = AVPlayerItem(url: url)
         currentTime = 0
         duration = 0
@@ -138,33 +205,57 @@ final class VideoPlaybackSession {
         observeItemStatus(item, generation: generation)
         installTimeObserver(for: item, generation: generation)
         Task { @MainActor [weak self, weak item] in
-            guard let self, let item,
-                  let loadedDuration = try? await item.asset.load(.duration),
-                  generation == playbackGeneration,
-                  player.currentItem === item else { return }
-            let seconds = loadedDuration.seconds
-            if seconds.isFinite, seconds > 0 {
-                duration = seconds
-                onStateChanged?()
-            }
-            if let audioTrack = try? await item.asset.loadTracks(withMediaType: .audio).first,
+            guard let self, let item else { return }
+            if let loadedDuration = try? await item.asset.load(.duration),
                generation == playbackGeneration,
                player.currentItem === item {
-                try? VideoAudioMeter.install(on: item, audioTrack: audioTrack) { [weak self] level in
-                    guard let self,
-                          generation == self.playbackGeneration,
-                          self.player.currentItem === item,
-                          self.isPlaying else { return }
-                    self.onOutputLevelChanged?(level)
+                let seconds = loadedDuration.seconds
+                if seconds.isFinite, seconds > 0 {
+                    duration = seconds
+                    onStateChanged?()
                 }
+            }
+            guard generation == playbackGeneration, player.currentItem === item else { return }
+            guard item.status != .failed else { return }
+            guard url.isFileURL else {
+                videoAudioStatus = .dryStreamingAsset
+                onStateChanged?()
+                return
+            }
+            let audioTracks = (try? await item.asset.loadTracks(withMediaType: .audio)) ?? []
+            guard generation == playbackGeneration, player.currentItem === item else { return }
+            guard item.status != .failed else { return }
+            switch audioTracks.count {
+            case 0:
+                videoAudioStatus = .dryNoAudioTrack
+                onStateChanged?()
+            case 1:
+                do {
+                    videoAudioMeter = try VideoAudioMeter.install(on: item, audioTrack: audioTracks[0])
+                    videoAudioStatus = .pending
+                    if terminalPlaybackGeneration != generation {
+                        startVideoAudioPolling(for: item, generation: generation)
+                    }
+                    onStateChanged?()
+                } catch {
+                    videoAudioStatus = .dryTapUnavailable
+                    onStateChanged?()
+                }
+            default:
+                videoAudioStatus = .dryMultipleAudioTracks
+                onStateChanged?()
             }
         }
         if autoplay { play() }
     }
 
     func play() {
-        guard player.currentItem != nil else { return }
-        #if os(iOS)
+        guard let item = player.currentItem else { return }
+        if terminalPlaybackGeneration == playbackGeneration {
+            seek(to: 0)
+        }
+        terminalPlaybackGeneration = nil
+#if os(iOS)
         do {
             let session = AVAudioSession.sharedInstance()
             // AirPlay is implicit for .playback; explicitly requesting it is
@@ -175,12 +266,17 @@ final class VideoPlaybackSession {
             onPlaybackError?(error)
             return
         }
-        #endif
+#endif
+        if videoAudioMeter != nil, videoAudioTimer == nil, item.status != .failed {
+            startVideoAudioPolling(for: item, generation: playbackGeneration)
+        }
         player.play()
     }
 
     func stop() {
         playbackGeneration &+= 1
+        terminalPlaybackGeneration = nil
+        stopVideoAudioMeter()
         endObserver.invalidate()
         itemStatusObservation?.invalidate()
         itemStatusObservation = nil
@@ -190,6 +286,7 @@ final class VideoPlaybackSession {
         isPlaying = false
         currentTime = 0
         duration = 0
+        videoAudioStatus = .pending
         onOutputLevelChanged?(0)
         onStateChanged?()
     }
@@ -212,6 +309,7 @@ final class VideoPlaybackSession {
     func seek(to seconds: TimeInterval) {
         guard seconds.isFinite, duration.isFinite, duration > 0 else { return }
         let clamped = min(duration, max(0, seconds))
+        terminalPlaybackGeneration = nil
         currentTime = clamped
         player.seek(to: CMTime(seconds: clamped, preferredTimescale: 600))
         onStateChanged?()

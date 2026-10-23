@@ -16,7 +16,7 @@ build、bundle／AppIcon／privacy preflight、canonical archive qualification�
   CMV_SWIFT_SCRATCH_PATH Swift scratch 路徑
   CMV_DERIVED_ROOT       兩個 Xcode DerivedData 子目錄的根路徑
   CMV_ARCHIVE_PATH       要驗證的 macOS archive（預設 canonical archive）
-  CMV_MISSION_CENTER_SCRIPTS  MissionCenter scripts 目錄（可選）
+  CMV_MISSION_CENTER_BIN      MissionCenter Rust CLI 路徑（可選；未設定則從 PATH 搜尋 mission-center）
 USAGE
 }
 
@@ -60,7 +60,7 @@ read_toml_string() {
 
 actual_channel="$(read_toml_string "rust-toolchain.toml" channel)"
 if [[ "$actual_channel" != "$expected" ]]; then
-  print -u2 -- "error: rust-toolchain.toml channel mismatch: expected $expected, got ${(actual_channel):-<missing>}"
+  print -u2 -- "error: rust-toolchain.toml channel mismatch: expected $expected, got ${actual_channel:-<missing>}"
   exit 1
 fi
 
@@ -69,7 +69,7 @@ for relative in \
   Native/CMVCoreRS/ffi/Cargo.toml; do
   actual="$(read_toml_string "$relative" rust-version)"
   if [[ "$actual" != "$expected" ]]; then
-    print -u2 -- "error: $relative rust-version mismatch: expected $expected, got ${(actual):-<missing>}"
+    print -u2 -- "error: $relative rust-version mismatch: expected $expected, got ${actual:-<missing>}"
     exit 1
   fi
 done

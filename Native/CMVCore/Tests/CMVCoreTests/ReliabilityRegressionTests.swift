@@ -17,7 +17,7 @@ final class ReliabilityRegressionTests: XCTestCase {
         return SwiftDataLibraryRepository(container: container)
     }
 
-    private func makeSilentAudioFile(sampleRate: Double) throws -> URL {
+    private func makeSilentAudioFile(sampleRate: Double, duration: Double = 1, amplitude: Float = 0) throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("CMV-Reliability-\(UUID().uuidString).caf")
         guard let format = AVAudioFormat(
@@ -25,12 +25,12 @@ final class ReliabilityRegressionTests: XCTestCase {
             channels: 1
         ), let buffer = AVAudioPCMBuffer(
             pcmFormat: format,
-            frameCapacity: AVAudioFrameCount(sampleRate)
+            frameCapacity: AVAudioFrameCount(sampleRate * duration)
         ), let samples = buffer.floatChannelData?[0] else {
             throw CocoaError(.fileWriteUnknown)
         }
         buffer.frameLength = buffer.frameCapacity
-        samples.initialize(repeating: 0, count: Int(buffer.frameLength))
+        samples.initialize(repeating: amplitude, count: Int(buffer.frameLength))
         let file = try AVAudioFile(forWriting: url, settings: format.settings)
         try file.write(from: buffer)
         return url
@@ -180,6 +180,35 @@ final class ReliabilityRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testCurrentItemSeekReadinessFollowsQueueAndPreparedFileLifecycle() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let track = Track(sourceID: UUID(), relativePath: audioURL.lastPathComponent,
+                          fileIdentifier: "seek-readiness", title: "Seek readiness",
+                          duration: 1, fileSize: 1, modifiedAt: .now)
+        let engine = NativePlaybackEngine()
+
+        XCTAssertFalse(engine.isCurrentItemPrepared)
+        XCTAssertFalse(engine.canSeek)
+
+        // A restored queue can be present while its current file is still
+        // unopened. This is the cold-restore state that previously accepted
+        // a seek gesture and then returned from the engine guard.
+        engine.setQueue(PlaybackQueue(tracks: [track]))
+        XCTAssertFalse(engine.isCurrentItemPrepared)
+        XCTAssertFalse(engine.canSeek)
+
+        try await engine.load(PlaybackQueue(tracks: [track]),
+                              resolvedURLs: [track.id: audioURL])
+        XCTAssertTrue(engine.isCurrentItemPrepared)
+        XCTAssertTrue(engine.canSeek)
+
+        engine.clearQueue()
+        XCTAssertFalse(engine.isCurrentItemPrepared)
+        XCTAssertFalse(engine.canSeek)
+    }
+
+    @MainActor
     func testAppendSkipsTrackWhoseFileDisappearedBeforeScheduling() async throws {
         let currentURL = try makeSilentAudioFile(sampleRate: 44_100)
         defer { try? FileManager.default.removeItem(at: currentURL) }
@@ -222,6 +251,144 @@ final class ReliabilityRegressionTests: XCTestCase {
         engine.appendToQueue([second], resolvedURLs: [second.id: audioURL])
         XCTAssertEqual(engine.queue.current?.id, second.id)
         XCTAssertEqual(engine.elapsed, 0, accuracy: 0.01)
+    }
+
+    @MainActor
+    func testReplacingFutureQueueDuringPlaybackContinuesThroughAllTracks() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let tracks = (0..<3).map { index in
+            Track(sourceID: sourceID, relativePath: "replacement-\(index).caf",
+                  fileIdentifier: "replacement-\(index)", title: "Track \(index)",
+                  duration: 1, fileSize: 1, modifiedAt: .now)
+        }
+        let urls = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, audioURL) })
+        let engine = NativePlaybackEngine()
+        defer { engine.clearQueue() }
+        try await engine.load(PlaybackQueue(tracks: tracks), resolvedURLs: urls)
+        let finished = expectation(description: "replaced future route finishes")
+        engine.onQueueFinished = { finished.fulfill() }
+        try engine.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        engine.replaceFutureQueue([tracks[2], tracks[1]], resolvedURLs: urls)
+
+        await fulfillment(of: [finished], timeout: 6)
+        XCTAssertEqual(engine.queue.current?.id, tracks[1].id)
+        XCTAssertFalse(engine.isPlaying)
+    }
+
+    @MainActor
+    func testTrackRepairDuringNextFileOpenDoesNotLeaveQueueStalled() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let tracks = (0..<3).map { index in
+            Track(sourceID: sourceID, relativePath: "repair-\(index).caf",
+                  fileIdentifier: "repair-\(index)", title: "Track \(index)",
+                  duration: 1, fileSize: 1, modifiedAt: .now)
+        }
+        let opener = AudioFileOpener()
+        let engine = NativePlaybackEngine(planner: { rate, current, _ in
+            let remaining = current.totalFrames - current.startFrame
+            return PlaybackSchedulePlan(
+                currentStartFrame: current.startFrame, currentFrameCount: remaining,
+                nextStartEngineFrame: UInt64((Double(remaining) * Double(rate) / Double(current.sampleRateHz)).rounded()),
+                currentGainLinear: 1, nextGainLinear: 1
+            )
+        }, fileOpener: opener)
+        defer { engine.clearQueue() }
+        try await engine.load(PlaybackQueue(tracks: [tracks[0]]), resolvedURLs: [tracks[0].id: audioURL])
+        await opener.delayNextOpen(by: 300_000_000)
+        let finished = expectation(description: "repaired pending route finishes")
+        engine.onQueueFinished = { finished.fulfill() }
+        try engine.play()
+        engine.appendToQueue([tracks[1]], resolvedURLs: [tracks[1].id: audioURL])
+        try await Task.sleep(for: .milliseconds(50))
+
+        engine.applyTrackReplacements([tracks[1].id: tracks[2].id], tracksByID: [tracks[2].id: tracks[2]])
+
+        await fulfillment(of: [finished], timeout: 4)
+        XCTAssertEqual(engine.queue.current?.id, tracks[2].id)
+        XCTAssertFalse(engine.isPlaying)
+    }
+
+    @MainActor
+    func testPausedFutureReplacementWaitsForResumeAndFinishes() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let tracks = (0..<3).map { index in
+            Track(sourceID: sourceID, relativePath: "paused-\(index).caf",
+                  fileIdentifier: "paused-\(index)", title: "Track \(index)",
+                  duration: 1, fileSize: 1, modifiedAt: .now)
+        }
+        let urls = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, audioURL) })
+        let engine = NativePlaybackEngine()
+        defer { engine.clearQueue() }
+        try await engine.load(PlaybackQueue(tracks: tracks), resolvedURLs: urls)
+        try engine.play()
+        try await Task.sleep(for: .milliseconds(100))
+        engine.pause()
+        let pausedElapsed = engine.elapsed
+        engine.replaceFutureQueue([tracks[2]], resolvedURLs: urls)
+        try await Task.sleep(for: .milliseconds(1_200))
+        XCTAssertFalse(engine.isPlaying)
+        XCTAssertEqual(engine.queue.current?.id, tracks[0].id)
+        XCTAssertEqual(engine.elapsed, pausedElapsed, accuracy: 0.001)
+        let finished = expectation(description: "paused replacement finishes after resume")
+        engine.onQueueFinished = { finished.fulfill() }
+
+        try engine.play()
+
+        await fulfillment(of: [finished], timeout: 3)
+        XCTAssertEqual(engine.queue.current?.id, tracks[2].id)
+        XCTAssertFalse(engine.isPlaying)
+    }
+
+    @MainActor
+    func testLateFutureReplacementKeepsNextAudioRenderDeadline() async throws {
+        let silentURL = try makeSilentAudioFile(sampleRate: 44_100, duration: 4)
+        let markerURL = try makeSilentAudioFile(sampleRate: 44_100, amplitude: 0.25)
+        defer {
+            try? FileManager.default.removeItem(at: silentURL)
+            try? FileManager.default.removeItem(at: markerURL)
+        }
+        let sourceID = UUID()
+        let current = Track(sourceID: sourceID, relativePath: "current.caf", fileIdentifier: "deadline-current",
+                            title: "Current", duration: 4, fileSize: 1, modifiedAt: .now)
+        let marker = Track(sourceID: sourceID, relativePath: "marker.caf", fileIdentifier: "deadline-marker",
+                           title: "Marker", duration: 1, fileSize: 1, modifiedAt: .now)
+        let tail = Track(sourceID: sourceID, relativePath: "tail.caf", fileIdentifier: "deadline-tail",
+                         title: "Tail", duration: 4, fileSize: 1, modifiedAt: .now)
+        let urls = [current.id: silentURL, marker.id: markerURL, tail.id: silentURL]
+        for seekOffset in [0.0, 2.0] {
+            let engine = NativePlaybackEngine()
+            defer { engine.clearQueue() }
+            try await engine.load(PlaybackQueue(tracks: [current, marker, tail]), resolvedURLs: urls)
+            if seekOffset > 0 { engine.seek(to: seekOffset) }
+            engine.setVolume(0) // The tap observes the marker before the final output mute.
+            let rendered = expectation(description: "next file actually renders near the original deadline")
+            let clock = ContinuousClock()
+            let start = clock.now
+            var markerStart: Duration?
+            engine.onOutputLevelChanged = { level in
+                if level > 0.5, markerStart == nil {
+                    markerStart = start.duration(to: clock.now)
+                    rendered.fulfill()
+                }
+            }
+            try engine.play()
+            try await Task.sleep(for: .seconds(seekOffset == 0 ? 2 : 0.5))
+
+            engine.replaceFutureQueue([marker], resolvedURLs: urls)
+
+            await fulfillment(of: [rendered], timeout: 3)
+            let actualStart = try XCTUnwrap(markerStart)
+            XCTAssertGreaterThan(actualStart, .seconds(4 - seekOffset - 0.2))
+            XCTAssertLessThan(actualStart, .seconds(4 - seekOffset + 0.4))
+        }
     }
 
     @MainActor
@@ -303,6 +470,33 @@ final class ReliabilityRegressionTests: XCTestCase {
 
         XCTAssertEqual(engine.queue.tracks.map(\.id), [first.id])
         XCTAssertEqual(engine.baseQueueSnapshot.tracks.map(\.id), [first.id])
+    }
+
+    @MainActor
+    func testInitialLoadKeepsSelectedTrackWhenFutureFileCannotOpen() async throws {
+        let audioURL = try makeSilentAudioFile(sampleRate: 44_100)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        let sourceID = UUID()
+        let current = Track(sourceID: sourceID, relativePath: "current-initial.caf",
+                            fileIdentifier: "current-initial", title: "Current",
+                            duration: 1, fileSize: 1, modifiedAt: .now)
+        let future = Track(sourceID: sourceID, relativePath: "future-initial.caf",
+                           fileIdentifier: "future-initial", title: "Future",
+                           duration: 1, fileSize: 1, modifiedAt: .now)
+        let invalidURL = audioURL.deletingLastPathComponent()
+            .appendingPathComponent("CMV-invalid-initial-\(UUID().uuidString).caf")
+        try Data([0x00, 0x01, 0x02]).write(to: invalidURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: invalidURL) }
+        let engine = NativePlaybackEngine()
+
+        try await engine.load(
+            PlaybackQueue(tracks: [current, future]),
+            resolvedURLs: [current.id: audioURL, future.id: invalidURL]
+        )
+
+        XCTAssertEqual(engine.queue.tracks.map(\.id), [current.id, future.id])
+        XCTAssertEqual(engine.queue.current?.id, current.id)
+        XCTAssertFalse(engine.isPlaying)
     }
 
     @MainActor

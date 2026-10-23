@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "1.0",
+  "candidate": "sidebar-count-fixed-artifacts-01",
+  "version": "2.0",
+  "build": "1",
+  "status": "PREPARED_NOT_CAPTURED",
+  "locales": [
+    "zh-Hant",
+    "en-US",
+    "ja-JP"
+  ],
+  "appleSpecifications": {
+    "verifiedDate": "2026-10-09",
+    "screenshots": "https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications",
+    "macAcceptedPixels": [
+      [
+        1280,
+        800
+      ],
+      [
+        1440,
+        900
+      ],
+      [
+        2560,
+        1600
+      ],
+      [
+        2880,
+        1800
+      ]
+    ],
+    "ipadRequiredDisplayClass": "13-inch",
+    "ipadAcceptedPixels": [
+      [
+        2064,
+        2752
+      ],
+      [
+        2752,
+        2064
+      ],
+      [
+        2048,
+        2732
+      ],
+      [
+        2732,
+        2048
+      ]
+    ]
+  },
+  "mediaManifest": "Native/ReviewMedia/generated-manifest.json",
+  "assetRightsLedger": "Native/ASSET_RIGHTS_LEDGER.md",
+  "filenamePattern": "{platform}/{locale}/{order}-{scene}.png",
+  "scenes": [
+    {
+      "order": 1,
+      "id": "now-playing",
+      "platforms": [
+        "mac",
+        "ipad"
+      ],
+      "observation": "原創曲目、月環與目前播放狀態；佇列只顯示原創素材"
+    },
+    {
+      "order": 2,
+      "id": "library",
+      "platforms": [
+        "mac",
+        "ipad"
+      ],
+      "observation": "原創素材的曲庫、搜尋與排序；不顯示私人曲名或來源路徑"
+    },
+    {
+      "order": 3,
+      "id": "playlist",
+      "platforms": [
+        "mac",
+        "ipad"
+      ],
+      "observation": "以原創素材建立的示範歌單與歌曲操作"
+    },
+    {
+      "order": 4,
+      "id": "audio-effects",
+      "platforms": [
+        "mac",
+        "ipad"
+      ],
+      "observation": "實際可用的音效面板與原創曲目；不虛構 Pro 權益"
+    },
+    {
+      "order": 5,
+      "id": "native-video",
+      "platforms": [
+        "mac",
+        "ipad"
+      ],
+      "observation": "原創 MOV；Mac 獨立播放器、iPad 原生子母畫面"
+    }
+  ],
+  "captureReceiptRequiredFields": [
+    "platform",
+    "locale",
+    "scene",
+    "file",
+    "sha256",
+    "pixelWidth",
+    "pixelHeight",
+    "capturedAt",
+    "osVersion",
+    "appVersion",
+    "appBuild",
+    "runtimeBinarySHA256",
+    "productionSourceManifestSHA256",
+    "mediaArtifactSHA256",
+    "rightsLedgerEntry",
+    "visualInspectionResult",
+    "privateContentInspectionResult"
+  ],
+  "promotionChecks": [
+    "實際圖片尺寸符合該平台指定 display class",
+    "圖片已逐張檢視，沒有私人曲目、封面、帳號或來源路徑",
+    "所有畫面中的媒體逐項綁定 canonical 六檔與權利台帳",
+    "候選來源未變，runtime binary 與候選 build binding 一致",
+    "RC4 正式鎖定後才列入最終商店交付；若來源改變需重拍受影響畫面"
+  ],
+  "reviewDemonstration": {
+    "edited": false,
+    "shotList": "Native/APP_STORE_REVIEW_KIT.md#無剪輯實機影片-shot-list",
+    "separateFromAppPreview": true,
+    "status": "NOT_RECORDED"
+  },
+  "capturedArtifacts": [],
+  "uploaded": false,
+  "promotionalArtwork": {
+    "scope": "四套背景 × Mac/iPad 分開 = 八張英文宣傳图",
+    "generator": "built-in imagegen",
+    "manifest": "Native/ReviewMedia/vtuber-covers/20261009/single-device-v2/manifest.json",
+    "targetMacPixels": [
+      2560,
+      1600
+    ],
+    "targetIPadPixels": [
+      2064,
+      2752
+    ],
+    "singleDevicePerImage": "USER_REQUIRED",
+    "runtimeEvidence": false,
+    "uploaded": false,
+    "status": "GENERATED_DIMENSIONS_VERIFIED_UI_FIDELITY_REVIEW_PENDING",
+    "remaining": "最新實際UI忠實度核對；不得當作原30場景capture完成",
+    "revision": "Mac route-icon correction; independent delta pending"
+  }
+}

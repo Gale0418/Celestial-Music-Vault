@@ -8,9 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-dist-app
-dist-ssr
 output/mission-center-assets
 output/mission-center-runtime
 output/mission-center-critique/
@@ -37,6 +34,7 @@ MissionCenter/.mission-center/
 
 # Swift / Xcode generated data
 Native/**/.build/
+Native/**/build/
 Native/**/.swiftpm-build/
 Native/.DerivedData-*/
 Native/**/target/
@@ -56,3 +54,19 @@ xcuserdata/
 *.gitbundle
 .asc/
 Native/StoreKit/evidence/*.png
+
+# 本機測試收據、私人裝置資料與可復原 App；不得提交。
+.cmv-local-evidence/
+
+# 本機原創示範、實機截圖及審查資料；公開交付使用篩選後的 docs assets。
+output/cmv-original-demo-20261023/
+output/cmv-copy-review-20261023/
+output/cmv-review-release-20261023/
+output/imagegen/
+output/mission-center-passports/
+Native/ReviewMedia/vtuber-covers/
+
+# 已退場桌面工具的歷史建置產物。
+dist/
+dist-app/
+dist-ssr/

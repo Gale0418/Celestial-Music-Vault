@@ -1,8 +1,14 @@
 import Foundation
+import AVFoundation
 
 /// Parses explicit text tags that AVFoundation exposes as generic metadata
 /// comments. Arbitrary comments are never treated as playback gain.
 public enum AudioMetadataParser {
+    public enum IntegerTagKind: Equatable, Sendable {
+        case trackNumber
+        case discNumber
+    }
+
     public static func releaseDate(from value: String) -> Date? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         for format in ["yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd", "yyyy"] {
@@ -38,11 +44,25 @@ public enum AudioMetadataParser {
         return nil
     }
 
+    public static func integerTagKind(from identifier: String) -> IntegerTagKind? {
+        switch identifier.lowercased() {
+        case AVMetadataIdentifier.iTunesMetadataTrackNumber.rawValue.lowercased(),
+             AVMetadataIdentifier.id3MetadataTrackNumber.rawValue.lowercased(),
+             "tracknumber", "track_number", "id3.tracknumber", "id3.track_number",
+             "trck", "id3.trck", "id3/trck", "trkn":
+            return .trackNumber
+        case AVMetadataIdentifier.iTunesMetadataDiscNumber.rawValue.lowercased(),
+             AVMetadataIdentifier.id3MetadataPartOfASet.rawValue.lowercased(),
+             "discnumber", "disc_number", "id3.discnumber", "id3.disc_number",
+             "tpos", "id3.tpos", "id3/tpos", "disk":
+            return .discNumber
+        default:
+            return nil
+        }
+    }
+
     public static func integerTag(from identifier: String, value: String) -> Int? {
-        let key = identifier.lowercased()
-        guard key.contains("tracknumber") || key.contains("track_number") || key.contains("trck") ||
-                key.contains("discnumber") || key.contains("disc_number") || key.contains("tpos") ||
-                key.contains("trkn") else { return nil }
+        guard integerTagKind(from: identifier) != nil else { return nil }
         let digits = value.prefix { $0.isNumber }
         return Int(digits)
     }

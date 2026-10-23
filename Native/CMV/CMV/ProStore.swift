@@ -50,7 +50,18 @@ public final class ProStore {
         let allUpdates: Int
         let matchingVerifiedNonConsumableUpdates: Int
         let transactionOrderRejections: Int
+        let listenerStarted: Bool
+        let streamUpdates: Int
+        let listenerFinished: Bool
     }
+
+    @MainActor private final class ListenerProbe {
+        var started = false
+        var updates = 0
+        var finished = false
+    }
+
+    @ObservationIgnored private let testListenerProbe = ListenerProbe()
 
     private var testStoreKitAllUpdates = 0
     private var testStoreKitMatchingVerifiedNonConsumableUpdates = 0
@@ -60,7 +71,10 @@ public final class ProStore {
         StoreKitTestDiagnostics(
             allUpdates: testStoreKitAllUpdates,
             matchingVerifiedNonConsumableUpdates: testStoreKitMatchingVerifiedNonConsumableUpdates,
-            transactionOrderRejections: testStoreKitTransactionOrderRejections
+            transactionOrderRejections: testStoreKitTransactionOrderRejections,
+            listenerStarted: testListenerProbe.started,
+            streamUpdates: testListenerProbe.updates,
+            listenerFinished: testListenerProbe.finished
         )
     }
 #endif
@@ -311,9 +325,19 @@ public final class ProStore {
     }
 
     private func startTransactionListener() {
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+        let probe = testListenerProbe
+#endif
         updatesTask = Task { [weak self] in
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+            probe.started = true
+            defer { probe.finished = true }
+#endif
             for await result in Transaction.updates {
                 guard !Task.isCancelled else { return }
+#if DEBUG && CMV_STOREKIT_TEST_HOST
+                probe.updates &+= 1
+#endif
                 await self?.receive(transactionResult: result)
             }
         }

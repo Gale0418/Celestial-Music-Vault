@@ -1,6 +1,6 @@
 # 星穹私藏音樂庫 Celestial Music Vault（CMV）2.0｜App Store Connect metadata gate
 
-更新：2026-10-03
+更新：2026-10-08（本次商店文案；歷史 checkpoint 保留）
 
 這份文件是商店 metadata 的總覽與送審前核對表。三種語言的 canonical 欄位位於：
 
@@ -9,6 +9,10 @@
 - [ja-JP canonical metadata](AppStoreMetadata/ja-JP.md)
 
 欄位檔描述目前原生產品可由程式碼／既有文件支持的範圍。X14 的 Smart Playlist、歌詞與背景來源變更 watcher 是延後評估，不得寫入本版商店功能宣稱。
+
+## 2026-10-08 Gemini文案與ASC草稿回讀
+
+依主人要求以Antigravity Bridge Codex的Gemini撰寫三語白月光風格稿，Root核對功能界線並整合。Apple實際拒絕部分emoji與顏文字後改用接受的顏文字；副標題不放星星符號。最終15個目標欄位exact、18個保護欄位exact，共33；WhatsNew只保留本機。未上傳Build、送審或發布。原2026-10-03／本輪早先33欄收據保留歷史。
 
 ## 已核對的固定資料
 
@@ -33,9 +37,9 @@
 
 本機欄位檢查結果：
 
-- `en-US.md`：Name 21、Subtitle 29、Keywords 77、Promotional text 168 字元。
-- `zh-Hant.md`：名稱 7、副標題 24、關鍵字 36、宣傳文字 87 字元。
-- `ja-JP.md`：名前 21、サブタイトル 22、キーワード 47、プロモーションテキスト 87 字元。
+- `en-US.md`：Name 21、Subtitle 26、Keywords 77、Promotional text 160、Description 2748、What’s New 751 字元。
+- `zh-Hant.md`：名稱 7、副標題 18、關鍵字 36、宣傳文字 108、描述 985、最新消息 262 字元。
+- `ja-JP.md`：名前 21、サブタイトル 20、キーワード 47、プロモーションテキスト 125、説明 1388、新機能 376 字元。
 
 上述是檔案內容與字數檢查，不是 App Store Connect 寫入或審核結果。
 

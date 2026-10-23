@@ -42,3 +42,11 @@ The output directory is disposable and intentionally outside the repository. The
 ## 本輪公開下載
 
 原倉庫的 [原創審核測試附件](https://github.com/Gale0418/Celestial-Music-Vault/releases/tag/cmv-review-fixtures-20261003) 提供同一批 6 份媒體與 manifest。ZIP SHA-256：`e3b766ec3a828fc8d11e8ac90b1468a5cea5e8f8ba600a79184aa39e68bf72d6`。
+
+## 2026-10-08 既有檔案讀回
+
+預設暫存輸出已不在原路徑；現存同批六份媒體位於 iCloud Drive 的
+`Downloads/CMV-Validation-20261004/CMV-Queue-Owned-20261008`，檔名加上 `CMV-QA-` 前綴。
+[讀回收據](existing-fixture-readback-20261008.json)逐檔核對 bytes／SHA，全部與 canonical manifest 一致，無重生成或新複製。
+收據另記目前 generator source SHA；這是本次来源指紋，不能補稱歷史生成 revision 已被釘選。
+120 秒 Long fixture 不屬上述六檔；同 RC 截圖／preview 尚未擷取，仍待逐項綁定。
