@@ -299,9 +299,9 @@ CMV-DEMO-I1：尚未開始最終截圖，WAIT_USER_HANDOFF。使用者正在玩i
 | REV23-E1 | 修復 Apple 審查問題並發布新版 | Epic | | P0 | In Progress | Codex | | 依證據逐項修復 | 所有子項證據齊備才關閉 |
 | REV23-T1 | 核對最新審查與已提交版本、重現權限及 Pro 路徑 | Task | REV23-E1 | P0 | Review | Codex | | 核對 Apple 原文與 binary，提出最小修法 | 記錄原文、版本及觸發步驟；不得把推論當重現 |
 | REV23-T2 | 修復已確認程式與三語問題 | Task | REV23-E1 | P0 | Review | Codex／Gemini | REV23-T1 | 依已證實原因實作 | 受影響測試、雙平台建置及實機驗證 |
-| REV23-T3 | 補實機截圖及 iPad／MacBook 宣傳圖 | Task | REV23-E1 | P1 | In Progress | Codex | REV23-T2 | 真實畫面保留，image 裝置圖不得冒充原始截圖 | 螢幕對應來源、商店尺寸與文字核對 |
-| REV23-T4 | CodeRabbit、跨領域驗收與 README／任務中心 | Task | REV23-E1 | P0 | In Progress | Codex | REV23-T2,REV23-T3 | 限額分批並驗證真問題 | 審查紀錄、問題處置及相應驗證 |
-| REV23-T5 | 提交 Git、推送 main、上傳新版並重新送審 | Task | REV23-E1 | P0 | In Progress | Codex | REV23-T4 | 核對 release gate 後執行 | 遠端 SHA、build processing、提交回條及最終狀態 |
+| REV23-T3 | 補實機截圖及 iPad／MacBook 宣傳圖 | Task | REV23-E1 | P1 | Review | Codex | REV23-T2 | 真實畫面保留，image 裝置圖不得冒充原始截圖 | 螢幕對應來源、商店尺寸與文字核對 |
+| REV23-T4 | CodeRabbit、跨領域驗收與 README／任務中心 | Task | REV23-E1 | P0 | Review | Codex | REV23-T2,REV23-T3 | 限額分批並驗證真問題 | 審查紀錄、問題處置及相應驗證 |
+| REV23-T5 | 提交 Git、推送 main、上傳新版並重新送審 | Task | REV23-E1 | P0 | Review | Codex | REV23-T4 | 核對 release gate 後執行 | 遠端 SHA、build processing、提交回條及最終狀態 |
 
 本機既有多項 dirty 變更與 Electron 刪除先保存盤點，不任意回復或全數混入提交。Mission Center resume 回傳 command_error，暫讀 canonical 記錄，後續診斷工具，不假稱 resume 通過。
 ### 2026-10-23 final archive／screenshot gate checkpoint（REV23 scope，未結案）
@@ -333,3 +333,14 @@ REV23-T2 維持 Review，待 build3 實機驗證。REV23-T5 已進入 In Progres
 - REV23-T5 InProgress：build 3 來源已 push main `6fe775b`，Mac／iOS 均 VALID、attached；Mac 原 submission 重新提交成功，WAITING_FOR_REVIEW，MANUAL release 不變。iOS 尚未 submit。
 - REV23-T3 InProgress：13 吋模擬器依使用者批准短暫重開，因 GUI 控制失效未拍成橫向示範影片展示圖；raw 空曲庫 PNG 保存但不當成可交付商店圖。已 shutdown 並退出 Simulator，未編譯 WDA；required 截圖仍是阻礙。
 - 本輪確認的產品修改已完成，保留 iOS 截圖／送審未完成事項，沒有將整個 REV23 標成 Done。
+
+
+### 2026-10-23 23:05 build 3 雙平台送審完成（最新狀態）
+
+- iOS 沿用原審查單，App 與 CMV Pro 項目均就緒後重新提交；提交與獨立回讀均為 `WAITING_FOR_REVIEW`（Apple 時間 2026-10-23T15:05:34.537Z）。Mac build 3 已於稍早等待審查。保留 MANUAL release，尚未核准／公開發行。
+- iPad 13 吋兩張 2752×2064 原生橫向圖，以 Simulator Save Screen 擷取實際 App 播放原創示範影片；包含收起側欄與雙側欄。未重繪 App UI；三語共 6 assets 的 MD5、尺寸與 COMPLETE 均核對通過。13 吋拍攝使用 build 2 的相同播放介面，build 3 變更為 Pro 已購買頁及其文案；不把模擬器圖稱為實機圖。
+- 13 吋舊 AI 商店圖已替換；既有 Mac／11 吋實機圖保留。Simulator 裝置已 Shutdown，程式已退出，沒有重編 WDA。
+- 英文審查備註已更新 Pro 直接入口、永久購買／恢復行為與截圖來源。驗證 errors 0、blocking 0；初版 What's New 不適用與 legacy IAP 警告保留說明，versioned IAP 隨原單送審，Privacy 已發布。
+- 收據：`output/cmv-review-release-20261023/build3/ios-review-final.json`、`ipad13-verification.json`、`ipad13-readback-*.json`（均留本機 ignored，無私人帳號進 Git）。本段取代先前「13 吋未完成／iOS 未送審」現況敘述，保留舊段作歷史。
+
+- 最終獨立驗收：13 吋 P1 解除，`PASS_SCOPED / WAITING_FOR_REVIEW`，無已證實 P0/P1 blocker。fresh purchase／恢復交易仍未實測；不將既有權益驗證擴張成新交易通過。REV23-T3／T4／T5 進入 Review，Epic 保留 In Progress 等待 Apple 結果。

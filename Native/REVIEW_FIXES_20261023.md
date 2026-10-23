@@ -54,3 +54,14 @@ Mac 與實體 iPad 均以同一 Release archive 的 Development 簽章副本驗�
 - Mac validator blocking 0、errors 0；3 個初次平台版本 What's New 空值警告（Apple 不接受該欄位）、1 個 legacy IAP READY_TO_SUBMIT 警告仍明列。version-scoped IAP 為 READY_FOR_REVIEW；Privacy 已在 browser 確認發布。
 - iOS 尚未 submit。13 吋模擬器短暫重開後，CMV 能顯示，但 GUI tree 變空且 click 失敗，未完成示範影片匯入。raw PNG 保存成功，但尺寸 2064×2752、內容為空曲庫，不當成要求的橫向播放展示圖。裝置已 Shutdown、Simulator 程式已關閉，沒有再編譯 WDA。
 - 2.0（3）來源 commit 為 `6fe775b121a05b3e378b4cdcd3e7a4312eeaf0e9`。本節是其後補上的發布回條；先前歷史段落的 pending 狀態以本節為準。
+
+
+### 2026-10-23 23:05 build 3 雙平台送審完成（最新狀態）
+
+- iOS 沿用原審查單，App 與 CMV Pro 項目均就緒後重新提交；提交與獨立回讀均為 `WAITING_FOR_REVIEW`（Apple 時間 2026-10-23T15:05:34.537Z）。Mac build 3 已於稍早等待審查。保留 MANUAL release，尚未核准／公開發行。
+- iPad 13 吋兩張 2752×2064 原生橫向圖，以 Simulator Save Screen 擷取實際 App 播放原創示範影片；包含收起側欄與雙側欄。未重繪 App UI；三語共 6 assets 的 MD5、尺寸與 COMPLETE 均核對通過。13 吋拍攝使用 build 2 的相同播放介面，build 3 變更為 Pro 已購買頁及其文案；不把模擬器圖稱為實機圖。
+- 13 吋舊 AI 商店圖已替換；既有 Mac／11 吋實機圖保留。Simulator 裝置已 Shutdown，程式已退出，沒有重編 WDA。
+- 英文審查備註已更新 Pro 直接入口、永久購買／恢復行為與截圖來源。驗證 errors 0、blocking 0；初版 What's New 不適用與 legacy IAP 警告保留說明，versioned IAP 隨原單送審，Privacy 已發布。
+- 收據：`output/cmv-review-release-20261023/build3/ios-review-final.json`、`ipad13-verification.json`、`ipad13-readback-*.json`（均留本機 ignored，無私人帳號進 Git）。本段取代先前「13 吋未完成／iOS 未送審」現況敘述，保留舊段作歷史。
+
+- 最終獨立驗收：13 吋 P1 解除，`PASS_SCOPED / WAITING_FOR_REVIEW`，無已證實 P0/P1 blocker。fresh purchase／恢復交易仍未實測；不將既有權益驗證擴張成新交易通過。REV23-T3／T4／T5 進入 Review，Epic 保留 In Progress 等待 Apple 結果。

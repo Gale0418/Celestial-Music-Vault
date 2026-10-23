@@ -638,3 +638,14 @@ xctrace裝置識別先用錯CoreDevice UUID，初次attach失敗退出12且空tr
 - REV23-T5 InProgress：build 3 來源已 push main `6fe775b`，Mac／iOS 均 VALID、attached；Mac 原 submission 重新提交成功，WAITING_FOR_REVIEW，MANUAL release 不變。iOS 尚未 submit。
 - REV23-T3 InProgress：13 吋模擬器依使用者批准短暫重開，因 GUI 控制失效未拍成橫向示範影片展示圖；raw 空曲庫 PNG 保存但不當成可交付商店圖。已 shutdown 並退出 Simulator，未編譯 WDA；required 截圖仍是阻礙。
 - 本輪確認的產品修改已完成，保留 iOS 截圖／送審未完成事項，沒有將整個 REV23 標成 Done。
+
+
+### 2026-10-23 23:05 build 3 雙平台送審完成（最新狀態）
+
+- iOS 沿用原審查單，App 與 CMV Pro 項目均就緒後重新提交；提交與獨立回讀均為 `WAITING_FOR_REVIEW`（Apple 時間 2026-10-23T15:05:34.537Z）。Mac build 3 已於稍早等待審查。保留 MANUAL release，尚未核准／公開發行。
+- iPad 13 吋兩張 2752×2064 原生橫向圖，以 Simulator Save Screen 擷取實際 App 播放原創示範影片；包含收起側欄與雙側欄。未重繪 App UI；三語共 6 assets 的 MD5、尺寸與 COMPLETE 均核對通過。13 吋拍攝使用 build 2 的相同播放介面，build 3 變更為 Pro 已購買頁及其文案；不把模擬器圖稱為實機圖。
+- 13 吋舊 AI 商店圖已替換；既有 Mac／11 吋實機圖保留。Simulator 裝置已 Shutdown，程式已退出，沒有重編 WDA。
+- 英文審查備註已更新 Pro 直接入口、永久購買／恢復行為與截圖來源。驗證 errors 0、blocking 0；初版 What's New 不適用與 legacy IAP 警告保留說明，versioned IAP 隨原單送審，Privacy 已發布。
+- 收據：`output/cmv-review-release-20261023/build3/ios-review-final.json`、`ipad13-verification.json`、`ipad13-readback-*.json`（均留本機 ignored，無私人帳號進 Git）。本段取代先前「13 吋未完成／iOS 未送審」現況敘述，保留舊段作歷史。
+
+- 最終獨立驗收：13 吋 P1 解除，`PASS_SCOPED / WAITING_FOR_REVIEW`，無已證實 P0/P1 blocker。fresh purchase／恢復交易仍未實測；不將既有權益驗證擴張成新交易通過。REV23-T3／T4／T5 進入 Review，Epic 保留 In Progress 等待 Apple 結果。
